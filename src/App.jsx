@@ -13,7 +13,9 @@ import useEventBus from './hooks/useEventBus.js'
 import useStreak from './hooks/useStreak.js'
 import useAchievements from './hooks/useAchievements.js'
 import useReportScheduler from './hooks/useReportScheduler.js'
-// useTTS removed — speakElevenLabs used directly
+import useNotifications from './hooks/useNotifications.js'
+import useAutoBackup from './hooks/useAutoBackup.js'
+import useContextSave from './hooks/useContextSave.js'
 import Boot from './components/Boot.jsx'
 import Header from './components/Header.jsx'
 import BottomNav from './components/BottomNav.jsx'
@@ -110,6 +112,9 @@ function App() {
 
   useStreak(eventBus)
   useAchievements()
+  useNotifications()
+  useAutoBackup()
+  useContextSave(activeTab, (tab) => setActiveTab(tab))
   const { pulse, dismissPulse } = useReportScheduler()
 
   // Track pulse for notification dot

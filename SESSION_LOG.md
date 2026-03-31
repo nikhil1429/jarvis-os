@@ -4,6 +4,66 @@
 
 ---
 
+### Session 30 — Hooks + MemoryPalace + Notifications + AutoBackup (2026-04-01)
+
+**4 new hooks + MemoryPalace visualization. JARVIS is now self-managing.**
+
+**Created `useNotifications.js`:**
+- Requests browser notification permission on first boot
+- 4 triggers (max 4/day): morning briefing reminder (9AM), evening check-in (9PM), streak at risk (8PM), concept overdue (3+ days)
+- Tracks sent notifications in sessionStorage, checks every 2 hours
+- Gracefully handles denied permission
+
+**Created `useAutoBackup.js`:**
+- Sunday auto-backup: snapshots all jos-* localStorage keys into jos-backup
+- Checks on boot: is today Sunday AND backup not done this week?
+- Returns `{ lastBackup, doBackup, restoreFromBackup }`
+- Never overwrites with empty data (checks keys > 0)
+
+**Created `useAdaptiveUI.js`:**
+- Time-based: morning=hard tasks, afternoon=body double, evening=review, latenight=rest warning
+- Energy-based: low=easy wins, normal=standard, high=hard modes
+- Checks onboarding peak hours if available
+- Returns 2-3 prioritized suggestion cards for CMD tab
+- Also checks overdue concepts and missing daily check-in
+
+**Created `useContextSave.js`:**
+- Auto-saves activeTab to jos-context-save every 60 seconds
+- On mount: restores tab if context < 30 minutes old, ignores if stale
+- Console: "CONTEXT: restoring tab: train (45s old)" or "CONTEXT: stale (42min), ignoring"
+
+**Created `MemoryPalace.jsx` (DNA tab):**
+- Visual concept map: 35 concepts as SVG circles in 6-column grid
+- Circle size: 14-28px based on strength (0-100%)
+- Circle color: red (<30%), yellow (30-60%), green (60-80%), gold (80%+)
+- SVG connection lines from prerequisites (dim=weak, bright=strong relationship)
+- Click node → switches to list view
+- pointer-events: none on SVG lines so they don't block clicks
+
+**Updated `concepts.js`:**
+- Added `prerequisites` arrays to 20 concepts defining dependency relationships
+- e.g. RAG needs Vector DBs + Embeddings, Agent Architectures needs Tool Use + API Design
+
+**Updated `DnaTab.jsx`:**
+- LIST/MAP toggle buttons in header
+- Map view shows MemoryPalace, list view shows existing concept cards
+- Toggle state saved to localStorage
+
+**Updated `CmdTab.jsx`:**
+- Adaptive suggestion cards above pulse card, color-coded (gold=high, cyan=medium)
+- Uses useAdaptiveUI hook
+
+**Updated `App.jsx`:**
+- Wired useNotifications, useAutoBackup, useContextSave
+
+**Build: 3443 modules, 0 errors, 36.94s**
+
+**Files created (5):** useNotifications.js, useAutoBackup.js, useAdaptiveUI.js, useContextSave.js, MemoryPalace.jsx
+**Files updated (4):** App.jsx, CmdTab.jsx, DnaTab.jsx, concepts.js
+**Total codebase: 70 source files**
+
+---
+
 ### Session 29 — Intelligence Dashboard + MoodOracle + SecondBrain + Briefing (2026-04-01)
 
 **4 new components making JARVIS data-aware.**

@@ -7,6 +7,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react'
 import { Search } from 'lucide-react'
 import CONCEPTS from '../../data/concepts.js'
 import ConceptCard from './ConceptCard.jsx'
+import MemoryPalace from './MemoryPalace.jsx'
 import useStorage from '../../hooks/useStorage.js'
 import useEventBus from '../../hooks/useEventBus.js'
 import { getReviewSchedule } from '../../utils/spacedRepetition.js'
@@ -33,6 +34,7 @@ export default function DnaTab() {
     return () => unsub?.()
   }, [eventBus])
   const [search, setSearch] = useState('')
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('jos-dna-view') || 'list')
   const [activeCategory, setActiveCategory] = useState('All')
 
   // Load saved concept data from localStorage
@@ -123,13 +125,30 @@ export default function DnaTab() {
         <h2 className="font-display text-xl font-bold text-cyan tracking-wider uppercase">
           Concept DNA
         </h2>
-        {overdueCount > 0 && (
-          <span className="font-mono text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/30
-            px-2 py-0.5 rounded tracking-wider">
-            {overdueCount} REVIEW DUE
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {overdueCount > 0 && (
+            <span className="font-mono text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/30
+              px-2 py-0.5 rounded tracking-wider">
+              {overdueCount} DUE
+            </span>
+          )}
+          <div className="flex rounded overflow-hidden border border-border">
+            {['list', 'map'].map(v => (
+              <button key={v} onClick={() => { setViewMode(v); localStorage.setItem('jos-dna-view', v) }}
+                className={`font-mono text-[9px] tracking-wider px-2 py-1 transition-colors ${
+                  viewMode === v ? 'bg-cyan/15 text-cyan' : 'text-text-muted hover:text-text-dim'
+                }`}>{v.toUpperCase()}</button>
+            ))}
+          </div>
+        </div>
       </div>
+
+      {/* Map view */}
+      {viewMode === 'map' && (
+        <div className="mb-4">
+          <MemoryPalace onSelectConcept={(id) => { setViewMode('list'); /* scroll handled by list */ }} />
+        </div>
+      )}
 
       {/* Search bar */}
       <div className="relative mb-3">

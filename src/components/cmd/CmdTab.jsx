@@ -1,20 +1,37 @@
 // CmdTab.jsx — Command Center (Tab 1) main layout
 // WHY: CMD is the daily operations hub — the first thing Nikhil sees.
-// Phase 6: Now includes 4-hour pulse card (pure JS, no API). Small dismissible
-// card with cyan left border that auto-replaces on next pulse cycle.
+// Includes briefing, pulse, adaptive suggestions, tasks, battle plan, build log, second brain.
 
-import { X } from 'lucide-react'
+import { X, Zap } from 'lucide-react'
 import TaskList from './TaskList.jsx'
 import BattlePlan from './BattlePlan.jsx'
 import DailyBuildLog from './DailyBuildLog.jsx'
 import Briefing from './Briefing.jsx'
 import SecondBrain from './SecondBrain.jsx'
+import useAdaptiveUI from '../../hooks/useAdaptiveUI.js'
 
 export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissPulse }) {
+  const { suggestions } = useAdaptiveUI()
+
   return (
     <div className="space-y-4 max-w-2xl mx-auto">
       {/* Morning Briefing */}
       <Briefing />
+
+      {/* Adaptive Suggestions */}
+      {suggestions.length > 0 && (
+        <div className="space-y-2">
+          {suggestions.map((s, i) => (
+            <div key={i} className="hud-panel rounded-lg px-3 py-2 border"
+              style={{ borderColor: s.priority === 'high' ? '#d4a853' : '#00b4d8', borderLeftWidth: 3 }}>
+              <div className="flex items-center gap-2">
+                <Zap size={12} className={s.priority === 'high' ? 'text-gold' : 'text-cyan'} />
+                <p className="font-body text-xs text-text leading-relaxed">{s.text}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* 4-Hour Pulse Card */}
       {pulse && (
