@@ -1,0 +1,344 @@
+/* global.css — JARVIS OS Base Styles & Effects
+   WHY: Sets up the foundational visual layer — dark void background, hex grid pattern,
+   scan lines, corner brackets, scrollbar theming, and keyframe animations.
+   Everything here creates the Iron Man 2050 "operating system" feel before any
+   component renders. */
+
+/* === Tailwind Layers === */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* === CSS Reset & Base === */
+/* WHY: Ensure consistent rendering across browsers, set JARVIS defaults */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: #020a13;
+  color: #d0e8f8;
+  font-family: 'Exo 2', sans-serif;
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+  position: relative;
+}
+
+/* === Hex Grid Background ===
+   WHY: The honeycomb pattern at 1.5% opacity creates depth — it makes the void
+   feel like a structured digital space, not just a black screen. The hex shape
+   is Iron Man's signature "structural analysis" motif. */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.015;
+  background-image:
+    linear-gradient(30deg, #00b4d8 12%, transparent 12.5%, transparent 87%, #00b4d8 87.5%, #00b4d8),
+    linear-gradient(150deg, #00b4d8 12%, transparent 12.5%, transparent 87%, #00b4d8 87.5%, #00b4d8),
+    linear-gradient(30deg, #00b4d8 12%, transparent 12.5%, transparent 87%, #00b4d8 87.5%, #00b4d8),
+    linear-gradient(150deg, #00b4d8 12%, transparent 12.5%, transparent 87%, #00b4d8 87.5%, #00b4d8),
+    linear-gradient(60deg, rgba(0, 180, 216, 0.5) 25%, transparent 25.5%, transparent 75%, rgba(0, 180, 216, 0.5) 75%, rgba(0, 180, 216, 0.5)),
+    linear-gradient(60deg, rgba(0, 180, 216, 0.5) 25%, transparent 25.5%, transparent 75%, rgba(0, 180, 216, 0.5) 75%, rgba(0, 180, 216, 0.5));
+  background-size: 40px 70px;
+  background-position: 0 0, 0 0, 20px 35px, 20px 35px, 0 0, 20px 35px;
+}
+
+/* === Keyframe Animations === */
+
+/* WHY breathe: 3s scale pulse creates "alive" feeling on reactor, status indicators.
+   The subtle scale + opacity change mimics organic breathing. */
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.8; }
+}
+
+/* WHY scan: horizontal sweep mimics JARVIS scanning/analyzing data.
+   Used on loading states and transition overlays. */
+@keyframes scan {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* WHY glow: box-shadow pulse draws attention to active/important elements
+   without being as aggressive as a color change. */
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 5px #00b4d8, 0 0 10px rgba(0, 180, 216, 0.3); }
+  50% { box-shadow: 0 0 15px #00f0ff, 0 0 30px rgba(0, 240, 255, 0.4); }
+}
+
+/* WHY float: gentle vertical bob for floating HUD elements.
+   6s duration feels natural, not jittery. */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+/* WHY typewriter-cursor: classic blinking cursor for text streaming effect */
+@keyframes typewriter-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* === Corner Bracket Styles ===
+   WHY: The [ ] corner brackets are a HUD signature from Iron Man.
+   They frame panels and make flat divs look like holographic projections.
+   Applied via .hud-panel class on any container. */
+.hud-panel {
+  position: relative;
+  border: 1px solid #0d2137;
+  background: #061422;
+}
+
+.hud-panel::before,
+.hud-panel::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: #00b4d8;
+  border-style: solid;
+}
+
+/* Top-left bracket */
+.hud-panel::before {
+  top: -1px;
+  left: -1px;
+  border-width: 2px 0 0 2px;
+}
+
+/* Bottom-right bracket */
+.hud-panel::after {
+  bottom: -1px;
+  right: -1px;
+  border-width: 0 2px 2px 0;
+}
+
+/* Additional corners via inner element */
+.hud-panel-inner::before,
+.hud-panel-inner::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: #00b4d8;
+  border-style: solid;
+}
+
+/* Top-right bracket */
+.hud-panel-inner::before {
+  top: -1px;
+  right: -1px;
+  border-width: 2px 2px 0 0;
+}
+
+/* Bottom-left bracket */
+.hud-panel-inner::after {
+  bottom: -1px;
+  left: -1px;
+  border-width: 0 0 2px 2px;
+}
+
+/* === Scan Line Effect ===
+   WHY: A horizontal cyan line that sweeps across a panel, creating a
+   "scanning" or "processing" visual. Apply .scan-line to a container. */
+.scan-line {
+  position: relative;
+  overflow: hidden;
+}
+
+.scan-line::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00f0ff, transparent);
+  animation: scan 2s linear infinite;
+}
+
+/* === Scrollbar Styling ===
+   WHY: Default scrollbars break immersion. Thin cyan scrollbars maintain
+   the HUD aesthetic while remaining functional. */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #020a13;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #0d2137;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #00b4d8;
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #0d2137 #020a13;
+}
+
+/* === Intelligence Ring Styles ===
+   WHY: Visual indicator of how confident JARVIS is about a data point.
+   Three states map to the intelligence levels from useIntelligence hook.
+   Empty = no data, half = emerging/learning, full = calibrated/locked-in. */
+.intel-ring {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #5a7a94;
+  transition: all 0.3s ease;
+}
+
+.intel-ring--empty {
+  background: transparent;
+  border-color: #2a4a60;
+}
+
+.intel-ring--half {
+  background: linear-gradient(to top, #00b4d8 50%, transparent 50%);
+  border-color: #00b4d8;
+}
+
+.intel-ring--full {
+  background: #00b4d8;
+  border-color: #00f0ff;
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
+}
+
+/* === Typewriter Cursor ===
+   WHY: Blinking cursor at end of streaming text creates the classic
+   terminal/AI typing effect. */
+.typewriter-cursor::after {
+  content: '|';
+  color: #00f0ff;
+  animation: typewriter-cursor 0.8s step-end infinite;
+  margin-left: 2px;
+}
+
+/* === Fade-in animation for boot inputs === */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out forwards;
+}
+
+/* === Slow pulse for auto-quiz alerts ===
+   WHY: Slower than default animate-pulse, draws attention without being frantic */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s ease-in-out infinite;
+}
+
+/* === Glow pulse for ENTER JARVIS button === */
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(0, 180, 216, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(0, 240, 255, 0.5), 0 0 40px rgba(0, 180, 216, 0.2); }
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* === Reactor spin for header mini reactor === */
+@keyframes reactor-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-reactor-spin {
+  animation: reactor-spin 8s linear infinite;
+}
+
+/* === Cyan glow shadow utility === */
+.shadow-cyan-glow {
+  box-shadow: 0 0 12px rgba(0, 180, 216, 0.15);
+}
+
+/* === Voice System Animations === */
+
+/* WHY: Cyan border pulse on input when LISTENING — draws eye to the input
+   where live transcript appears. 1.5s matches the silence detection timer. */
+@keyframes voice-border-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(0, 180, 216, 0.3); }
+  50% { box-shadow: 0 0 16px rgba(0, 240, 255, 0.5), 0 0 32px rgba(0, 180, 216, 0.2); }
+}
+
+.voice-border-pulse {
+  animation: voice-border-pulse 1.5s ease-in-out infinite;
+}
+
+/* WHY: Mic button breathing — scale 1.0→1.15→1.0 mimics breathing, signals "alive" */
+@keyframes voice-mic-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+.voice-mic-breathe {
+  animation: voice-mic-breathe 2s ease-in-out infinite;
+}
+
+/* WHY: Speaking pulse on response card — gold left border glows rhythmically */
+@keyframes voice-speaking-pulse {
+  0%, 100% { border-left-color: rgba(212, 168, 83, 0.6); }
+  50% { border-left-color: rgba(212, 168, 83, 1); }
+}
+
+.voice-speaking-pulse {
+  animation: voice-speaking-pulse 1s ease-in-out infinite;
+}
+
+/* WHY: Brief cyan flash when transitioning to READY — signals "your turn" */
+@keyframes voice-ready-flash {
+  0% { box-shadow: 0 0 20px rgba(0, 240, 255, 0.6); }
+  100% { box-shadow: 0 0 0px transparent; }
+}
+
+.voice-ready-flash {
+  animation: voice-ready-flash 0.8s ease-out forwards;
+}
+
+/* WHY: Processing dots orbit the VoiceMode circle center */
+@keyframes voice-orbit {
+  0% { transform: rotate(0deg) translateX(110px) rotate(0deg); opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { transform: rotate(360deg) translateX(110px) rotate(-360deg); opacity: 1; }
+}
+
+/* === Utility: Ensure content sits above hex grid === */
+#root > * {
+  position: relative;
+  z-index: 1;
+}
