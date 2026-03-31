@@ -40,7 +40,7 @@ export default function DailyBuildLog() {
   }
 
   return (
-    <div className="hud-panel rounded-lg p-4">
+    <div className="glass-card p-4">
       <div className="hud-panel-inner">
         <div className="flex items-center gap-2 mb-3">
           <PenLine size={18} className="text-cyan" />

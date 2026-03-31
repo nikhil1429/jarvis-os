@@ -24,7 +24,7 @@ export default function SessionStats({ elapsed }) {
   const todayTotal = todayLogged + todayLive
 
   return (
-    <div className="hud-panel rounded-lg p-4">
+    <div className="glass-card p-4">
       <div className="hud-panel-inner">
         <div className="flex items-center gap-2 mb-3">
           <Clock size={16} className="text-cyan" />

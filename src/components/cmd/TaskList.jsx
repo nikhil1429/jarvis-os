@@ -37,7 +37,7 @@ export default function TaskList({ completedTasks, onToggleTask }) {
   }, [completedTasks])
 
   return (
-    <div className="hud-panel rounded-lg p-4">
+    <div className="glass-card p-4">
       <div className="hud-panel-inner">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">

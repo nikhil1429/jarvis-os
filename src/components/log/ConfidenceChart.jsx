@@ -34,7 +34,7 @@ export default function ConfidenceChart() {
   const hasData = data.some(d => d.confidence > 0)
 
   return (
-    <div className="hud-panel rounded-lg p-4">
+    <div className="glass-card p-4">
       <div className="hud-panel-inner">
         <h3 className="font-display text-sm font-bold text-cyan tracking-wider uppercase mb-3">
           Confidence — Last 7 Days

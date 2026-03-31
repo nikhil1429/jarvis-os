@@ -103,7 +103,7 @@ export default function BodyDoubleTimer() {
   // Preset selection screen
   if (!duration) {
     return (
-      <div className="hud-panel rounded-lg p-6">
+      <div className="glass-card p-6">
         <div className="hud-panel-inner">
           <div className="flex items-center gap-2 mb-4">
             <Clock size={20} className="text-cyan" />
@@ -121,7 +121,7 @@ export default function BodyDoubleTimer() {
               <button
                 key={preset.label}
                 onClick={() => handleStart(preset)}
-                className="flex-1 hud-panel rounded-lg p-4 text-center
+                className="flex-1 glass-card p-4 text-center
                   hover:border-cyan/40 transition-all duration-200 group"
               >
                 <div className="hud-panel-inner">
@@ -142,7 +142,7 @@ export default function BodyDoubleTimer() {
   const color = getColor()
 
   return (
-    <div className="hud-panel rounded-lg p-6">
+    <div className="glass-card p-6">
       <div className="hud-panel-inner">
         <div className="flex items-center justify-between mb-6">
           <h3 className="font-display text-lg font-bold tracking-wider uppercase"

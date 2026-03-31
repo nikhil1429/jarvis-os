@@ -141,7 +141,7 @@ export default function TrainTab({ weekNumber, requestedMode, onModeOpened }) {
             <button
               key={alert.id}
               onClick={() => setActiveMode('quiz')}
-              className="w-full hud-panel rounded-lg p-3 text-left transition-all duration-200
+              className="w-full glass-card p-3 text-left transition-all duration-200
                 border border-amber-500/30 hover:border-amber-500/60
                 animate-pulse-slow"
               style={{
@@ -177,7 +177,7 @@ export default function TrainTab({ weekNumber, requestedMode, onModeOpened }) {
             <button
               key={mode.id}
               onClick={() => setActiveMode(mode.id)}
-              className="hud-panel rounded-lg p-3 text-left transition-all duration-200
+              className="glass-card p-3 text-left transition-all duration-200
                 hover:border-cyan/40 group"
             >
               <div className="hud-panel-inner">

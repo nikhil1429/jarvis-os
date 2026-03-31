@@ -31,7 +31,7 @@ export default function ConfidenceCalib() {
   const gapColor = gap > 10 ? '#ef4444' : gap < -10 ? '#eab308' : '#22c55e'
 
   return (
-    <div className="hud-panel rounded-lg p-4">
+    <div className="glass-card p-4">
       <div className="hud-panel-inner">
         <h3 className="font-display text-sm font-bold text-cyan tracking-wider uppercase mb-3">
           Confidence Calibration

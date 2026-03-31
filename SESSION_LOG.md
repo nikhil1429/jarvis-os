@@ -4,6 +4,54 @@
 
 ---
 
+### Session 31 — GOD-TIER UI: Iron Man 2050 Visual Overhaul (2026-04-01)
+
+**Complete visual reskin — every component upgraded to glassmorphism + neon.**
+
+**Created `BackgroundCanvas.jsx`:**
+- Full-viewport canvas at z-index 0 with requestAnimationFrame 60fps
+- 120 particles (cyan 85% + gold 15%) with neural connection lines (within 80px)
+- Mouse reactivity: particles attracted within 120px of cursor
+- Tron perspective grid (vanishing point center-bottom, opacity 0.025)
+- Data rain: 7 columns of binary digits falling at different speeds (opacity 0.06)
+- Horizontal scan line sweeping continuously (opacity 0.06)
+- Energy color shift: particles redden at low energy levels
+- Mobile: reduces to 60 particles, 4 rain columns
+
+**Updated `global.css` — Glass Card System:**
+- `.glass-card`: linear-gradient bg, backdrop-filter blur(16px), 4px radius, corner brackets with expand-on-hover
+- `.glass-shimmer`: holographic sweep animation (6s infinite)
+- `.glass-card-gold`: warm gold variant for Opus responses
+- New animations: neon-pulse, gold-neon-pulse, reactor-ring-1/2/3, core-pulse, live-blink, mic-ring-pulse, cardEnter, shimmerSweep
+- `.cyber-input:focus`: cyan glow border
+- Upgraded scrollbar: 4px width, transparent track, cyan thumb
+
+**Updated `Header.jsx`:**
+- 3 concentric CSS reactor rings spinning at different speeds (3s/5s/8s) with gold pulsing core
+- Rank text with `neon-pulse` gold glow
+- "NEURAL LINK ACTIVE" with green pulsing dot (`live-blink`)
+- Glass background with backdrop-filter blur
+- Settings gear rotates 90deg on hover
+- Streak counter with `gold-neon-pulse`, session timer with `neon-pulse`
+
+**Updated `BottomNav.jsx`:**
+- Glass background (rgba(1,8,16,0.95) + backdrop-filter blur(12px))
+- Active tab: cyan neon text + 2px top line with glow + 4px glowing dot above line + gradient overlay
+- Inactive tabs: #2a4a60 (very dim), hover brightens
+- Tab labels: Rajdhani font, 10px, 0.12em letter-spacing
+
+**Mass card upgrade (25+ component files):**
+- Replaced all `hud-panel rounded-lg` → `glass-card` across entire codebase
+- Replaced all `bg-card border-border rounded-lg` → `glass-card`
+- Every card in CMD, TRAIN, LOG, DNA, STATS, WINS tabs now has glassmorphism + corner brackets
+
+**Build: 3444 modules, 0 errors, 16.06s**
+
+**Files created (1):** BackgroundCanvas.jsx
+**Files updated (30+):** global.css, App.jsx, Header.jsx, BottomNav.jsx + all component files with card replacements
+
+---
+
 ### Session 30 — Hooks + MemoryPalace + Notifications + AutoBackup (2026-04-01)
 
 **4 new hooks + MemoryPalace visualization. JARVIS is now self-managing.**

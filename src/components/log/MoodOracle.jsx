@@ -62,7 +62,7 @@ export default function MoodOracle() {
   // Not enough data
   if (recentCheckins.length < 3 && !existingAnalysis) {
     return (
-      <div className="hud-panel rounded-lg p-4 border border-border mt-4">
+      <div className="glass-card p-4 border border-border mt-4">
         <div className="flex items-center gap-2 mb-2">
           <Brain size={16} className="text-gold" />
           <span className="font-display text-sm font-bold text-gold tracking-wider">MOOD ORACLE</span>

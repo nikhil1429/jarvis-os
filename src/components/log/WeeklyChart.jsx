@@ -41,7 +41,7 @@ export default function WeeklyChart() {
   const hasData = data.some(d => d.thisWeek !== null || d.lastWeek !== null)
 
   return (
-    <div className="hud-panel rounded-lg p-4">
+    <div className="glass-card p-4">
       <div className="hud-panel-inner">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-display text-sm font-bold text-cyan tracking-wider uppercase">

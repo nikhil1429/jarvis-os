@@ -1,6 +1,4 @@
-// BottomNav.jsx — 6-Tab Navigation Bar
-// WHY: JARVIS OS has 6 main tabs, each a different "mode" of the system.
-// Phase 6: Added notification dot support for pulse alerts on CMD tab.
+// BottomNav.jsx — Glass 6-tab navigation with neon active state
 
 import { Zap, Target, MessageCircle, Dna, BarChart3, Trophy } from 'lucide-react'
 
@@ -15,48 +13,48 @@ const TABS = [
 
 export default function BottomNav({ activeTab, onTabChange, hasPulse }) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50"
-      style={{ boxShadow: '0 -1px 8px rgba(0, 180, 216, 0.05)' }}>
+    <nav className="fixed bottom-0 left-0 right-0 z-50"
+      style={{
+        background: 'rgba(1,8,16,0.95)',
+        backdropFilter: 'blur(12px)',
+        borderTop: '1px solid rgba(0,240,255,0.06)',
+        boxShadow: '0 -2px 20px rgba(0,0,0,0.3)',
+      }}>
       <div className="flex items-center justify-around max-w-lg mx-auto">
         {TABS.map(({ id, label, Icon }) => {
           const isActive = activeTab === id
           return (
-            <button
-              key={id}
-              onClick={() => onTabChange(id)}
-              className={`
-                relative flex flex-col items-center gap-1 py-3 px-4 transition-all duration-200
-                ${isActive ? 'text-cyan' : 'text-text-dim hover:text-text'}
-              `}
-              aria-label={label}
-            >
+            <button key={id} onClick={() => onTabChange(id)}
+              className="relative flex flex-col items-center gap-1 py-3 px-4 transition-all duration-300"
+              style={{ color: isActive ? '#00f0ff' : '#2a4a60' }}
+              aria-label={label}>
+
               {isActive && (
-                <div className="absolute top-0 left-2 right-2 h-0.5 bg-cyan-neon rounded-full"
-                  style={{ boxShadow: '0 0 6px #00f0ff' }} />
+                <>
+                  {/* Glowing dot above line */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
+                    style={{ backgroundColor: '#00f0ff', boxShadow: '0 0 6px #00f0ff, 0 0 12px rgba(0,240,255,0.3)' }} />
+                  {/* Top line */}
+                  <div className="absolute top-[3px] left-3 right-3 h-[2px] rounded-full"
+                    style={{ backgroundColor: '#00f0ff', boxShadow: '0 0 8px #00f0ff' }} />
+                </>
               )}
 
               <div className="relative">
                 <Icon size={20} strokeWidth={isActive ? 2.2 : 1.5} />
-
-                {/* WHY: Pulse notification dot on CMD tab when new pulse arrives
-                    and user is on a different tab. Cyan dot draws attention without
-                    being intrusive. */}
                 {id === 'cmd' && hasPulse && !isActive && (
-                  <div
-                    className="absolute -top-1 -right-1.5 w-2 h-2 bg-cyan rounded-full"
-                    style={{ boxShadow: '0 0 6px #00f0ff' }}
-                  />
+                  <div className="absolute -top-1 -right-1.5 w-2 h-2 bg-cyan rounded-full"
+                    style={{ boxShadow: '0 0 6px #00f0ff' }} />
                 )}
               </div>
 
-              <span className={`font-mono text-[10px] tracking-wider
-                ${isActive ? 'text-cyan' : 'text-text-dim'}`}>
+              <span className="font-display text-[10px] font-semibold" style={{ letterSpacing: '0.12em' }}>
                 {label}
               </span>
 
               {isActive && (
                 <div className="absolute inset-0 pointer-events-none"
-                  style={{ boxShadow: 'inset 0 -8px 16px rgba(0, 180, 216, 0.08)' }} />
+                  style={{ background: 'linear-gradient(180deg, rgba(0,240,255,0.06) 0%, transparent 60%)' }} />
               )}
             </button>
           )

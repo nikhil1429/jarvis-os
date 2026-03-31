@@ -27,6 +27,7 @@ import StatsTab from './components/stats/StatsTab.jsx'
 import WinsTab from './components/wins/WinsTab.jsx'
 import Settings from './components/settings/Settings.jsx'
 import QuickCapture from './components/QuickCapture.jsx'
+import BackgroundCanvas from './components/BackgroundCanvas.jsx'
 import GlobalMic from './components/GlobalMic.jsx'
 import VoiceMode from './components/VoiceMode.jsx'
 import QuickVoiceOverlay from './components/QuickVoiceOverlay.jsx'
@@ -345,7 +346,8 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-void flex flex-col">
+    <div className="min-h-screen bg-void flex flex-col" style={{ position: 'relative', zIndex: 1 }}>
+      <BackgroundCanvas />
       <Header
         dayNumber={dayNumber}
         weekNumber={weekNumber}

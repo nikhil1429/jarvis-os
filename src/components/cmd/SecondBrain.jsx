@@ -122,7 +122,7 @@ export default function SecondBrain() {
         ) : results.map((entry, i) => {
           const style = SOURCE_STYLES[entry.source]
           return (
-            <div key={i} className="hud-panel rounded-lg p-2.5 border border-border">
+            <div key={i} className="glass-card p-2.5 border border-border">
               <p className="font-body text-xs text-text line-clamp-2 leading-relaxed">{entry.text}</p>
               <div className="flex items-center justify-between mt-1.5">
                 <span className={`font-mono text-[8px] px-1.5 py-0.5 rounded ${style.bg} ${style.text}`}>

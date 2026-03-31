@@ -67,7 +67,7 @@ export default function NikhilScore() {
   const total = Object.values(scores).reduce((s, v) => s + v, 0)
 
   return (
-    <div className="hud-panel rounded-lg p-4" style={{ borderColor: '#d4a85330' }}>
+    <div className="glass-card p-4" style={{ borderColor: '#d4a85330' }}>
       <div className="hud-panel-inner">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-display text-sm font-bold text-gold tracking-wider uppercase">

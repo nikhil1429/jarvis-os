@@ -38,7 +38,7 @@ export default function WinsTab() {
           return (
             <div
               key={achievement.id}
-              className={`hud-panel rounded-lg p-4 text-center transition-all duration-300 ${
+              className={`glass-card p-4 text-center transition-all duration-300 ${
                 isUnlocked
                   ? 'border-gold/30'
                   : 'opacity-50 grayscale'

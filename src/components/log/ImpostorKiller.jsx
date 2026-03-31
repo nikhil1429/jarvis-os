@@ -27,7 +27,7 @@ export default function ImpostorKiller() {
   ]
 
   return (
-    <div className="hud-panel rounded-lg p-4 border-gold/20" style={{ borderColor: '#d4a85330' }}>
+    <div className="glass-card p-4 border-gold/20" style={{ borderColor: '#d4a85330' }}>
       <div className="hud-panel-inner">
         <div className="flex items-center gap-2 mb-3">
           <Shield size={16} className="text-gold" />

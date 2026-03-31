@@ -61,7 +61,7 @@ export default function IntelligenceDash() {
           const color = getConfidenceColor(intel.confidence)
 
           return (
-            <div key={i} className="hud-panel rounded-lg p-3 border border-border">
+            <div key={i} className="glass-card p-3 border border-border">
               <div className="flex items-start gap-3">
                 <ConfidenceRing confidence={intel.confidence} />
                 <div className="flex-1 min-w-0">

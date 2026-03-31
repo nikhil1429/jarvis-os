@@ -240,7 +240,7 @@ Tone: JARVIS formal British, call him Sir. Keep under 150 words. No markdown.`
     <div className="space-y-4">
       {/* Morning Bet Results */}
       {todayBet && (
-        <div className="hud-panel rounded-lg p-4 border-l-2 border-l-gold">
+        <div className="glass-card p-4 border-l-2 border-l-gold">
           <div className="hud-panel-inner">
             <div className="flex items-center gap-2 mb-2">
               <Target size={16} className="text-gold" />
@@ -269,7 +269,7 @@ Tone: JARVIS formal British, call him Sir. Keep under 150 words. No markdown.`
       )}
 
       {/* Check-In Form */}
-      <div className={`hud-panel rounded-lg p-4 transition-all duration-300 ${
+      <div className={`glass-card p-4 transition-all duration-300 ${
         !hasToday ? 'ring-1 ring-cyan/30 shadow-cyan-glow' : ''
       }`}>
         <div className="hud-panel-inner">
@@ -393,7 +393,7 @@ Tone: JARVIS formal British, call him Sir. Keep under 150 words. No markdown.`
 
       {/* Daily Debrief Card */}
       {(debrief || debriefing) && (
-        <div className="hud-panel rounded-lg overflow-hidden border-t-2 border-t-gold">
+        <div className="glass-card overflow-hidden border-t-2 border-t-gold">
           <div className="hud-panel-inner p-4">
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-display text-sm font-bold text-gold tracking-wider uppercase">

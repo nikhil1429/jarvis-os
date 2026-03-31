@@ -8,7 +8,7 @@ import { Shield } from 'lucide-react'
 
 export default function BattlePlan() {
   return (
-    <div className="hud-panel rounded-lg p-4">
+    <div className="glass-card p-4">
       <div className="hud-panel-inner">
         <div className="flex items-center gap-2 mb-3">
           <Shield size={18} className="text-gold" />

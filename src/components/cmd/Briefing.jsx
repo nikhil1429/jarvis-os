@@ -29,7 +29,7 @@ export default function Briefing() {
 
   if (!briefing?.text) {
     return (
-      <div className="hud-panel rounded-lg p-3 border border-border mb-4"
+      <div className="glass-card p-3 border border-border mb-4"
         style={{ borderLeft: '3px solid #0d2137' }}>
         <div className="flex items-center justify-between">
           <div>
@@ -48,7 +48,7 @@ export default function Briefing() {
   }
 
   return (
-    <div className="hud-panel rounded-lg p-3 border mb-4"
+    <div className="glass-card p-3 border mb-4"
       style={{ borderColor: '#00b4d8', borderLeftWidth: 3 }}>
       <div className="hud-panel-inner">
         <div className="flex items-center justify-between mb-2">

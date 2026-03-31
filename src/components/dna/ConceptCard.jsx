@@ -52,7 +52,7 @@ export default function ConceptCard({ concept, savedData, onUpdate }) {
   }
 
   return (
-    <div className={`hud-panel rounded-lg transition-all duration-200 ${
+    <div className={`glass-card transition-all duration-200 ${
       review.isOverdue ? 'ring-1 ring-amber-500/30' : ''
     }`}>
       <div className="hud-panel-inner">

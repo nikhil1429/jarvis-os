@@ -51,7 +51,7 @@ export default function QuickCapture() {
   // Expanded input state
   return (
     <div className="fixed bottom-20 right-4 z-40 w-72">
-      <div className="hud-panel rounded-lg p-3">
+      <div className="glass-card p-3">
         <div className="hud-panel-inner">
           <div className="flex items-center justify-between mb-2">
             <span className="font-mono text-[10px] text-text-dim tracking-widest uppercase">

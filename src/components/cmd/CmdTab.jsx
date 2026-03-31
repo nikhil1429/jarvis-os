@@ -22,7 +22,7 @@ export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissP
       {suggestions.length > 0 && (
         <div className="space-y-2">
           {suggestions.map((s, i) => (
-            <div key={i} className="hud-panel rounded-lg px-3 py-2 border"
+            <div key={i} className="glass-card px-3 py-2 border"
               style={{ borderColor: s.priority === 'high' ? '#d4a853' : '#00b4d8', borderLeftWidth: 3 }}>
               <div className="flex items-center gap-2">
                 <Zap size={12} className={s.priority === 'high' ? 'text-gold' : 'text-cyan'} />
@@ -35,7 +35,7 @@ export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissP
 
       {/* 4-Hour Pulse Card */}
       {pulse && (
-        <div className="hud-panel rounded-lg overflow-hidden border-l-2 border-l-cyan animate-fade-in">
+        <div className="glass-card overflow-hidden border-l-2 border-l-cyan animate-fade-in">
           <div className="hud-panel-inner px-4 py-3 flex items-start justify-between gap-3">
             <div>
               <span className="font-mono text-[9px] text-cyan tracking-widest block mb-1">
