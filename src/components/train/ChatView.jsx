@@ -352,11 +352,8 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
       }
 
       // Full text to ElevenLabs streaming (optimize_streaming_latency:3)
+      // elevenLabsSpeak.js cancels browser TTS internally before audio.play()
       const success = await speakElevenLabs(text)
-
-      // ElevenLabs audio is now done (or failed)
-      // Cancel browser TTS if it's somehow still playing
-      if (browserTTSPlaying) synth?.cancel()
 
       if (!success) {
         // ElevenLabs failed — speak all via browser TTS

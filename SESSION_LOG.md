@@ -4,6 +4,23 @@
 
 ---
 
+### Session 24 — Three Surgical Voice Bug Fixes (2026-03-31)
+
+**Bug 1 — Browser TTS + ElevenLabs overlap:**
+- `elevenLabsSpeak.js` — added `window.speechSynthesis?.cancel()` right before `audio.play()`. Kills browser TTS the instant ElevenLabs audio is ready.
+
+**Bug 2 — Briefing voice delayed/wrong voice:**
+- `Boot.jsx` — replaced `tts.speak(finalText, { premium: true })` with ChatView pattern: browser TTS first sentence instantly + `speakElevenLabs()` streams full text with correct voice ID + `optimize_streaming_latency:3`. Fixed voice check to `settings.voice !== false`.
+
+**Bug 3 — Redundant cancel in ChatView:**
+- Removed `if (browserTTSPlaying) synth?.cancel()` — handled internally by elevenLabsSpeak.js.
+
+**Build: 3432 modules, 0 errors, 17.46s**
+
+**Files updated (3):** elevenLabsSpeak.js, Boot.jsx, ChatView.jsx
+
+---
+
 ### Session 23 — ElevenLabs Streaming + Browser TTS Handoff (2026-03-31)
 
 **Reverted chunked ElevenLabs approach — wastes credits, creates voice gaps.**
