@@ -12,7 +12,7 @@ export default function BattlePlan() {
       <div className="hud-panel-inner">
         <div className="flex items-center gap-2 mb-3">
           <Shield size={18} className="text-gold" />
-          <h3 className="font-display text-lg font-bold text-gold tracking-wider uppercase">
+          <h3 className="font-display text-lg font-bold text-gold tracking-wider uppercase gold-heading">
             Battle Plan
           </h3>
         </div>

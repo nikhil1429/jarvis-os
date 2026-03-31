@@ -107,7 +107,7 @@ export default function BodyDoubleTimer() {
         <div className="hud-panel-inner">
           <div className="flex items-center gap-2 mb-4">
             <Clock size={20} className="text-cyan" />
-            <h3 className="font-display text-xl font-bold text-cyan tracking-wider uppercase">
+            <h3 className="font-display text-xl font-bold text-cyan tracking-wider uppercase neon-heading">
               Body Double Timer
             </h3>
           </div>

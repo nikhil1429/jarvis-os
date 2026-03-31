@@ -61,7 +61,7 @@ export default function PowerRanking() {
   return (
     <div className="glass-card p-4">
       <div className="hud-panel-inner">
-        <h3 className="font-display text-sm font-bold text-cyan tracking-wider uppercase mb-3">
+        <h3 className="font-display text-sm font-bold text-cyan tracking-wider uppercase neon-heading mb-3">
           Power Ranking
         </h3>
 

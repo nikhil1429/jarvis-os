@@ -44,7 +44,7 @@ export default function DailyBuildLog() {
       <div className="hud-panel-inner">
         <div className="flex items-center gap-2 mb-3">
           <PenLine size={18} className="text-cyan" />
-          <h3 className="font-display text-lg font-bold text-cyan tracking-wider uppercase">
+          <h3 className="font-display text-lg font-bold text-cyan tracking-wider uppercase neon-heading">
             What I Built Today
           </h3>
         </div>

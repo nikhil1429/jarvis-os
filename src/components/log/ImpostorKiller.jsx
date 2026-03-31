@@ -31,7 +31,7 @@ export default function ImpostorKiller() {
       <div className="hud-panel-inner">
         <div className="flex items-center gap-2 mb-3">
           <Shield size={16} className="text-gold" />
-          <h3 className="font-display text-sm font-bold text-gold tracking-wider uppercase">
+          <h3 className="font-display text-sm font-bold text-gold tracking-wider uppercase gold-heading">
             Impostor Killer
           </h3>
         </div>

@@ -28,7 +28,7 @@ export default function SessionStats({ elapsed }) {
       <div className="hud-panel-inner">
         <div className="flex items-center gap-2 mb-3">
           <Clock size={16} className="text-cyan" />
-          <h3 className="font-display text-sm font-bold text-cyan tracking-wider uppercase">
+          <h3 className="font-display text-sm font-bold text-cyan tracking-wider uppercase neon-heading">
             Session Time
           </h3>
         </div>

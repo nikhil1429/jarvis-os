@@ -41,7 +41,7 @@ export default function TaskList({ completedTasks, onToggleTask }) {
       <div className="hud-panel-inner">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-display text-lg font-bold text-cyan tracking-wider uppercase">
+          <h3 className="font-display text-lg font-bold text-cyan tracking-wider uppercase neon-heading">
             Mission Tasks
           </h3>
           <span className="font-mono text-xs text-text-dim">
@@ -52,12 +52,12 @@ export default function TaskList({ completedTasks, onToggleTask }) {
         {/* Progress bar — cyan-gold gradient */}
         <div className="w-full h-2 bg-border rounded-full mb-4 overflow-hidden">
           <div
-            className="h-full rounded-full transition-all duration-500"
+            className="h-full rounded-full transition-all duration-500 progress-glow-dot"
             style={{
               width: `${progressPercent}%`,
               background: progressPercent >= 100
-                ? '#d4a853'
-                : 'linear-gradient(90deg, #00b4d8, #00f0ff)',
+                ? 'linear-gradient(90deg, #d4a853, #f0c060)'
+                : 'linear-gradient(90deg, #00b4d8, #00f0ff, #d4a853)',
               boxShadow: progressPercent >= 100
                 ? '0 0 10px rgba(212, 168, 83, 0.5)'
                 : '0 0 8px rgba(0, 180, 216, 0.4)',

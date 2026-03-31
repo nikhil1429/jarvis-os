@@ -122,7 +122,7 @@ export default function DnaTab() {
     <div className="max-w-2xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-display text-xl font-bold text-cyan tracking-wider uppercase">
+        <h2 className="font-display text-xl font-bold text-cyan tracking-wider uppercase neon-heading">
           Concept DNA
         </h2>
         <div className="flex items-center gap-2">

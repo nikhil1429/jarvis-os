@@ -78,7 +78,7 @@ export default function Settings({ isOpen, onClose }) {
         <div className="hud-panel-inner p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
-            <h2 className="font-display text-xl font-bold text-cyan tracking-wider uppercase">
+            <h2 className="font-display text-xl font-bold text-cyan tracking-wider uppercase neon-heading">
               Settings
             </h2>
             <button

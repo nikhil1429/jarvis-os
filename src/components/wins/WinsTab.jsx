@@ -20,7 +20,7 @@ export default function WinsTab() {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Trophy size={20} className="text-gold" />
-          <h2 className="font-display text-xl font-bold text-gold tracking-wider uppercase">
+          <h2 className="font-display text-xl font-bold text-gold tracking-wider uppercase gold-heading">
             Trophy Room
           </h2>
         </div>
@@ -39,13 +39,11 @@ export default function WinsTab() {
             <div
               key={achievement.id}
               className={`glass-card p-4 text-center transition-all duration-300 ${
-                isUnlocked
-                  ? 'border-gold/30'
-                  : 'opacity-50 grayscale'
+                isUnlocked ? 'achievement-unlocked' : 'achievement-locked grayscale'
               }`}
               style={isUnlocked ? {
-                borderColor: '#d4a85340',
-                boxShadow: '0 0 15px rgba(212, 168, 83, 0.1)',
+                borderColor: 'rgba(0,240,255,0.3)',
+                boxShadow: '0 0 20px rgba(0,240,255,0.08)',
               } : undefined}
             >
               <div className="hud-panel-inner">

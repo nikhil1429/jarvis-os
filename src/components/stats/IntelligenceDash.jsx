@@ -52,7 +52,7 @@ export default function IntelligenceDash() {
 
   return (
     <div className="mt-6">
-      <h3 className="font-display text-sm font-bold text-cyan tracking-wider uppercase mb-3">
+      <h3 className="font-display text-sm font-bold text-cyan tracking-wider uppercase neon-heading mb-3">
         Intelligence System
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

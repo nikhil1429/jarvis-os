@@ -70,7 +70,7 @@ export default function NikhilScore() {
     <div className="glass-card p-4" style={{ borderColor: '#d4a85330' }}>
       <div className="hud-panel-inner">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-display text-sm font-bold text-gold tracking-wider uppercase">
+          <h3 className="font-display text-sm font-bold text-gold tracking-wider uppercase gold-heading">
             Nikhil Score
           </h3>
           <span className="font-display text-2xl font-bold text-gold">{total}<span className="text-sm text-text-muted">/100</span></span>

@@ -26,7 +26,7 @@ export default function SkillHeatMap() {
   return (
     <div className="glass-card p-4">
       <div className="hud-panel-inner">
-        <h3 className="font-display text-sm font-bold text-cyan tracking-wider uppercase mb-3">
+        <h3 className="font-display text-sm font-bold text-cyan tracking-wider uppercase neon-heading mb-3">
           Skill Heat Map
         </h3>
 
@@ -37,7 +37,10 @@ export default function SkillHeatMap() {
             return (
               <div
                 key={concept.id}
-                className="rounded p-1.5 text-center transition-all duration-200 border"
+                className={`rounded p-1.5 text-center transition-all duration-200 border hover:scale-105 ${
+                  strength >= 80 ? 'heatmap-glow-gold' : strength >= 60 ? 'heatmap-glow-green'
+                  : strength >= 10 ? 'heatmap-glow-yellow' : 'heatmap-glow-red'
+                }`}
                 style={{
                   backgroundColor: colors.bg,
                   borderColor: colors.border,

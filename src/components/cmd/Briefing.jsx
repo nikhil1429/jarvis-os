@@ -50,7 +50,8 @@ export default function Briefing() {
   return (
     <div className="glass-card p-3 border mb-4"
       style={{ borderColor: '#00b4d8', borderLeftWidth: 3 }}>
-      <div className="hud-panel-inner">
+      <div className="shimmer-inner" />
+      <div className="hud-panel-inner" style={{ position: 'relative', zIndex: 1 }}>
         <div className="flex items-center justify-between mb-2">
           <p className="font-display text-xs font-bold text-cyan tracking-wider">MORNING BRIEFING</p>
           <div className="flex gap-1.5">

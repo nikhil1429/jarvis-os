@@ -244,7 +244,7 @@ Tone: JARVIS formal British, call him Sir. Keep under 150 words. No markdown.`
           <div className="hud-panel-inner">
             <div className="flex items-center gap-2 mb-2">
               <Target size={16} className="text-gold" />
-              <h4 className="font-display text-sm font-bold text-gold tracking-wider uppercase">
+              <h4 className="font-display text-sm font-bold text-gold tracking-wider uppercase gold-heading">
                 Morning Bet Results
               </h4>
             </div>
@@ -276,7 +276,7 @@ Tone: JARVIS formal British, call him Sir. Keep under 150 words. No markdown.`
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <ClipboardCheck size={18} className={hasToday ? 'text-green-400' : 'text-cyan'} />
-              <h3 className="font-display text-lg font-bold text-cyan tracking-wider uppercase">
+              <h3 className="font-display text-lg font-bold text-cyan tracking-wider uppercase neon-heading">
                 Daily Check-In
               </h3>
             </div>
@@ -396,7 +396,7 @@ Tone: JARVIS formal British, call him Sir. Keep under 150 words. No markdown.`
         <div className="glass-card overflow-hidden border-t-2 border-t-gold">
           <div className="hud-panel-inner p-4">
             <div className="flex items-center justify-between mb-2">
-              <h4 className="font-display text-sm font-bold text-gold tracking-wider uppercase">
+              <h4 className="font-display text-sm font-bold text-gold tracking-wider uppercase gold-heading">
                 [ Daily Debrief ]
               </h4>
               {debrief && (

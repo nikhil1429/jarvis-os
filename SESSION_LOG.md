@@ -4,6 +4,33 @@
 
 ---
 
+### Session 31B — UI Polish: Missing God-Tier Effects (2026-04-01)
+
+**CSS-only polish — shimmer, neon glow, heat map glow, progress dot, input focus.**
+
+**global.css additions:**
+- `.glass-shimmer::after` pseudo-element shimmer (6s sweep). Plus `.shimmer-inner` workaround for glass-card (which uses ::before/::after for brackets)
+- `.neon-heading`: cyan text-shadow glow (8px + 20px)
+- `.gold-heading`: gold text-shadow glow
+- `.progress-glow-dot::after`: white 8px dot with cyan box-shadow at progress bar tip
+- Global `input:focus, textarea:focus`: cyan border + glow (!important)
+- `.heatmap-glow-red/yellow/green/gold`: inset box-shadow matching strength color
+- `.achievement-unlocked`: cyan border + glow. `.achievement-locked`: opacity 0.35
+
+**Mass heading glow (17 files):**
+- Added `neon-heading` class to all cyan uppercase section headings across all tabs
+- Added `gold-heading` class to all gold uppercase section headings
+
+**Component updates:**
+- `Briefing.jsx`: added `shimmer-inner` div for holographic sweep effect
+- `WinsTab.jsx`: unlocked cards use `achievement-unlocked` (cyan glow), locked use `achievement-locked` (dimmer)
+- `SkillHeatMap.jsx`: cells get `heatmap-glow-*` class matching their strength color + hover scale
+- `TaskList.jsx`: progress bar gets `progress-glow-dot` + tri-color gradient (cyan→neon→gold)
+
+**Build: 0 errors**
+
+---
+
 ### Session 31 — GOD-TIER UI: Iron Man 2050 Visual Overhaul (2026-04-01)
 
 **Complete visual reskin — every component upgraded to glassmorphism + neon.**

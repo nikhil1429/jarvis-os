@@ -72,7 +72,7 @@ export default function SecondBrain() {
   return (
     <div className="mt-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-display text-sm font-bold text-cyan tracking-wider uppercase">Second Brain</h3>
+        <h3 className="font-display text-sm font-bold text-cyan tracking-wider uppercase neon-heading">Second Brain</h3>
         <button onClick={() => setAdding(!adding)}
           className="font-mono text-[10px] text-text-muted hover:text-cyan transition-colors flex items-center gap-1">
           <Plus size={12} /> Add

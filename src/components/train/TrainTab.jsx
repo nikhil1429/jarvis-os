@@ -119,7 +119,7 @@ export default function TrainTab({ weekNumber, requestedMode, onModeOpened }) {
     <div className="max-w-2xl mx-auto">
       {/* Anti-crutch badge */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-display text-xl font-bold text-cyan tracking-wider uppercase">
+        <h2 className="font-display text-xl font-bold text-cyan tracking-wider uppercase neon-heading">
           Training Deck
         </h2>
         <span

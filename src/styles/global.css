@@ -374,13 +374,25 @@ body::before {
 .glass-card::after { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
 .glass-card:hover::before, .glass-card:hover::after { width: 22px; height: 22px; border-color: #00f0ff; }
 
-/* Holographic shimmer sweep */
-.glass-shimmer { overflow: hidden; }
-.glass-shimmer > .shimmer-layer {
-  position: absolute; top: 0; left: -150%; width: 80%; height: 100%;
+/* Holographic shimmer sweep — uses ::after, no child element needed */
+.glass-shimmer { position: relative; overflow: hidden; }
+.glass-shimmer::after {
+  content: ''; position: absolute; top: 0; left: -150%; width: 80%; height: 100%;
   background: linear-gradient(105deg, transparent 40%, rgba(0,240,255,0.04) 45%, rgba(212,168,83,0.03) 50%, rgba(0,240,255,0.04) 55%, transparent 60%);
   animation: shimmerSweep 6s ease-in-out infinite;
   pointer-events: none; z-index: 0;
+}
+/* When glass-card uses ::after for bracket, shimmer needs a wrapper workaround.
+   Apply glass-shimmer to a child div inside glass-card instead. */
+.glass-card.glass-shimmer::after { display: none; }
+.glass-card .shimmer-inner {
+  position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0;
+}
+.glass-card .shimmer-inner::after {
+  content: ''; position: absolute; top: 0; left: -150%; width: 80%; height: 100%;
+  background: linear-gradient(105deg, transparent 40%, rgba(0,240,255,0.04) 45%, rgba(212,168,83,0.03) 50%, rgba(0,240,255,0.04) 55%, transparent 60%);
+  animation: shimmerSweep 6s ease-in-out infinite;
+  pointer-events: none;
 }
 @keyframes shimmerSweep { 0%{left:-150%} 100%{left:250%} }
 
@@ -467,4 +479,61 @@ body::before {
 .cyber-input:focus {
   border-color: #00f0ff;
   box-shadow: 0 0 12px rgba(0,240,255,0.15), inset 0 0 4px rgba(0,240,255,0.05);
+}
+
+/* ============================================================
+   FIX 3 — Neon heading glow
+   ============================================================ */
+.neon-heading {
+  text-shadow: 0 0 8px rgba(0,240,255,0.4), 0 0 20px rgba(0,240,255,0.15);
+}
+.gold-heading {
+  text-shadow: 0 0 8px rgba(212,168,83,0.4), 0 0 20px rgba(212,168,83,0.15);
+}
+
+/* ============================================================
+   FIX 5 — Progress bar glow dot
+   ============================================================ */
+.progress-glow-dot {
+  position: relative;
+}
+.progress-glow-dot::after {
+  content: '';
+  position: absolute;
+  right: -3px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 8px #00f0ff, 0 0 16px rgba(0,240,255,0.5);
+}
+
+/* ============================================================
+   FIX 8 — Global input/textarea focus glow
+   ============================================================ */
+input:focus, textarea:focus {
+  border-color: rgba(0, 240, 255, 0.4) !important;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.1), inset 0 0 20px rgba(0, 240, 255, 0.02) !important;
+  outline: none !important;
+}
+
+/* ============================================================
+   FIX 9 — Skill heat map cell glow
+   ============================================================ */
+.heatmap-glow-red { box-shadow: inset 0 0 12px rgba(239,68,68,0.15); }
+.heatmap-glow-yellow { box-shadow: inset 0 0 12px rgba(234,179,8,0.15); }
+.heatmap-glow-green { box-shadow: inset 0 0 12px rgba(16,185,129,0.15); }
+.heatmap-glow-gold { box-shadow: inset 0 0 12px rgba(212,168,83,0.2); }
+
+/* ============================================================
+   FIX 10 — Achievement unlocked glow
+   ============================================================ */
+.achievement-unlocked {
+  border-color: rgba(0,240,255,0.3);
+  box-shadow: 0 0 20px rgba(0,240,255,0.08);
+}
+.achievement-locked {
+  opacity: 0.35;
 }

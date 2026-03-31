@@ -44,7 +44,7 @@ export default function WeeklyChart() {
     <div className="glass-card p-4">
       <div className="hud-panel-inner">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-display text-sm font-bold text-cyan tracking-wider uppercase">
+          <h3 className="font-display text-sm font-bold text-cyan tracking-wider uppercase neon-heading">
             Weekly Comparison
           </h3>
           <div className="flex items-center gap-3">
