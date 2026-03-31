@@ -4,6 +4,68 @@
 
 ---
 
+### Session 26 — Voice System Clean Rewrite (2026-04-01)
+
+**Complete rewrite — deleted spaghetti, built one clean system.**
+
+**Created `src/hooks/useJarvisVoice.js` — THE voice system (replaces 5 files):**
+- Single hook controls: STT, TTS routing, voice control, silence timer, interruption, auto-reactivation
+- Returns: `{ voiceState, startListening, stopListening, speak, stopSpeaking, silenceCountdown, isWaitMode }`
+- State machine: IDLE → LISTENING → PROCESSING → SPEAKING → LISTENING (loop)
+- Headphones mode: mic stays active through PROCESSING + SPEAKING (no echo with Galaxy Buds)
+- Smart silence: <5 words = 2s, 5-15 = 1.5s, 15+ = 1.2s (reduced from 4/3/2.5)
+- Voice controls inline: stop/wait/go/continue detected on every recognition result
+- Speak decision inline: voice in = voice out, typed = text only
+- Interruption: any final speech during SPEAKING = user → jarvisStopAll() → LISTENING
+- Auto-reactivation 300ms after speech (was 600ms)
+- jarvisStopAll() registered as window.jarvisStop — kills browser TTS + ElevenLabs + audio elements + thinking ticks
+- All timeouts guarded by jarvisSpeakingRef
+- Custom events: jarvis-voice-send, jarvis-voice-interrupt, jarvis-voice-interim
+
+**Updated `elevenLabsSpeak.js`:**
+- Model: `eleven_flash_v2_5` (was eleven_multilingual_v2 — faster)
+- `optimize_streaming_latency: 4` (was 3 — maximum speed)
+- `speechSynthesis.cancel()` before `audio.play()` (safety kill)
+
+**Rewritten `ChatView.jsx`:**
+- All inline voice code removed. Uses `useJarvisVoice` hook exclusively.
+- Listens for jarvis-voice-send/interrupt/interim events from hook
+- Clean separation: hook handles voice, ChatView handles UI + messages
+
+**Rewritten `VoiceMode.jsx`:**
+- All inline STT/TTS removed. Uses useJarvisVoice hook.
+- Same reactive circle UI, mode pills, transcript — but voice logic from hook
+
+**Rewritten `QuickVoiceOverlay.jsx`:**
+- Uses useJarvisVoice hook. 8s auto-hide after IDLE.
+
+**Updated `Boot.jsx`:**
+- Removed useTTS import. Direct speakElevenLabs for briefing. Browser TTS fallback inline.
+
+**Updated `App.jsx`:**
+- Removed useTTS, shouldUseElevenLabs imports. Direct speakElevenLabs for milestones/rank-ups.
+
+**Updated `CheckInForm.jsx`:**
+- Removed useTTS. Direct speakElevenLabs for debrief summary.
+
+**Deleted 6 files:**
+- `src/hooks/useVoice.js` (replaced by useJarvisVoice)
+- `src/hooks/useTTS.js` (replaced by useJarvisVoice + speakElevenLabs)
+- `src/utils/smartVoiceRouter.js` (always ElevenLabs now)
+- `src/utils/speakDecision.js` (inline in useJarvisVoice)
+- `src/utils/voiceControl.js` (inline in useJarvisVoice)
+- `src/components/train/VoiceMode.jsx` (dead code duplicate)
+
+**Build: 3429 modules, 0 errors, 22.23s**
+
+**Files created (1):** useJarvisVoice.js
+**Files rewritten (3):** ChatView.jsx, VoiceMode.jsx, QuickVoiceOverlay.jsx
+**Files updated (4):** elevenLabsSpeak.js, Boot.jsx, App.jsx, CheckInForm.jsx
+**Files deleted (6):** useVoice.js, useTTS.js, smartVoiceRouter.js, speakDecision.js, voiceControl.js, train/VoiceMode.jsx
+**Net: -5 files, cleaner architecture**
+
+---
+
 ### Session 25 — ElevenLabs Only Voice (2026-03-31)
 
 **Rule: ElevenLabs for ALL speech. Browser TTS only for voice command acks + fallback.**

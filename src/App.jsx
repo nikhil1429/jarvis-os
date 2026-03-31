@@ -13,7 +13,7 @@ import useEventBus from './hooks/useEventBus.js'
 import useStreak from './hooks/useStreak.js'
 import useAchievements from './hooks/useAchievements.js'
 import useReportScheduler from './hooks/useReportScheduler.js'
-import useTTS from './hooks/useTTS.js'
+// useTTS removed — speakElevenLabs used directly
 import Boot from './components/Boot.jsx'
 import Header from './components/Header.jsx'
 import BottomNav from './components/BottomNav.jsx'
@@ -30,7 +30,7 @@ import VoiceMode from './components/VoiceMode.jsx'
 import QuickVoiceOverlay from './components/QuickVoiceOverlay.jsx'
 import { getDayNumber, getWeekNumber } from './utils/dateUtils.js'
 import { speakElevenLabs } from './utils/elevenLabsSpeak.js'
-import { shouldUseElevenLabs } from './utils/smartVoiceRouter.js'
+// smartVoiceRouter removed — always ElevenLabs
 import { speakTheatrical, SPEECHES, getSpeechText } from './utils/theatricalSpeech.js'
 import TASKS from './data/tasks.js'
 
@@ -78,7 +78,7 @@ function App() {
   const { get, set, update } = useStorage()
   const { play } = useSound()
   const eventBus = useEventBus()
-  const tts = useTTS()
+  // tts removed
 
   const [appState, setAppState] = useState('boot')
   const [activeTab, setActiveTab] = useState('cmd')
@@ -165,17 +165,17 @@ function App() {
       // Theatrical speech: dramatic pauses between segments via ElevenLabs
       const segments = SPEECHES.rankUp(newRank)
       const speakFn = async (text) => {
-        const useEL = shouldUseElevenLabs(text, { isRankUp: true })
-        let ok = false
-        if (useEL) ok = await speakElevenLabs(text)
-        if (!ok) tts.speak(text, { premium: true })
+        const ok = await speakElevenLabs(text)
+        if (!ok) {
+          const synth = window.speechSynthesis
+          if (synth) { const u = new SpeechSynthesisUtterance(text); synth.speak(u) }
+        }
       }
       speakTheatrical(segments, speakFn)
 
-      // Auto-dismiss after 7 seconds (theatrical needs more time)
       setTimeout(() => setRankUpOverlay(null), 7000)
     }
-  }, [appState, core.rank, weekNumber, update, play, tts])
+  }, [appState, core.rank, weekNumber, update, play])
 
   // ============================================================
   // MILESTONE CHECK — fires when tasks change
@@ -210,14 +210,15 @@ function App() {
         const segments = SPEECHES[theatricalKey]
         if (segments) {
           const speakFn = async (text) => {
-            const useEL = shouldUseElevenLabs(text, { isMilestone: true })
-            let ok = false
-            if (useEL) ok = await speakElevenLabs(text)
-            if (!ok) tts.speak(text, { premium: ms.pct === 100 })
+            const ok = await speakElevenLabs(text)
+            if (!ok) {
+              const synth = window.speechSynthesis
+              if (synth) { const u = new SpeechSynthesisUtterance(text); synth.speak(u) }
+            }
           }
           speakTheatrical(segments, speakFn)
         } else {
-          tts.speak(ms.speech, { premium: ms.pct === 100 })
+          speakElevenLabs(ms.speech)
         }
 
         // Dismiss after longer duration for theatrical
@@ -227,7 +228,7 @@ function App() {
         break // Only fire one milestone at a time
       }
     }
-  }, [completedTasks.length, appState, get, update, play, tts])
+  }, [completedTasks.length, appState, get, update, play])
 
   const handleBootComplete = useCallback(() => {
     setAppState('main')

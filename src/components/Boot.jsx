@@ -10,7 +10,7 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import useStorage from '../hooks/useStorage.js'
-import useTTS from '../hooks/useTTS.js'
+// useTTS removed — using speakElevenLabs directly
 import { getDayNumber, getWeekNumber, getTimeOfDay } from '../utils/dateUtils.js'
 import { speakElevenLabs } from '../utils/elevenLabsSpeak.js'
 import TASKS from '../data/tasks.js'
@@ -389,7 +389,7 @@ Keep it under 100 words. No markdown. Plain text only.`
 // ============================================================
 export default function Boot({ onComplete }) {
   const { get, update } = useStorage()
-  const tts = useTTS()
+  // tts removed — speakElevenLabs imported directly
 
   const [phase, setPhase] = useState(1)
   const [reactorVisible, setReactorVisible] = useState(false)
@@ -616,11 +616,17 @@ export default function Boot({ onComplete }) {
     if (!window._briefingStopped) {
       const settings = JSON.parse(localStorage.getItem('jos-settings') || '{}')
       if (settings.voice !== false) {
-        // ElevenLabs streams directly — text already typing on screen
         speakElevenLabs(finalText).then(success => {
           if (!success && !window._briefingStopped) {
-            // ElevenLabs failed — fall back to browser TTS
-            tts.speak(finalText)
+            // Fallback to browser TTS
+            const synth = window.speechSynthesis
+            if (synth) {
+              const u = new SpeechSynthesisUtterance(finalText)
+              const voices = synth.getVoices()
+              const v = voices.find(x => x.lang === 'en-GB') || voices[0]
+              if (v) u.voice = v
+              synth.speak(u)
+            }
           }
         })
       }
@@ -648,9 +654,6 @@ export default function Boot({ onComplete }) {
     // Kill thinking ticks
     if (window._thinkingStop) { window._thinkingStop(); window._thinkingStop = null }
 
-    // Kill useTTS internal state
-    tts.stop()
-
     // Kill again after 50ms (catches anything that re-queues)
     setTimeout(() => {
       window.speechSynthesis.cancel()
@@ -671,7 +674,7 @@ export default function Boot({ onComplete }) {
 
     setIsExiting(true)
     setTimeout(() => onComplete(), 800)
-  }, [onComplete, tts])
+  }, [onComplete])
 
   // ============================================================
   // RENDER
