@@ -43,7 +43,7 @@ export default function useTTS() {
 
   const isVoiceEnabled = useCallback(() => {
     const settings = get('settings') || {}
-    return settings.voice === true
+    return settings.voice !== false
   }, [get])
 
   const getVoiceSpeed = useCallback(() => {

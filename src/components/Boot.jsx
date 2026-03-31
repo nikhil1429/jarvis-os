@@ -13,7 +13,6 @@ import useStorage from '../hooks/useStorage.js'
 import useTTS from '../hooks/useTTS.js'
 import { getDayNumber, getWeekNumber, getTimeOfDay } from '../utils/dateUtils.js'
 import { speakElevenLabs } from '../utils/elevenLabsSpeak.js'
-import { shouldUseElevenLabs } from '../utils/smartVoiceRouter.js'
 import TASKS from '../data/tasks.js'
 
 // ============================================================
@@ -613,48 +612,17 @@ export default function Boot({ onComplete }) {
       }
     }, charDelay)
 
-    // Speak the briefing — same pattern as ChatView:
-    // Browser TTS first sentence instantly, ElevenLabs streams in background
+    // Speak the briefing — ElevenLabs only, browser TTS as fallback
     if (!window._briefingStopped) {
       const settings = JSON.parse(localStorage.getItem('jos-settings') || '{}')
       if (settings.voice !== false) {
-        const sentences = finalText.match(/[^.!?]+[.!?]+/g) || [finalText]
-
-        // Instant first sentence via browser TTS
-        const synth = window.speechSynthesis
-        if (synth && sentences[0]) {
-          synth.cancel()
-          const utterance = new SpeechSynthesisUtterance(sentences[0].trim())
-          let voice = window._jarvisVoice
-          if (!voice) {
-            const voices = synth.getVoices()
-            voice = voices.find(v => v.name.includes('Google UK English Male'))
-              || voices.find(v => v.lang === 'en-GB') || voices.find(v => v.lang.startsWith('en')) || voices[0]
-            window._jarvisVoice = voice
+        // ElevenLabs streams directly — text already typing on screen
+        speakElevenLabs(finalText).then(success => {
+          if (!success && !window._briefingStopped) {
+            // ElevenLabs failed — fall back to browser TTS
+            tts.speak(finalText)
           }
-          if (voice) utterance.voice = voice
-          utterance.rate = 1.0
-          utterance.pitch = 0.95
-          synth.speak(utterance)
-        }
-
-        // ElevenLabs streams full text in background (cancels browser TTS before playback)
-        if (shouldUseElevenLabs(finalText, { isBriefing: true })) {
-          speakElevenLabs(finalText).then(success => {
-            if (!success && !window._briefingStopped) {
-              // ElevenLabs failed — browser TTS already spoke first sentence,
-              // speak remaining via browser TTS
-              if (synth && sentences.length > 1) {
-                sentences.slice(1).forEach((s, i) => {
-                  const u = new SpeechSynthesisUtterance(s.trim())
-                  if (window._jarvisVoice) u.voice = window._jarvisVoice
-                  u.rate = 1.0; u.pitch = 0.95
-                  synth.speak(u)
-                })
-              }
-            }
-          })
-        }
+        })
       }
     }
 

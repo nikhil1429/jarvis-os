@@ -326,42 +326,15 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
     const useEL = shouldUseElevenLabs(text, context)
 
     if (useEL) {
-      // INSTANT FIRST SENTENCE: speak first sentence via browser TTS immediately
-      // while ElevenLabs stream loads (1-3s). User hears response in <0.5s.
-      const firstSentence = allSentences[0]
-      let browserTTSPlaying = false
-      const synth = window.speechSynthesis
-      if (synth && firstSentence) {
-        synth.cancel()
-        const utterance = new SpeechSynthesisUtterance(firstSentence.trim())
-        let voice = window._jarvisVoice
-        if (!voice) {
-          const voices = synth.getVoices()
-          voice = voices.find(v => v.name.includes('Google UK English Male'))
-            || voices.find(v => v.lang === 'en-GB' && v.name.toLowerCase().includes('male'))
-            || voices.find(v => v.lang === 'en-GB')
-            || voices.find(v => v.lang.startsWith('en')) || voices[0]
-          window._jarvisVoice = voice
-        }
-        if (voice) utterance.voice = voice
-        utterance.rate = settings.voiceSpeed || 1.0
-        utterance.pitch = 0.95
-        synth.speak(utterance)
-        browserTTSPlaying = true
-        console.log('TTS: instant first sentence via browser while ElevenLabs loads')
-      }
-
-      // Full text to ElevenLabs streaming (optimize_streaming_latency:3)
-      // elevenLabsSpeak.js cancels browser TTS internally before audio.play()
+      // ElevenLabs only — text already visible in message list, user reads while audio streams
       const success = await speakElevenLabs(text)
-
       if (!success) {
-        // ElevenLabs failed — speak all via browser TTS
+        // ElevenLabs failed — fall back to browser TTS
         console.log('TTS: ElevenLabs failed, falling back to browser TTS')
         await speakBrowserSentences(allSentences, settings)
       }
     } else {
-      // Browser TTS only (short text, voice commands, no API key)
+      // Browser TTS only (voice commands, no API key)
       await speakBrowserSentences(allSentences, settings)
     }
 

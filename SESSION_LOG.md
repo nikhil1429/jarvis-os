@@ -4,6 +4,24 @@
 
 ---
 
+### Session 25 — ElevenLabs Only Voice (2026-03-31)
+
+**Rule: ElevenLabs for ALL speech. Browser TTS only for voice command acks + fallback.**
+
+- **ChatView.jsx** — Removed entire browser TTS first-sentence handoff (browserTTSPlaying block). ElevenLabs only: text shows in UI → ElevenLabs streams → plays. Browser TTS only as fallback if ElevenLabs fails.
+- **Boot.jsx** — Replaced browser TTS first-sentence + shouldUseElevenLabs check with direct `speakElevenLabs(finalText)`. Text types on screen while ElevenLabs streams. Removed shouldUseElevenLabs import.
+- **useTTS.js** — Changed `settings.voice === true` to `settings.voice !== false` so voice defaults to ON when setting is undefined.
+- **smartVoiceRouter.js** — Removed `text.length < 80` browser TTS threshold. ALL responses go to ElevenLabs regardless of length.
+- **elevenLabsSpeak.js** — Already has `speechSynthesis.cancel()` before `audio.play()` (session 24).
+
+**NOT changed:** speakDecision.js (voice in = voice out correct), voice command acks in executeVoiceControl (browser TTS for "Going silent, Sir" — needs instant playback), jarvisStop().
+
+**Build: 3432 modules, 0 errors, 17.90s**
+
+**Files updated (4):** ChatView.jsx, Boot.jsx, useTTS.js, smartVoiceRouter.js
+
+---
+
 ### Session 24 — Three Surgical Voice Bug Fixes (2026-03-31)
 
 **Bug 1 — Browser TTS + ElevenLabs overlap:**

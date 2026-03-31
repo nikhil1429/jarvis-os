@@ -39,9 +39,9 @@ export function shouldUseElevenLabs(text, context = {}) {
   // Voice commands → always browser (need instant response)
   if (context.isVoiceCommand) return false
 
-  // Short text → browser TTS (not worth the latency/cost)
-  if (!text || text.length < 80) return false
+  // Empty text check
+  if (!text) return false
 
-  // Default: ElevenLabs for quality
+  // Default: ElevenLabs for ALL responses (streaming makes short text fast too)
   return true
 }
