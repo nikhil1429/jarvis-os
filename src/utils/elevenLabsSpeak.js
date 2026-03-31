@@ -142,10 +142,12 @@ export async function speakElevenLabs(text) {
         resolve(false)
       }
       audio.onpause = () => {
-        URL.revokeObjectURL(url)
-        window._jarvisAudio = null
-        console.log('11LABS STREAM: playback interrupted (paused)')
-        resolve(false)
+        if (window._jarvisStopped) {
+          URL.revokeObjectURL(url)
+          window._jarvisAudio = null
+          console.log('11LABS STREAM: playback interrupted by user')
+          resolve(false)
+        }
       }
       // Kill browser TTS right before ElevenLabs plays — prevents overlap
       window.speechSynthesis?.cancel()
