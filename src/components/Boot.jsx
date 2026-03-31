@@ -5,19 +5,15 @@
 // morning briefing with avoidance detection + time-aware behavior. Briefing types
 // character by character and browser TTS reads it simultaneously.
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
-import { EffectComposer, Bloom } from '@react-three/postprocessing'
-import * as THREE from 'three'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import useStorage from '../hooks/useStorage.js'
-// useTTS removed — using speakElevenLabs directly
 import { getDayNumber, getWeekNumber, getTimeOfDay } from '../utils/dateUtils.js'
 import { speakElevenLabs } from '../utils/elevenLabsSpeak.js'
+import BootReactor from './BootReactor.jsx'
 import TASKS from '../data/tasks.js'
 
-// ============================================================
-// THREE.JS ARC REACTOR COMPONENTS
-// ============================================================
+// Three.js reactor components below are DEPRECATED — replaced by BootReactor.jsx (Canvas 2D)
+// Kept as dead code; tree-shaking removes them from bundle.
 
 function ReactorRing({ radius, tubeRadius, color, emissiveColor, speed, axis, emissiveIntensity = 0.7, opacity = 0.8 }) {
   const ref = useRef()
@@ -686,26 +682,23 @@ export default function Boot({ onComplete }) {
   // ============================================================
   return (
     <>
-      {/* LAYER 1: Three.js Canvas */}
+      {/* LAYER 1: Canvas 2D Reactor */}
       <div
         style={{
           position: 'fixed',
           top: 0,
           left: 0,
           width: '100vw',
-          height: '100vh',
+          height: '55vh',
           zIndex: 40,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           opacity: isExiting ? 0 : (reactorVisible ? 1 : 0),
           transition: isExiting ? 'opacity 0.6s ease-out' : 'opacity 1.2s ease-in',
         }}
       >
-        <Canvas
-          camera={{ position: [0, 0, 6], fov: 50 }}
-          gl={{ antialias: true, alpha: true }}
-          style={{ background: 'transparent' }}
-        >
-          <ArcReactor mousePos={mousePos} visible={reactorVisible} />
-        </Canvas>
+        <BootReactor visible={reactorVisible} />
       </div>
 
       {/* LAYER 2: Vignette overlay */}
@@ -753,12 +746,17 @@ export default function Boot({ onComplete }) {
           </div>
         )}
 
-        {/* Boot text + inputs + briefing + button — z-10 above Three.js canvas */}
-        <div style={{ width: '100%', maxWidth: '520px', padding: '0 24px', pointerEvents: 'auto', position: 'relative', zIndex: 10 }}>
+        {/* Boot text + inputs + briefing + button */}
+        <div style={{
+          width: '100%', maxWidth: '600px', padding: '24px 32px', pointerEvents: 'auto',
+          position: 'relative', zIndex: 10,
+          background: 'linear-gradient(to top, rgba(2,10,19,0.92) 60%, rgba(2,10,19,0.7) 85%, transparent)',
+          backdropFilter: 'blur(8px)', borderRadius: '8px',
+        }}>
 
           {/* Completed boot lines */}
           {bootLines.map((line, i) => (
-            <div key={i} className="font-mono text-xs leading-relaxed flex items-center gap-2" style={{ marginBottom: '2px' }}>
+            <div key={i} className="font-mono text-xs leading-relaxed flex items-center gap-2" style={{ marginBottom: '2px', textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>
               <span style={{ color: '#00b4d8' }}>{line.text}</span>
               {line.status && (
                 <span style={{ color: '#22c55e', fontWeight: 700 }}>{line.status}</span>
@@ -951,17 +949,18 @@ export default function Boot({ onComplete }) {
                 onClick={handleEnter}
                 className="font-display animate-glow-pulse"
                 style={{
-                  fontSize: '18px',
+                  fontSize: '20px',
                   fontWeight: 700,
-                  letterSpacing: '0.2em',
-                  padding: '12px 36px',
-                  color: '#00b4d8',
-                  border: '2px solid #00b4d8',
+                  letterSpacing: '0.25em',
+                  padding: '14px 44px',
+                  color: '#00f0ff',
+                  border: '2px solid #00f0ff',
                   borderRadius: '8px',
                   background: 'transparent',
                   cursor: 'pointer',
-                  textShadow: '0 0 12px rgba(0, 180, 216, 0.5)',
-                  transition: 'all 0.2s',
+                  textShadow: '0 0 12px rgba(0,240,255,0.6), 0 0 30px rgba(0,240,255,0.3)',
+                  boxShadow: '0 0 20px rgba(0,240,255,0.15), inset 0 0 20px rgba(0,240,255,0.05)',
+                  transition: 'all 0.3s',
                 }}
                 onMouseEnter={(e) => {
                   e.target.style.background = 'rgba(0, 180, 216, 0.08)'

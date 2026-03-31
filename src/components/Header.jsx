@@ -1,23 +1,74 @@
 // Header.jsx — HUD Header Bar with reactor, neon rank, live indicator
 
+import { useEffect, useRef } from 'react'
 import { Settings } from 'lucide-react'
 
-function MiniReactor() {
-  return (
-    <div className="relative w-9 h-9 flex items-center justify-center">
-      <div className="absolute w-2.5 h-2.5 rounded-full core-pulse"
-        style={{ backgroundColor: '#d4a853', boxShadow: '0 0 8px #d4a853, 0 0 16px rgba(212,168,83,0.4)' }} />
-      <svg className="absolute w-9 h-9 reactor-ring-1" viewBox="0 0 36 36" fill="none">
-        <circle cx="18" cy="18" r="14" stroke="#00b4d8" strokeWidth="0.8" opacity="0.6" strokeDasharray="4 6" />
-      </svg>
-      <svg className="absolute w-7 h-7 reactor-ring-2" viewBox="0 0 28 28" fill="none">
-        <circle cx="14" cy="14" r="10" stroke="#00f0ff" strokeWidth="0.6" opacity="0.4" strokeDasharray="3 5" />
-      </svg>
-      <svg className="absolute w-5 h-5 reactor-ring-3" viewBox="0 0 20 20" fill="none">
-        <circle cx="10" cy="10" r="7" stroke="#d4a853" strokeWidth="0.5" opacity="0.3" strokeDasharray="2 4" />
-      </svg>
-    </div>
-  )
+function MiniReactor({ energy = 3 }) {
+  const canvasRef = useRef(null)
+  const animRef = useRef(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    const S = 80, C = 40 // internal size, center
+    const intensity = energy >= 4 ? 1.4 : energy <= 2 ? 0.5 : 1
+    const speed = energy >= 4 ? 1.5 : energy <= 2 ? 0.5 : 1
+
+    // Particles
+    const particles = Array.from({ length: 8 }, (_, i) => ({
+      angle: (i / 8) * Math.PI * 2,
+      radius: 12 + Math.random() * 6,
+      speed: (0.02 + Math.random() * 0.02) * speed * (i % 2 === 0 ? 1 : -1),
+      size: 1 + Math.random(),
+      isGold: i < 2,
+    }))
+
+    let t = 0
+    const draw = () => {
+      t += 0.033 * speed
+      ctx.clearRect(0, 0, S, S)
+
+      // Ring arcs
+      ;[{ r: 18, s: t * 1.2, c: `rgba(0,180,216,${0.4 * intensity})` },
+        { r: 14, s: -t * 0.8, c: `rgba(0,240,255,${0.3 * intensity})` }].forEach(ring => {
+        ctx.beginPath()
+        ctx.arc(C, C, ring.r, ring.s, ring.s + Math.PI * 1.4)
+        ctx.strokeStyle = ring.c; ctx.lineWidth = 1; ctx.stroke()
+      })
+
+      // Orbiting particles
+      particles.forEach(p => {
+        p.angle += p.speed
+        const px = C + Math.cos(p.angle) * p.radius
+        const py = C + Math.sin(p.angle) * p.radius
+        ctx.beginPath(); ctx.arc(px, py, p.size, 0, Math.PI * 2)
+        ctx.fillStyle = p.isGold ? `rgba(212,168,83,${0.6 * intensity})` : `rgba(0,240,255,${0.5 * intensity})`
+        ctx.fill()
+      })
+
+      // Gold core
+      const pulse = 1 + Math.sin(t * 2.5) * 0.15
+      const coreGrad = ctx.createRadialGradient(C, C, 0, C, C, 8 * pulse)
+      coreGrad.addColorStop(0, `rgba(255,255,255,${0.8 * intensity})`)
+      coreGrad.addColorStop(0.4, `rgba(212,168,83,${0.5 * intensity})`)
+      coreGrad.addColorStop(1, 'transparent')
+      ctx.fillStyle = coreGrad
+      ctx.beginPath(); ctx.arc(C, C, 8 * pulse, 0, Math.PI * 2); ctx.fill()
+
+      // White-hot center
+      ctx.beginPath(); ctx.arc(C, C, 2, 0, Math.PI * 2)
+      ctx.fillStyle = '#fff'
+      ctx.shadowBlur = 8 * intensity; ctx.shadowColor = '#ffd080'
+      ctx.fill(); ctx.shadowBlur = 0
+
+      animRef.current = requestAnimationFrame(draw)
+    }
+    draw()
+    return () => { if (animRef.current) cancelAnimationFrame(animRef.current) }
+  }, [energy])
+
+  return <canvas ref={canvasRef} width={80} height={80} style={{ width: 40, height: 40, flexShrink: 0 }} />
 }
 
 function formatTime(totalSeconds) {
@@ -41,7 +92,7 @@ export default function Header({ dayNumber, weekNumber, streak, elapsed, rank, e
 
       {/* Left: Reactor + Rank + Live */}
       <div className="flex items-center gap-3">
-        <MiniReactor />
+        <MiniReactor energy={energy} />
         <div>
           <span className="font-display text-sm font-bold tracking-wider uppercase neon-pulse"
             style={{ color: '#d4a853' }}>

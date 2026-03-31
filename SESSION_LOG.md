@@ -4,6 +4,61 @@
 
 ---
 
+### Session 31D — Quantum Nanotech Reactor + Body Double + Header Reactor (2026-04-01)
+
+**Boot reactor replaced with 12-layer Canvas 2D singularity. Body Double rewritten. Bundle -446KB.**
+
+**Created `BootReactor.jsx` — 12-Layer Quantum Nanotech Reactor:**
+- L1: Gravitational lensing — 6 wobbling distortion rings
+- L2: Spiral galaxy — 5 rotating arms (alternating cyan/gold)
+- L3: 10-segment outer housing (Iron Man style, every 3rd/5th gold with glow)
+- L4: Multi-plane orbiting rings (5 rings, different tilts/speeds, gaps)
+- L5: Hex grid micro-structure (radius 50-130, opacity 0.018)
+- L6: Triangular inner frame with glowing vertex nodes
+- L8: Event horizon + 4 concentric accretion rings
+- L9: THE CORE — radial gradients (white→gold→cyan), pulsing, shadowBlur 40
+- L10: Energy lightning bursts (6% chance/frame, zigzag, cyan/gold)
+- L11: 120 nanotech particles (25% gold, 75% cyan, mouse-reactive within 100px)
+- L12: Cursor energy pull (faint cyan radial gradient following mouse)
+- Canvas: 800x800 internal, CSS-scaled to min(90vw, 450px)
+
+**Updated `Boot.jsx`:**
+- Removed Three.js Canvas import + all Three.js fiber/postprocessing imports
+- Boot reactor now uses `<BootReactor />` (Canvas 2D — more control over glow effects)
+- Reactor centered in top 55vh, text panel in bottom section
+- Text panel: glass background with gradient + backdrop-filter blur
+- Boot text lines: text-shadow for readability
+- ENTER JARVIS button: #00f0ff border, intense neon glow text-shadow + box-shadow
+- Text decode: briefing typewriter scrambles 3 frontier characters before settling
+- **Bundle reduction: 2003KB → 1554KB** (Three.js fiber/postprocessing tree-shaken from boot path)
+
+**Rewritten `BodyDoubleTimer.jsx`:**
+- Timer + integrated chat + ghost mode check-ins
+- Not-started view: 25/45 min selector, task input, BEGIN SESSION button
+- Running view: large countdown display (Share Tech Mono 48px) + progress bar + full chat
+- Timer color: cyan (>5min) → gold (<20%) → red (<1min) + neon pulse at <1min
+- Ghost mode: every 10 minutes, JARVIS auto-injects check message + speaks it aloud
+- Full API chat during session (mode: body-double)
+- On completion: milestone sound + JARVIS announces + session saved to jos-session-timer
+- On early stop: graceful message + partial session saved
+- Voice integration via useJarvisVoice hook
+
+**Updated `Header.jsx` — Canvas Mini Reactor:**
+- 40x40px canvas (80x80 internal) replacing CSS-only circles
+- Gold pulsing core with radial gradient + shadowBlur
+- 2 spinning ring arcs (cyan, different speeds)
+- 8 orbiting particles (2 gold, 6 cyan)
+- Energy-reactive: low energy = dim/slow, high energy = bright/fast
+- Runs at requestAnimationFrame (30fps effectively at this size)
+
+**Build: 3419 modules, 0 errors, 21.15s. Bundle: 1554KB (was 2003KB, -449KB)**
+
+**Files created (1):** BootReactor.jsx
+**Files rewritten (1):** BodyDoubleTimer.jsx
+**Files updated (2):** Boot.jsx (reactor swap + text fixes), Header.jsx (canvas reactor)
+
+---
+
 ### Session 31C — BEYOND GOD-TIER: 3D + Interactive Effects (2026-04-01)
 
 **7 advanced visual effects added.**
