@@ -142,10 +142,12 @@ export function processVoiceCommand(transcript) {
       if (isDone) {
         core.completedTasks = completed.filter(id => id !== taskNum)
         localStorage.setItem('jos-core', JSON.stringify(core))
+        window.dispatchEvent(new CustomEvent('jarvis-task-toggled', { detail: { taskId: taskNum } }))
         return { type: 'speak', response: `Task ${taskNum} unmarked, Sir.` }
       } else {
         core.completedTasks = [...completed, taskNum]
         localStorage.setItem('jos-core', JSON.stringify(core))
+        window.dispatchEvent(new CustomEvent('jarvis-task-toggled', { detail: { taskId: taskNum } }))
         return { type: 'task', taskId: taskNum, response: `Task ${taskNum} marked complete, Sir.` }
       }
     } catch {
@@ -163,6 +165,7 @@ export function processVoiceCommand(transcript) {
         const logs = JSON.parse(localStorage.getItem('jos-daily-build') || '[]')
         logs.push({ date: new Date().toISOString().split('T')[0], text, timestamp: new Date().toISOString() })
         localStorage.setItem('jos-daily-build', JSON.stringify(logs))
+        window.dispatchEvent(new CustomEvent('jarvis-buildlog-updated'))
         return { type: 'speak', response: 'Build log updated, Sir.' }
       } catch {
         return { type: 'speak', response: 'Unable to save build log, Sir.' }

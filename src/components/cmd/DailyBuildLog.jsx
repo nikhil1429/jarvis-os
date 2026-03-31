@@ -4,7 +4,7 @@
 // jos-daily-build with a date and text. Simple text input, not a full editor —
 // friction kills journaling habits.
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { PenLine, Check } from 'lucide-react'
 import useStorage from '../../hooks/useStorage.js'
 
@@ -12,6 +12,14 @@ export default function DailyBuildLog() {
   const { get, update } = useStorage()
   const [text, setText] = useState('')
   const [saved, setSaved] = useState(false)
+  const [, forceUpdate] = useState(0)
+
+  // Re-render when voice command adds a build log entry
+  useEffect(() => {
+    const h = () => forceUpdate(n => n + 1)
+    window.addEventListener('jarvis-buildlog-updated', h)
+    return () => window.removeEventListener('jarvis-buildlog-updated', h)
+  }, [])
 
   // Check if there's already an entry for today
   const today = new Date().toISOString().split('T')[0]

@@ -97,6 +97,14 @@ function App() {
   const [requestedMode, setRequestedMode] = useState(null)
   const [globalVoiceState, setGlobalVoiceState] = useState('IDLE')
 
+  // Force re-render when voice commands change localStorage externally
+  const [, forceUpdate] = useState(0)
+  useEffect(() => {
+    const h = () => forceUpdate(n => n + 1)
+    window.addEventListener('jarvis-task-toggled', h)
+    return () => window.removeEventListener('jarvis-task-toggled', h)
+  }, [])
+
   useStreak(eventBus)
   useAchievements()
   const { pulse, dismissPulse } = useReportScheduler()
