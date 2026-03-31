@@ -98,6 +98,34 @@ export default function useAI() {
         }
       }
 
+      // Inject personal context from onboarding interview
+      try {
+        const onboarding = JSON.parse(localStorage.getItem('jos-onboarding') || 'null')
+        if (onboarding && !onboarding.extractionFailed) {
+          const ctx = []
+          if (onboarding.energy) {
+            ctx.push(`Peak energy: ${onboarding.energy.peakHours || 'unknown'}, crashes: ${onboarding.energy.crashHours || 'unknown'}`)
+            ctx.push(`Sleep: ${onboarding.energy.sleepHours || '?'}hrs, Caffeine: ${onboarding.energy.caffeinePerDay || '?'}/day`)
+          }
+          if (onboarding.work) {
+            ctx.push(`Work style: ${onboarding.work.style || 'unknown'}, Focus breakers: ${(onboarding.work.focusBreakers || []).join(', ') || 'unknown'}`)
+          }
+          if (onboarding.adhd) {
+            ctx.push(`Medication: ${onboarding.adhd.medicationTime || 'unknown'}, lasts ${onboarding.adhd.medicationDuration || '?'}`)
+          }
+          if (onboarding.psychology) {
+            ctx.push(`Excites: ${(onboarding.psychology.excitements || []).join(', ') || 'unknown'}`)
+            ctx.push(`Fears: ${(onboarding.psychology.fears || []).join(', ') || 'unknown'}`)
+          }
+          if (onboarding.relationships) {
+            ctx.push(`Support: ${(onboarding.relationships.supportNetwork || []).join(', ') || 'unknown'}`)
+          }
+          if (ctx.length > 0) {
+            systemPrompt += `\n\nPERSONAL CONTEXT (from onboarding):\n${ctx.join('\n')}\nUse this data to personalize responses. Reference naturally, don't recite.`
+          }
+        }
+      } catch { /* ok — onboarding data optional */ }
+
       // For Opus calls, inject strategic intelligence summary
       if (routing.tier >= 2) {
         try {

@@ -4,6 +4,42 @@
 
 ---
 
+### Session 28 — Day 0 Onboarding Voice Interview (2026-04-01)
+
+**One-time 10-minute voice interview seeds the intelligence system.**
+
+**Created `src/components/Onboarding.jsx`:**
+- Full-screen dark overlay, runs BEFORE first boot (if `jos-onboarding` is null)
+- 19 questions across 5 sections: Energy & Body (4), Work Patterns (4), Psychology (4), ADHD Specific (4), Relationships (3)
+- JARVIS asks via ElevenLabs, question text types on screen (12ms/char typewriter)
+- User answers via mic (useJarvisVoice hook), auto-advances after answer
+- Brief acknowledgments rotate: "Noted, Sir." / "Understood." / "Very good." etc.
+- Section transitions: gold section name with scan lines between sections
+- Progress indicator: "SECTION 2/5 · QUESTION 3/4" + progress bar
+- Skip button + "skip" voice command for any question
+- 20s text fallback: shows text input if speech recognition fails
+- After all 19 questions: Sonnet API call extracts structured JSON from raw answers
+- Saves to `jos-onboarding` in localStorage (permanent, never overwritten)
+- Completion cinematic: "CALIBRATION COMPLETE" in gold + ElevenLabs speech + 3s pause → Boot
+
+**Updated `App.jsx`:**
+- Initial state checks `localStorage.getItem('jos-onboarding')` — null → 'onboarding', exists → 'boot'
+- Flow: onboarding → boot → main (onboarding only runs ONCE ever)
+- Onboarding `onComplete` → `setAppState('boot')`
+
+**Updated `useAI.js`:**
+- After building system prompt, reads `jos-onboarding` from localStorage
+- If exists and not extraction-failed, appends PERSONAL CONTEXT section:
+  Peak energy, crash hours, sleep, caffeine, work style, focus breakers, medication, excitements, fears, support network
+- Compressed to ~100-150 tokens. "Use this data to personalize responses. Reference naturally, don't recite."
+
+**Build: 3431 modules, 0 errors, 37.29s**
+
+**Files created (1):** Onboarding.jsx
+**Files updated (2):** App.jsx, useAI.js
+
+---
+
 ### Session 27 — Concept Auto-Scoring (Intelligence Brain) (2026-04-01)
 
 **Quiz scores now automatically update concept strength in DNA tab.**

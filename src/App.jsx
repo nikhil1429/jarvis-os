@@ -28,6 +28,7 @@ import QuickCapture from './components/QuickCapture.jsx'
 import GlobalMic from './components/GlobalMic.jsx'
 import VoiceMode from './components/VoiceMode.jsx'
 import QuickVoiceOverlay from './components/QuickVoiceOverlay.jsx'
+import Onboarding from './components/Onboarding.jsx'
 import { getDayNumber, getWeekNumber } from './utils/dateUtils.js'
 import { speakElevenLabs } from './utils/elevenLabsSpeak.js'
 // smartVoiceRouter removed — always ElevenLabs
@@ -80,7 +81,9 @@ function App() {
   const eventBus = useEventBus()
   // tts removed
 
-  const [appState, setAppState] = useState('boot')
+  const [appState, setAppState] = useState(() => {
+    return localStorage.getItem('jos-onboarding') ? 'boot' : 'onboarding'
+  })
   const [activeTab, setActiveTab] = useState('cmd')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const { elapsed } = useSessionTimer()
@@ -301,6 +304,10 @@ function App() {
   const handleModeOpened = useCallback(() => {
     setRequestedMode(null)
   }, [])
+
+  if (appState === 'onboarding') {
+    return <Onboarding onComplete={() => setAppState('boot')} />
+  }
 
   if (appState === 'boot') {
     return <Boot onComplete={handleBootComplete} />
