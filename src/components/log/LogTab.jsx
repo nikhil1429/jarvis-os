@@ -9,6 +9,7 @@ import WeeklyChart from './WeeklyChart.jsx'
 import ImpostorKiller from './ImpostorKiller.jsx'
 import NikhilVsNikhil from './NikhilVsNikhil.jsx'
 import SessionStats from './SessionStats.jsx'
+import MoodOracle from './MoodOracle.jsx'
 
 export default function LogTab({ elapsed }) {
   return (
@@ -27,6 +28,8 @@ export default function LogTab({ elapsed }) {
         <NikhilVsNikhil />
         <SessionStats elapsed={elapsed} />
       </div>
+
+      <MoodOracle />
     </div>
   )
 }

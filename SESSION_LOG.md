@@ -4,6 +4,52 @@
 
 ---
 
+### Session 29 — Intelligence Dashboard + MoodOracle + SecondBrain + Briefing (2026-04-01)
+
+**4 new components making JARVIS data-aware.**
+
+**Created `IntelligenceDash.jsx` (STATS tab):**
+- 9 intelligence features displayed as cards with SVG confidence rings
+- Features: Energy Map, Mood Oracle, Motivation Genome, Body Correlations, Anti-Burnout, Communication Style, Estimation Accuracy, Forgetting Curve, Relationship Map
+- Each card: confidence ring (40-95%), level label (PRIORS→LOCKED_IN), source indicator, description
+- Colors: yellow (40%) → orange (55%) → cyan (70%) → green (85%) → gold (95%)
+- Uses useIntelligence hook — no reinvented confidence calculation
+
+**Created `MoodOracle.jsx` (LOG tab):**
+- Weekly AI mood analysis using Opus API via sendMessage('mood-oracle')
+- Requires 3+ check-ins to activate (shows progress otherwise)
+- User-triggered "Generate Analysis" button (not auto — saves Opus credits)
+- Gold-bordered expandable card with generated timestamp
+- Saves analysis to jos-weekly.moodOracle so it persists
+
+**Created `SecondBrain.jsx` (CMD tab):**
+- Searchable knowledge base across 4 localStorage sources: captures, knowledge, build logs, journal
+- Filter pills: All / Captures / Knowledge / Build Logs / Journal
+- Case-insensitive text search, max 20 results, newest first
+- Each result: text preview, date, source badge (color-coded)
+- "Add Knowledge" button for manual entries
+- Pure localStorage search, no API calls
+
+**Created `Briefing.jsx` (CMD tab):**
+- Persistent morning briefing display at top of CMD tab
+- Reads from jos-weekly briefing data (generated during boot)
+- "Replay" button speaks briefing via speakElevenLabs
+- Mic button for quick JARVIS conversation
+- Shows "Complete boot sequence..." if no briefing exists
+
+**Wired into parent tabs:**
+- StatsTab.jsx: added IntelligenceDash after ConfidenceCalib
+- LogTab.jsx: added MoodOracle after stat cards
+- CmdTab.jsx: added Briefing at top, SecondBrain after DailyBuildLog
+
+**Build: 3438 modules, 0 errors, 36.05s**
+
+**Files created (4):** IntelligenceDash.jsx, MoodOracle.jsx, SecondBrain.jsx, Briefing.jsx
+**Files updated (3):** StatsTab.jsx, LogTab.jsx, CmdTab.jsx
+**Total codebase: 65 source files**
+
+---
+
 ### Session 28 — Day 0 Onboarding Voice Interview (2026-04-01)
 
 **One-time 10-minute voice interview seeds the intelligence system.**

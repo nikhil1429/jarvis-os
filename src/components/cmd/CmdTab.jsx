@@ -7,10 +7,15 @@ import { X } from 'lucide-react'
 import TaskList from './TaskList.jsx'
 import BattlePlan from './BattlePlan.jsx'
 import DailyBuildLog from './DailyBuildLog.jsx'
+import Briefing from './Briefing.jsx'
+import SecondBrain from './SecondBrain.jsx'
 
 export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissPulse }) {
   return (
     <div className="space-y-4 max-w-2xl mx-auto">
+      {/* Morning Briefing */}
+      <Briefing />
+
       {/* 4-Hour Pulse Card */}
       {pulse && (
         <div className="hud-panel rounded-lg overflow-hidden border-l-2 border-l-cyan animate-fade-in">
@@ -39,6 +44,7 @@ export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissP
       <TaskList completedTasks={completedTasks} onToggleTask={onToggleTask} />
       <BattlePlan />
       <DailyBuildLog />
+      <SecondBrain />
     </div>
   )
 }

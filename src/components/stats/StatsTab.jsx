@@ -8,6 +8,7 @@ import NikhilScore from './NikhilScore.jsx'
 import PowerRanking from './PowerRanking.jsx'
 import SkillHeatMap from './SkillHeatMap.jsx'
 import ConfidenceCalib from './ConfidenceCalib.jsx'
+import IntelligenceDash from './IntelligenceDash.jsx'
 
 export default function StatsTab() {
   return (
@@ -26,6 +27,9 @@ export default function StatsTab() {
 
       {/* Calibration */}
       <ConfidenceCalib />
+
+      {/* Intelligence System */}
+      <IntelligenceDash />
     </div>
   )
 }
