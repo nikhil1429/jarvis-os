@@ -4,6 +4,46 @@
 
 ---
 
+### Session 27 — Concept Auto-Scoring (Intelligence Brain) (2026-04-01)
+
+**Quiz scores now automatically update concept strength in DNA tab.**
+
+**Created `src/utils/quizScoring.js`:**
+- `extractQuizScores(text)` — regex parses `[QUIZ_SCORE:X/10:concept_name]` tags from JARVIS responses
+- `stripQuizTags(text)` — removes tags for display + voice output
+- `updateConceptStrength(name, score)` — updates jos-concepts in localStorage:
+  - Score 9-10: +15, 7-8: +10, 5-6: +3, 3-4: -5, 1-2: -10 (capped 0-100)
+  - Updates lastReview, pushes to reviewHistory with `source: 'quiz'`
+  - Recalculates nextReview via spaced repetition (high score → longer interval, low → shorter)
+  - Fuzzy concept matching: "RAG" matches "RAG (Retrieval Augmented Gen)"
+
+**Updated `prompts.js` — 6 modes now emit score tags:**
+- `quiz` — CRITICAL instruction to add `[QUIZ_SCORE:X/10:concept_name]` after every scored answer
+- `presser`, `battle`, `forensics`, `code-autopsy`, `scenario-bomb` — optional tags when knowledge genuinely assessed
+
+**Updated `ChatView.jsx`:**
+- Strips quiz tags from display text + voice output (user never sees them)
+- Parses scores from raw response for quiz-related modes
+- Emits `quiz:score` event with concept, score, old/new strength
+- New `task` voice command type emits `task:complete` event
+
+**Updated `useAchievements.js`:**
+- Subscribes to `quiz:score` event (triggers achievement checks)
+
+**Updated `DnaTab.jsx`:**
+- Subscribes to `quiz:score` via eventBus → forces re-render so strength updates show live
+
+**Updated `voiceCommands.js` — 2 new voice commands:**
+- "task 5 done" / "complete task 5" / "mark task 5" → toggles task in jos-core.completedTasks, emits task:complete
+- "built X today" / "build log X" → saves to jos-daily-build with date
+
+**Build: 3430 modules, 0 errors, 16.57s**
+
+**Files created (1):** quizScoring.js
+**Files updated (6):** prompts.js, ChatView.jsx, useAchievements.js, DnaTab.jsx, voiceCommands.js
+
+---
+
 ### Session 26 — Voice System Clean Rewrite (2026-04-01)
 
 **Complete rewrite — deleted spaghetti, built one clean system.**

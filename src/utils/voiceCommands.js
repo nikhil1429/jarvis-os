@@ -128,5 +128,47 @@ export function processVoiceCommand(transcript) {
     }
   }
 
+  // Task completion by voice: "task 5 done" / "complete task 5" / "mark task 5"
+  const taskMatch = lower.match(/(?:task|complete task|mark task)\s*(\d+)\s*(?:done|complete|finished)?/)
+  if (taskMatch) {
+    const taskNum = parseInt(taskMatch[1], 10)
+    console.log('VOICE CMD: task', taskNum)
+    try {
+      const core = JSON.parse(localStorage.getItem('jos-core') || '{}')
+      const completed = core.completedTasks || []
+      const tasks = JSON.parse(localStorage.getItem('jos-tasks-cache') || 'null')
+      const isDone = completed.includes(taskNum)
+
+      if (isDone) {
+        core.completedTasks = completed.filter(id => id !== taskNum)
+        localStorage.setItem('jos-core', JSON.stringify(core))
+        return { type: 'speak', response: `Task ${taskNum} unmarked, Sir.` }
+      } else {
+        core.completedTasks = [...completed, taskNum]
+        localStorage.setItem('jos-core', JSON.stringify(core))
+        return { type: 'task', taskId: taskNum, response: `Task ${taskNum} marked complete, Sir.` }
+      }
+    } catch {
+      return { type: 'speak', response: `Unable to update task ${taskNum}, Sir.` }
+    }
+  }
+
+  // Daily build log by voice: "built X today" / "today I built X" / "build log X"
+  const buildMatch = lower.match(/(?:built|today i built|build log)\s+(.+?)(?:\s+today)?$/)
+  if (buildMatch) {
+    const text = buildMatch[1].trim()
+    if (text) {
+      console.log('VOICE CMD: build log -', text.substring(0, 30))
+      try {
+        const logs = JSON.parse(localStorage.getItem('jos-daily-build') || '[]')
+        logs.push({ date: new Date().toISOString().split('T')[0], text, timestamp: new Date().toISOString() })
+        localStorage.setItem('jos-daily-build', JSON.stringify(logs))
+        return { type: 'speak', response: 'Build log updated, Sir.' }
+      } catch {
+        return { type: 'speak', response: 'Unable to save build log, Sir.' }
+      }
+    }
+  }
+
   return null // Not a command — send to API
 }

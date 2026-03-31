@@ -3,11 +3,12 @@
 // spaced repetition alerts, and category filtering. Overdue concepts sort to top
 // so Nikhil reviews them first. Search + filter pills let him find concepts fast.
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { Search } from 'lucide-react'
 import CONCEPTS from '../../data/concepts.js'
 import ConceptCard from './ConceptCard.jsx'
 import useStorage from '../../hooks/useStorage.js'
+import useEventBus from '../../hooks/useEventBus.js'
 import { getReviewSchedule } from '../../utils/spacedRepetition.js'
 
 const CATEGORIES = ['All', 'Core', 'Advanced', 'Month2', 'Discuss']
@@ -23,6 +24,14 @@ const CATEGORY_COLORS = {
 
 export default function DnaTab() {
   const { get, update } = useStorage()
+  const eventBus = useEventBus()
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  // Live update when quiz scores change concepts
+  useEffect(() => {
+    const unsub = eventBus.subscribe('quiz:score', () => setRefreshKey(k => k + 1))
+    return () => unsub?.()
+  }, [eventBus])
   const [search, setSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState('All')
 

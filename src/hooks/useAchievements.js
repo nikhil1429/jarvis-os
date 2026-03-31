@@ -107,6 +107,7 @@ export default function useAchievements() {
       'streak:continue',
       'streak:break',
       'concept:review',
+      'quiz:score',
       'mode:exit',
     ]
 

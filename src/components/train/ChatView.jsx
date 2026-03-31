@@ -10,6 +10,7 @@ import useEventBus from '../../hooks/useEventBus.js'
 import useVoiceCheckIn from '../../hooks/useVoiceCheckIn.js'
 import useJarvisVoice from '../../hooks/useJarvisVoice.js'
 import { processVoiceCommand } from '../../utils/voiceCommands.js'
+import { extractQuizScores, stripQuizTags, updateConceptStrength } from '../../utils/quizScoring.js'
 
 const SpeechRecognition = typeof window !== 'undefined'
   ? window.SpeechRecognition || window.webkitSpeechRecognition
@@ -114,6 +115,12 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
         voice.speak(cmd.response, { isVoiceCommand: true })
         return
       }
+      if (cmd.type === 'task') {
+        setMessages(prev => [...prev, { role: 'assistant', content: cmd.response, timestamp: new Date().toISOString() }])
+        voice.speak(cmd.response, { isVoiceCommand: true })
+        eventBus.emit('task:complete', { taskId: cmd.taskId })
+        return
+      }
       if (cmd.type === 'mode' && onModeSwitch) {
         setMessages(prev => [...prev, { role: 'assistant', content: cmd.response, timestamp: new Date().toISOString() }])
         voice.speak(cmd.response, { isVoiceCommand: true })
@@ -134,13 +141,27 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
       const result = await sendMessage(trimmed, mode.id, { weekNumber })
       stopTick(); stopThinking()
       if (result) {
+        // Strip quiz score tags from display + voice
+        const cleanText = stripQuizTags(result.text)
         setMessages(prev => [...prev, {
-          role: 'assistant', content: result.text, timestamp: new Date().toISOString(),
+          role: 'assistant', content: cleanText, timestamp: new Date().toISOString(),
           model: result.model, tier: result.tier, autoUpgraded: result.autoUpgraded, reason: result.reason,
         }])
         setLastTier(result.tier)
         play('receive')
-        voice.speak(result.text)
+        voice.speak(cleanText)
+
+        // Parse quiz scores and update concepts
+        if (['quiz', 'presser', 'battle', 'forensics', 'code-autopsy', 'scenario-bomb'].includes(mode.id)) {
+          const scores = extractQuizScores(result.text)
+          scores.forEach(({ score, concept }) => {
+            const change = updateConceptStrength(concept, score)
+            if (change) {
+              eventBus.emit('quiz:score', { concept, score, ...change })
+              console.log(`QUIZ: ${concept} ${change.oldStrength}% → ${change.newStrength}% (score: ${score}/10)`)
+            }
+          })
+        }
       }
     } catch (err) {
       console.error('[ChatView] Send failed:', err)
