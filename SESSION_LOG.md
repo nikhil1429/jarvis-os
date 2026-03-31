@@ -4,6 +4,63 @@
 
 ---
 
+### Session 31C — BEYOND GOD-TIER: 3D + Interactive Effects (2026-04-01)
+
+**7 advanced visual effects added.**
+
+**Effect 1 — 3D Concept Nebula (`MemoryPalace.jsx` rewrite):**
+- Full Three.js scene: 35 concept spheres in fibonacci sphere distribution
+- Sphere size (0.4-1.6) based on strength, color (red/yellow/green/gold) based on mastery
+- 800 cosmic dust particles (85% cyan, 15% gold)
+- SVG connection lines between prerequisites (opacity 0.08)
+- Manual orbit camera (drag rotate, scroll zoom 20-80 distance)
+- Auto-rotation when not dragging
+- Raycaster tooltip on hover showing name + strength% + category
+- Scene fog for depth. Spheres pulse (sin oscillation)
+- Full cleanup on unmount (dispose geometry/material/renderer)
+
+**Effect 2 — Tilt Cards (`tiltEffect.js` + `useTilt.js`):**
+- 3D perspective tilt on mousemove (max 6 degrees)
+- Light-follow shine: radial gradient follows cursor position
+- Smooth reset on mouseleave (0.5s cubic-bezier)
+
+**Effect 3 — Holographic JARVIS Responses (`global.css`):**
+- `.holo-response::before`: repeating scan lines (2px transparent, 2px cyan at 0.012 opacity)
+- Applied to assistant message bubbles in ChatView
+- 8s linear animation for subtle movement
+
+**Effect 4 — Glitch Tab Switch (`App.jsx` + `global.css`):**
+- `.glitch-transition`: 250ms clip-path + translate + hue-rotate glitch on content area
+- `.scan-sweep-full`: 2px cyan line sweeps full screen top-to-bottom (400ms)
+- Both triggered on `handleTabChange`
+
+**Effect 7 — Text Decode (`Boot.jsx`):**
+- Briefing typewriter shows 3 scrambling frontier characters before settling
+- Characters from `ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%` randomize then resolve
+
+**Effect 8 — Cursor Trail (`BackgroundCanvas.jsx`):**
+- Last 25 mouse positions tracked with decaying `life` value (0.035/frame)
+- Circles shrink + fade, consecutive points connected with fading lines
+
+**Effect 9 — Parallax Scroll (`BackgroundCanvas.jsx`):**
+- Scan line offset by `scrollY * 0.05` — background moves slower than content
+
+**Effect 10 — Card Entrance Stagger (`CmdTab.jsx`):**
+- `.card-enter` class: 0.4s fade+slide-in with cubic-bezier
+- 80ms stagger between CmdTab sections (Briefing → Tasks → BattlePlan → BuildLog → SecondBrain)
+
+**Boot text readability fix:** Text overlay div gets `position: relative; z-index: 10` to render above Three.js canvas.
+
+**`prefers-reduced-motion`:** All animations disabled when user prefers reduced motion.
+
+**Build: 3444 modules, 0 errors, 19.40s**
+
+**Files created (2):** tiltEffect.js, useTilt.js
+**Files rewritten (1):** MemoryPalace.jsx (SVG → Three.js)
+**Files updated (6):** global.css, App.jsx, BackgroundCanvas.jsx, Boot.jsx, ChatView.jsx, CmdTab.jsx
+
+---
+
 ### Session 31B — UI Polish: Missing God-Tier Effects (2026-04-01)
 
 **CSS-only polish — shimmer, neon glow, heat map glow, progress dot, input focus.**

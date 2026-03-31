@@ -89,6 +89,8 @@ function App() {
   })
   const [activeTab, setActiveTab] = useState('cmd')
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [showScanSweep, setShowScanSweep] = useState(false)
+  const contentRef = useRef(null)
   const { elapsed } = useSessionTimer()
 
   // Milestone cinematic state
@@ -281,8 +283,14 @@ function App() {
   }, [update, eventBus])
 
   const handleTabChange = useCallback((tab) => {
-    // Kill all speech when switching tabs
     if (window.jarvisStop) window.jarvisStop()
+    // Glitch transition
+    if (contentRef.current) {
+      contentRef.current.classList.add('glitch-transition')
+      setTimeout(() => contentRef.current?.classList.remove('glitch-transition'), 250)
+    }
+    setShowScanSweep(true)
+    setTimeout(() => setShowScanSweep(false), 400)
     setActiveTab(tab)
     play('tab')
     if (tab === 'cmd') setHasPulse(false)
@@ -359,7 +367,8 @@ function App() {
         onSettingsClick={() => setSettingsOpen(true)}
       />
 
-      <main className="flex-1 pb-16 px-4 pt-4">
+      {showScanSweep && <div className="scan-sweep-full" />}
+      <main ref={contentRef} className="flex-1 pb-16 px-4 pt-4">
         {renderTab()}
       </main>
 

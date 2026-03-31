@@ -604,7 +604,12 @@ export default function Boot({ onComplete }) {
         return
       }
       if (i < finalText.length) {
-        setBriefingText(finalText.slice(0, i + 1))
+        // Text decode: settled chars + scrambling frontier
+        const settled = finalText.slice(0, Math.max(0, i - 2))
+        const frontier = Array.from({length: Math.min(3, i + 1)}, () =>
+          'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%'[Math.floor(Math.random() * 40)]
+        ).join('')
+        setBriefingText(settled + frontier)
         i++
       } else {
         clearInterval(interval)
@@ -748,8 +753,8 @@ export default function Boot({ onComplete }) {
           </div>
         )}
 
-        {/* Boot text + inputs + briefing + button */}
-        <div style={{ width: '100%', maxWidth: '520px', padding: '0 24px', pointerEvents: 'auto' }}>
+        {/* Boot text + inputs + briefing + button — z-10 above Three.js canvas */}
+        <div style={{ width: '100%', maxWidth: '520px', padding: '0 24px', pointerEvents: 'auto', position: 'relative', zIndex: 10 }}>
 
           {/* Completed boot lines */}
           {bootLines.map((line, i) => (

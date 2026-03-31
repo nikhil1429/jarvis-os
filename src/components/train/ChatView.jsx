@@ -347,7 +347,7 @@ function MessageBubble({ message }) {
   }
   return (
     <div className="flex justify-start">
-      <div className={`max-w-[85%] rounded-lg px-4 py-2.5 border ${isOpus ? 'bg-gold/5 border-gold/20' : 'bg-card border-border'}`}>
+      <div className={`max-w-[85%] rounded-lg px-4 py-2.5 border holo-response ${isOpus ? 'glass-card-gold' : 'glass-card'}`}>
         {message.autoUpgraded && (
           <div className="flex items-center gap-1.5 mb-1.5">
             <Zap size={10} className="text-gold" />

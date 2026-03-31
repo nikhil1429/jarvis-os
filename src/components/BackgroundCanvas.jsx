@@ -13,6 +13,8 @@ export default function BackgroundCanvas() {
   const canvasRef = useRef(null)
   const mouseRef = useRef({ x: -999, y: -999 })
   const animRef = useRef(null)
+  const trailRef = useRef([]) // cursor trail positions
+  const scrollRef = useRef(0)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -56,9 +58,16 @@ export default function BackgroundCanvas() {
       w = window.innerWidth; h = window.innerHeight
       canvas.width = w; canvas.height = h
     }
-    const handleMouse = (e) => { mouseRef.current = { x: e.clientX, y: e.clientY } }
+    const handleMouse = (e) => {
+      mouseRef.current = { x: e.clientX, y: e.clientY }
+      // Cursor trail
+      trailRef.current.push({ x: e.clientX, y: e.clientY, life: 1 })
+      if (trailRef.current.length > 25) trailRef.current.shift()
+    }
+    const handleScroll = () => { scrollRef.current = window.scrollY }
     window.addEventListener('resize', handleResize)
     window.addEventListener('mousemove', handleMouse)
+    window.addEventListener('scroll', handleScroll, { passive: true })
 
     const draw = () => {
       ctx.clearRect(0, 0, w, h)
@@ -140,14 +149,37 @@ export default function BackgroundCanvas() {
         }
       }
 
-      // 4. Scan line
+      // 4. Scan line (with parallax offset)
+      const scrollOff = scrollRef.current * 0.05
       scanY = (scanY + 0.5) % h
       const gradient = ctx.createLinearGradient(0, scanY, w, scanY)
       gradient.addColorStop(0, 'transparent')
       gradient.addColorStop(0.5, 'rgba(0, 240, 255, 0.06)')
       gradient.addColorStop(1, 'transparent')
       ctx.fillStyle = gradient
-      ctx.fillRect(0, scanY, w, 2)
+      ctx.fillRect(0, scanY - scrollOff, w, 2)
+
+      // 5. Cursor trail
+      const trail = trailRef.current
+      for (let t = 0; t < trail.length; t++) {
+        trail[t].life -= 0.035
+        if (trail[t].life <= 0) continue
+        const pt = trail[t]
+        ctx.beginPath()
+        ctx.arc(pt.x, pt.y, pt.life * 4, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(0, 240, 255, ${pt.life * 0.4})`
+        ctx.fill()
+        // Connect consecutive trail points
+        if (t > 0 && trail[t - 1].life > 0) {
+          ctx.beginPath()
+          ctx.moveTo(trail[t - 1].x, trail[t - 1].y)
+          ctx.lineTo(pt.x, pt.y)
+          ctx.strokeStyle = `rgba(0, 240, 255, ${pt.life * 0.15})`
+          ctx.lineWidth = pt.life * 2
+          ctx.stroke()
+        }
+      }
+      trailRef.current = trail.filter(p => p.life > 0)
 
       animRef.current = requestAnimationFrame(draw)
     }
@@ -158,6 +190,7 @@ export default function BackgroundCanvas() {
       if (animRef.current) cancelAnimationFrame(animRef.current)
       window.removeEventListener('resize', handleResize)
       window.removeEventListener('mousemove', handleMouse)
+      window.removeEventListener('scroll', handleScroll)
     }
   }, [])
 

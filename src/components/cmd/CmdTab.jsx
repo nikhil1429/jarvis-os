@@ -16,7 +16,7 @@ export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissP
   return (
     <div className="space-y-4 max-w-2xl mx-auto">
       {/* Morning Briefing */}
-      <Briefing />
+      <div className="card-enter" style={{ animationDelay: '0ms' }}><Briefing /></div>
 
       {/* Adaptive Suggestions */}
       {suggestions.length > 0 && (
@@ -58,10 +58,10 @@ export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissP
         </div>
       )}
 
-      <TaskList completedTasks={completedTasks} onToggleTask={onToggleTask} />
-      <BattlePlan />
-      <DailyBuildLog />
-      <SecondBrain />
+      <div className="card-enter" style={{ animationDelay: '80ms' }}><TaskList completedTasks={completedTasks} onToggleTask={onToggleTask} /></div>
+      <div className="card-enter" style={{ animationDelay: '160ms' }}><BattlePlan /></div>
+      <div className="card-enter" style={{ animationDelay: '240ms' }}><DailyBuildLog /></div>
+      <div className="card-enter" style={{ animationDelay: '320ms' }}><SecondBrain /></div>
     </div>
   )
 }

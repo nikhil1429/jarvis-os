@@ -537,3 +537,71 @@ input:focus, textarea:focus {
 .achievement-locked {
   opacity: 0.35;
 }
+
+/* ============================================================
+   EFFECT 3 — Holographic scan lines on JARVIS responses
+   ============================================================ */
+.holo-response {
+  position: relative;
+  overflow: hidden;
+}
+.holo-response::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 2px,
+    rgba(0,240,255,0.012) 2px, rgba(0,240,255,0.012) 4px
+  );
+  pointer-events: none;
+  animation: holoScan 8s linear infinite;
+  z-index: 1;
+}
+@keyframes holoScan { 0% { transform: translateY(0); } 100% { transform: translateY(4px); } }
+
+/* ============================================================
+   EFFECT 4 — Glitch tab switch
+   ============================================================ */
+.glitch-transition {
+  animation: glitchSwitch 0.25s steps(4) forwards;
+}
+@keyframes glitchSwitch {
+  0% { clip-path: inset(0); transform: translate(0); }
+  15% { clip-path: inset(15% 0 40% 0); transform: translate(-3px, 1px); filter: hue-rotate(60deg); }
+  30% { clip-path: inset(50% 0 15% 0); transform: translate(2px, -1px); filter: hue-rotate(120deg); }
+  45% { clip-path: inset(25% 0 35% 0); transform: translate(-1px, 2px) skewX(1deg); }
+  60% { clip-path: inset(60% 0 10% 0); transform: translate(1px, -1px); filter: hue-rotate(30deg); }
+  75% { clip-path: inset(10% 0 55% 0); transform: translate(-1px, 0); }
+  100% { clip-path: inset(0); transform: translate(0); filter: none; }
+}
+
+.scan-sweep-full {
+  position: fixed; top: 0; left: 0; right: 0; height: 2px; z-index: 100;
+  background: linear-gradient(90deg, transparent, #00f0ff, transparent);
+  animation: sweepDown 0.4s linear forwards;
+  pointer-events: none;
+}
+@keyframes sweepDown { 0% { top: 0; opacity: 0.7; } 100% { top: 100vh; opacity: 0; } }
+
+/* ============================================================
+   EFFECT 10 — Card entrance stagger
+   ============================================================ */
+.card-enter {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: cardSlideIn 0.4s cubic-bezier(0.23,1,0.32,1) forwards;
+}
+@keyframes cardSlideIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================
+   Reduced motion — respect user preference
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
