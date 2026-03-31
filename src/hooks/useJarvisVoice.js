@@ -184,9 +184,13 @@ export default function useJarvisVoice() {
     }
 
     jarvisSpeakingRef.current = false
-    updateState(VS.IDLE)
-    console.log('TTS: speech complete, dispatching jarvis-done-speaking')
-    window.dispatchEvent(new CustomEvent('jarvis-done-speaking'))
+    if (stateRef.current === VS.SPEAKING) {
+      updateState(VS.IDLE)
+      console.log('TTS: speech complete, dispatching jarvis-done-speaking')
+      window.dispatchEvent(new CustomEvent('jarvis-done-speaking'))
+    } else {
+      console.log('TTS: speech ended but state already changed to', stateRef.current, '(interrupted)')
+    }
   }, [updateState])
 
   // ============================================================
