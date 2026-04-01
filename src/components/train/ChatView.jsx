@@ -11,6 +11,7 @@ import useVoiceCheckIn from '../../hooks/useVoiceCheckIn.js'
 import useJarvisVoice from '../../hooks/useJarvisVoice.js'
 import { processVoiceCommand } from '../../utils/voiceCommands.js'
 import { extractQuizScores, stripQuizTags, updateConceptStrength } from '../../utils/quizScoring.js'
+import VizSmartCards from '../viz/VizSmartCards.jsx'
 
 const SpeechRecognition = typeof window !== 'undefined'
   ? window.SpeechRecognition || window.webkitSpeechRecognition
@@ -259,7 +260,12 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
             </div>
           </div>
         )}
-        {messages.map((msg, i) => <MessageBubble key={i} message={msg} />)}
+        {messages.map((msg, i) => (
+          <div key={i}>
+            <MessageBubble message={msg} />
+            {msg.role === 'assistant' && <VizSmartCards response={msg.content} mode={mode.id} />}
+          </div>
+        ))}
         {isStreaming && streamingText && (
           <div className={`rounded-lg p-3 border ${isOpusTier ? 'bg-gold/5 border-gold/20' : 'bg-card border-border'}`}>
             <p className={`font-body text-sm whitespace-pre-wrap ${isOpusTier ? 'text-gold' : 'text-cyan'}`}>

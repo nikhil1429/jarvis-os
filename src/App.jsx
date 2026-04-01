@@ -35,6 +35,8 @@ import Onboarding from './components/Onboarding.jsx'
 import ShutdownSequence from './components/ShutdownSequence.jsx'
 import CommandLine from './components/CommandLine.jsx'
 import useComeback from './hooks/useComeback.js'
+import useVizEngine from './hooks/useVizEngine.js'
+import DashboardOverlay from './components/viz/DashboardOverlay.jsx'
 import { getDayNumber, getWeekNumber } from './utils/dateUtils.js'
 import { speakElevenLabs } from './utils/elevenLabsSpeak.js'
 // smartVoiceRouter removed — always ElevenLabs
@@ -119,6 +121,7 @@ function App() {
   }, [])
 
   const comebackState = useComeback()
+  const { dashboard, showDashboard, closeDashboard } = useVizEngine(eventBus)
   useStreak(eventBus)
   useAchievements()
   useNotifications()
@@ -275,7 +278,9 @@ function App() {
     console.log('BRIEFING FLAG: reset after boot complete, ElevenLabs enabled')
     // Start ambient sound
     try { play('boot') } catch { /* ok */ }
-  }, [play])
+    // Show boot briefing dashboard after 1s
+    setTimeout(() => showDashboard('boot-briefing'), 1000)
+  }, [play, showDashboard])
 
   const handleToggleTask = useCallback((taskId) => {
     const current = get('core') || DEFAULT_KEYS.core
@@ -410,6 +415,9 @@ function App() {
 
       {/* Command Line */}
       {showCommandLine && <CommandLine onClose={() => setShowCommandLine(false)} />}
+
+      {/* Viz Dashboard Overlay */}
+      {dashboard && <DashboardOverlay type={dashboard.type} onClose={closeDashboard} />}
 
       {/* Shutdown Sequence */}
       {showShutdown && <ShutdownSequence />}

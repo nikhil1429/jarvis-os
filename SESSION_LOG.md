@@ -4,6 +4,47 @@
 
 ---
 
+### Session 42 — Visualization Engine: Smart Cards + Dashboard Overlays (2026-04-01)
+
+**Proactive data visualization — JARVIS decides what to show and when.**
+
+**Created `src/components/viz/` (8 components):**
+- `VizConceptRing` — SVG circular progress ring, color-coded by strength
+- `VizSparkline` — mini bar chart for last N scores, color per bar
+- `VizDelta` — before/after comparison with arrow + percentage
+- `VizBlocker` — root cause concept blocking another, connected rings
+- `VizMetricCard` — single metric display (value + delta + label)
+- `VizEnergyBar` — 7-day energy pattern as vertical bars
+- `VizSmartCards` — auto-renders viz below JARVIS responses (concept rings + sparklines + blockers)
+- `DashboardOverlay` — full-screen data dashboard (daily-delta / boot-briefing / weekly-review)
+
+**Created `useVizEngine.js`:**
+- Subscribes to `checkin:submit` → shows daily-delta dashboard after 500ms
+- Sunday 7PM → shows weekly-review (once per session via sessionStorage)
+- Returns: `{ dashboard, showDashboard, closeDashboard }`
+
+**Wired into ChatView.jsx:**
+- `VizSmartCards` renders below every assistant message
+- Quiz responses: shows concept ring + sparkline + blocker if prerequisite weak
+- Any mode: scans for mentioned concept names, shows first 3 rings
+
+**Wired into App.jsx:**
+- `useVizEngine(eventBus)` hook
+- Boot complete → 1s delay → `showDashboard('boot-briefing')` (day/streak/tasks + energy bar + overdue concepts)
+- `DashboardOverlay` renders when dashboard state exists, auto-dismisses after 15s
+
+**Dashboard types:**
+- `boot-briefing`: morning metrics (Day, Streak, Tasks Left), recent energy bar, overdue concepts
+- `daily-delta`: confidence/focus/energy/streak with deltas vs yesterday, 7-day energy, JARVIS quote
+- `weekly-review`: weekly stats, confidence delta vs last week, concepts needing attention
+
+**Build: 0 errors, 50.06s. 91 source files.**
+
+**Files created (9):** 8 viz components + useVizEngine.js
+**Files updated (2):** ChatView.jsx (VizSmartCards), App.jsx (dashboard overlay + boot trigger)
+
+---
+
 ### Session 41B — 2035 Voice Interface: 10 God-Tier Enhancements (2026-04-01)
 
 **10 enhancements to VoiceMode.jsx Canvas reactor.**
