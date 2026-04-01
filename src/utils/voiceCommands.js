@@ -35,6 +35,12 @@ export function processVoiceCommand(transcript) {
     return { type: 'stop', response: 'Going silent, Sir.' }
   }
 
+  // Shutdown
+  if (lower === 'shutdown' || lower === 'jarvis shutdown' || lower.startsWith('goodnight') || lower === 'shut down') {
+    console.log('VOICE CMD: shutdown')
+    return { type: 'shutdown', response: 'Initiating shutdown sequence, Sir.' }
+  }
+
   // Check-in
   if (lower.startsWith('check in') || lower.startsWith('checkin') || lower.startsWith('daily check') || lower === 'daily') {
     console.log('VOICE CMD: check-in')

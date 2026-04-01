@@ -258,6 +258,15 @@ export default function Settings({ isOpen, onClose }) {
               )}
             </div>
 
+            {/* Shutdown */}
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('jarvis-request-shutdown'))}
+              className="w-full py-2.5 rounded-lg border border-amber-500/30 font-mono text-xs text-amber-400
+                tracking-wider hover:bg-amber-500/10 transition-all mt-3"
+            >
+              SHUTDOWN JARVIS
+            </button>
+
             {/* Version */}
             <div className="text-center pt-3 border-t border-border">
               <p className="font-mono text-[9px] text-text-muted tracking-widest">

@@ -14,6 +14,8 @@ export default function useSound() {
   const synthRef = useRef(null)
   const noiseSynthRef = useRef(null)
   const thinkingRef = useRef(null)
+  const ambientRef = useRef(null)
+  const heartbeatRef = useRef(null)
   const initialized = useRef(false)
 
   // WHY lazy init: Tone.js requires a user gesture before audio works (Chrome policy).
@@ -190,5 +192,58 @@ export default function useSound() {
     }
   }, [])
 
-  return { play, startThinking, stopThinking }
+  // Ambient hum — barely perceptible 60Hz sine wave
+  const startAmbient = useCallback(async () => {
+    if (!canPlay() || ambientRef.current) return
+    try {
+      await Tone.start()
+      const synth = new Tone.Synth({
+        oscillator: { type: 'sine' },
+        envelope: { attack: 2, decay: 0, sustain: 1, release: 2 },
+        volume: -35,
+      }).toDestination()
+      synth.triggerAttack('B1')
+      ambientRef.current = synth
+    } catch { /* ok */ }
+  }, [canPlay])
+
+  const stopAmbient = useCallback(() => {
+    if (ambientRef.current) {
+      try { ambientRef.current.triggerRelease() } catch { /* ok */ }
+      const ref = ambientRef.current
+      ambientRef.current = null
+      setTimeout(() => { try { ref.dispose() } catch { /* ok */ } }, 2000)
+    }
+  }, [])
+
+  const setAmbientEnergy = useCallback((energy) => {
+    if (!ambientRef.current) return
+    const vol = energy <= 2 ? -40 : energy <= 3 ? -35 : -30
+    try { ambientRef.current.volume.rampTo(vol, 1) } catch { /* ok */ }
+  }, [])
+
+  // Heartbeat — optional double-pulse matching energy BPM
+  const startHeartbeat = useCallback(async (energy = 3) => {
+    if (!canPlay() || heartbeatRef.current) return
+    try {
+      await Tone.start()
+      const synth = await ensureSynth()
+      const bpm = energy <= 2 ? 50 : energy <= 3 ? 65 : 80
+      const interval = 60000 / bpm
+      heartbeatRef.current = setInterval(() => {
+        try {
+          synth.triggerAttackRelease('E2', '32n', Tone.now())
+          setTimeout(() => {
+            try { synth.triggerAttackRelease('C2', '64n', Tone.now()) } catch { /* ok */ }
+          }, 200)
+        } catch { /* ok */ }
+      }, interval)
+    } catch { /* ok */ }
+  }, [canPlay, ensureSynth])
+
+  const stopHeartbeat = useCallback(() => {
+    if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null }
+  }, [])
+
+  return { play, startThinking, stopThinking, startAmbient, stopAmbient, setAmbientEnergy, startHeartbeat, stopHeartbeat }
 }

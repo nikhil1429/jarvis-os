@@ -32,6 +32,7 @@ import GlobalMic from './components/GlobalMic.jsx'
 import VoiceMode from './components/VoiceMode.jsx'
 import QuickVoiceOverlay from './components/QuickVoiceOverlay.jsx'
 import Onboarding from './components/Onboarding.jsx'
+import ShutdownSequence from './components/ShutdownSequence.jsx'
 import { getDayNumber, getWeekNumber } from './utils/dateUtils.js'
 import { speakElevenLabs } from './utils/elevenLabsSpeak.js'
 // smartVoiceRouter removed — always ElevenLabs
@@ -90,6 +91,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('cmd')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [showScanSweep, setShowScanSweep] = useState(false)
+  const [showShutdown, setShowShutdown] = useState(false)
   const contentRef = useRef(null)
   const { elapsed } = useSessionTimer()
 
@@ -146,6 +148,13 @@ function App() {
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
+  }, [])
+
+  // Shutdown listener (from Settings button + voice command)
+  useEffect(() => {
+    const h = () => setShowShutdown(true)
+    window.addEventListener('jarvis-request-shutdown', h)
+    return () => window.removeEventListener('jarvis-request-shutdown', h)
   }, [])
 
   // Chrome voices load async — reset cache when they arrive
@@ -251,10 +260,11 @@ function App() {
 
   const handleBootComplete = useCallback(() => {
     setAppState('main')
-    // Reset briefing flag so ElevenLabs works for normal conversation
     window._briefingStopped = false
     console.log('BRIEFING FLAG: reset after boot complete, ElevenLabs enabled')
-  }, [])
+    // Start ambient sound
+    try { play('boot') } catch { /* ok */ }
+  }, [play])
 
   const handleToggleTask = useCallback((taskId) => {
     const current = get('core') || DEFAULT_KEYS.core
@@ -398,6 +408,9 @@ function App() {
       {quickVoiceOpen && (
         <QuickVoiceOverlay onClose={() => setQuickVoiceOpen(false)} />
       )}
+
+      {/* Shutdown Sequence */}
+      {showShutdown && <ShutdownSequence />}
 
       {/* ============================================================ */}
       {/* MILESTONE CINEMATIC OVERLAY */}

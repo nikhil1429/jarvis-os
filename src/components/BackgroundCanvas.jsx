@@ -29,9 +29,14 @@ export default function BackgroundCanvas() {
     const isMobile = w < 768
     const particleCount = isMobile ? PARTICLE_COUNT_MOBILE : PARTICLE_COUNT_DESKTOP
 
-    // Get energy for color shift
-    let energyLevel = 3
-    try { energyLevel = JSON.parse(localStorage.getItem('jos-core') || '{}').energy || 3 } catch { /* ok */ }
+    // Get mood state for color/speed shift
+    let energyLevel = 3, isLateNight = false
+    try {
+      const core = JSON.parse(localStorage.getItem('jos-core') || '{}')
+      energyLevel = core.energy || 3
+      const hour = new Date().getHours()
+      isLateNight = hour >= 23 || hour < 5
+    } catch { /* ok */ }
 
     // Particles
     const particles = Array.from({ length: particleCount }, () => ({
@@ -102,7 +107,7 @@ export default function BackgroundCanvas() {
 
       // 3. Particles + connections
       const mx = mouseRef.current.x, my = mouseRef.current.y
-      const cyan = energyLevel <= 2 ? [180, 80, 80] : [0, 180, 216]
+      const cyan = isLateNight ? [212, 168, 83] : energyLevel <= 2 ? [180, 80, 80] : [0, 180, 216]
 
       particles.forEach(p => {
         // Mouse attraction

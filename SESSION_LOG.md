@@ -4,6 +4,46 @@
 
 ---
 
+### Session 35 — Atmosphere: Ambient Sound + Shutdown + Dynamic Reactor + Mood Engine (2026-04-01)
+
+**JARVIS now feels ALIVE through audio atmosphere, graceful shutdown, and mood-reactive visuals.**
+
+**Feature 1 — Ambient Sound (`useSound.js`):**
+- `startAmbient()`: 60Hz sine wave at -35dB (barely perceptible background hum)
+- `setAmbientEnergy(energy)`: volume adjusts (1-2=-40dB, 3=-35dB, 4-5=-30dB) with 1s smooth ramp
+- `stopAmbient()`: 2s release fade
+- `startHeartbeat(energy)`: double-pulse at energy-matched BPM (50/65/80), E2+C2 tones
+- `stopHeartbeat()`: clears interval. Off by default (optional toggle)
+
+**Feature 2 — Shutdown Sequence (`ShutdownSequence.jsx`):**
+- Trigger: Settings → "SHUTDOWN JARVIS" button, or voice: "goodnight JARVIS" / "shutdown"
+- 5.5-second choreographed sequence:
+  Phase 0 (dim), Phase 1 (JARVIS speaks goodbye + "SYSTEMS ENTERING STANDBY" types),
+  Phase 2 (boot lines reverse to [ STANDBY ] in amber), Phase 3 ("Until tomorrow, Sir." in gold),
+  Phase 4 (black screen with dim "JARVIS OS — STANDBY" + WAKE button)
+- Dispatches `jarvis-shutdown` event for BackgroundCanvas
+- Voice command: "shutdown"/"goodnight"/"jarvis shutdown" → type 'shutdown' → triggers sequence
+
+**Feature 3 — Mood Engine (`moodEngine.js`):**
+- `getMoodState()`: reads energy, confidence, mood, streak, isLateNight from localStorage
+- `getMoodColors()`: late night = amber, low energy = red, high energy+confidence = bright cyan+gold
+- `getMoodSpeed()`: low = 0.5x, normal = 1x, high = 1.5x
+- BackgroundCanvas particles shift to amber after 11 PM, red on low energy
+
+**Wiring:**
+- `App.jsx`: shutdown state + `jarvis-request-shutdown` listener, ShutdownSequence overlay
+- `Settings.jsx`: amber "SHUTDOWN JARVIS" button
+- `voiceCommands.js`: shutdown/goodnight detection
+- `ChatView.jsx`: shutdown voice command handler (speaks then triggers shutdown after 2s)
+- `BackgroundCanvas.jsx`: mood-aware particle colors (late night amber, low energy red)
+
+**Build: 0 errors, 19.71s**
+
+**Files created (2):** ShutdownSequence.jsx, moodEngine.js
+**Files updated (6):** useSound.js, App.jsx, Settings.jsx, voiceCommands.js, ChatView.jsx, BackgroundCanvas.jsx
+
+---
+
 ### Session 34 — Cinematic Reports: Quarterly + Interview Brief + Time Capsule + Replay (2026-04-01)
 
 **4 premium report components — the crown jewels of JARVIS intelligence.**

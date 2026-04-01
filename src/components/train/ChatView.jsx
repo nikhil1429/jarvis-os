@@ -109,6 +109,12 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
     if (cmd) {
       setMessages(prev => [...prev, { role: 'user', content: trimmed, timestamp: new Date().toISOString() }])
       if (cmd.type === 'stop') { voice.stopSpeaking(); return }
+      if (cmd.type === 'shutdown') {
+        setMessages(prev => [...prev, { role: 'assistant', content: cmd.response, timestamp: new Date().toISOString() }])
+        voice.speak(cmd.response, { isVoiceCommand: true })
+        setTimeout(() => window.dispatchEvent(new CustomEvent('jarvis-request-shutdown')), 2000)
+        return
+      }
       if (cmd.type === 'checkin') {
         checkIn.start()
         setMessages(prev => [...prev, { role: 'assistant', content: cmd.response, timestamp: new Date().toISOString() }])
