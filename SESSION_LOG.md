@@ -4,6 +4,43 @@
 
 ---
 
+### Session 44 — Claude Superpowers: Tool Use + Vision + Web Search (2026-04-02)
+
+**JARVIS can now ACT, SEE, and KNOW.**
+
+**Part 1 — Tool Use (7 tools):**
+- `complete_task`: marks build tasks done, dispatches jarvis-task-toggled
+- `update_concept_strength`: adjusts concept mastery in jos-concepts
+- `update_identity`: saves life updates to jos-identity
+- `create_quick_capture`: saves thoughts to jos-quick-capture
+- `get_concept_strength`: reads live concept data
+- `get_today_stats`: reads tasks/streak/energy/rank
+- `log_application`: logs job applications to jos-applications
+- TOOL_MODES (chat, body-double, quiz, impostor-killer, alter-ego) use non-streaming with tools
+- Other modes keep SSE streaming (no tools, faster display)
+- Tool use flow: Claude calls tool → `executeToolCall` runs locally → results sent back → Claude generates final response
+
+**Part 2 — Vision (image upload):**
+- ChatView: image upload button (ImageIcon) next to mic
+- Image preview above input bar with Remove button
+- Images sent as base64 in multipart content to Claude API
+- `sendMessage` accepts `options.image` parameter
+
+**Part 3 — Web Search:**
+- `web_search_20250305` tool added to TOOL_MODES request body
+- Claude automatically searches when current info needed
+- No additional code — Claude handles search internally
+
+**Part 4 — Prompt updates:**
+- BASE_PERSONALITY: "YOU HAVE TOOLS — USE THEM" section with usage instructions
+- "WEB SEARCH" section: search for jobs, companies, docs, tech news
+
+**Build: 0 errors, 33.67s**
+
+**Files updated (3):** useAI.js (tools + vision + non-streaming flow), ChatView.jsx (image upload), prompts.js (tool + search instructions)
+
+---
+
 ### Session 44B — Complete Reporting Pipeline: 3-Day + Weekly + Newsletter (2026-04-02)
 
 **Reports now actually GENERATE AI content, not just detect when they're due.**

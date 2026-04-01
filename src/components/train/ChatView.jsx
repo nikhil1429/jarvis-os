@@ -2,7 +2,7 @@
 // All voice logic lives in the hook. ChatView handles UI + message flow only.
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { ArrowLeft, Send, Mic, Zap } from 'lucide-react'
+import { ArrowLeft, Send, Mic, Zap, Image as ImageIcon } from 'lucide-react'
 import useAI from '../../hooks/useAI.js'
 import useStorage from '../../hooks/useStorage.js'
 import useSound from '../../hooks/useSound.js'
@@ -28,6 +28,7 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
 
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState([])
+  const [pendingImage, setPendingImage] = useState(null)
   const [lastTier, setLastTier] = useState(1)
 
   const messagesContainerRef = useRef(null)
@@ -100,7 +101,8 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
 
     const stopTick = await startThinking()
     try {
-      const result = await sendMessage(trimmed, mode.id, { weekNumber })
+      const result = await sendMessage(trimmed, mode.id, { weekNumber, image: pendingImage })
+      setPendingImage(null)
       stopTick(); stopThinking()
       if (result) {
         // Strip quiz score tags from display + voice
@@ -325,6 +327,14 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
         )}
       </div>
 
+      {/* Image preview */}
+      {pendingImage && (
+        <div style={{ flexShrink: 0, padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <img src={pendingImage.thumbnail} alt="" style={{ maxHeight: 50, maxWidth: 100, borderRadius: 4, border: '1px solid #0d2137' }} />
+          <button onClick={() => setPendingImage(null)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: 11 }}>Remove</button>
+        </div>
+      )}
+
       {/* Input bar */}
       <div className="flex gap-2 items-end" style={{ flexShrink: 0 }}>
         <div className="flex-1">
@@ -338,6 +348,17 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
             }`}
           />
         </div>
+
+        {/* Image upload */}
+        <label className="p-3 rounded-lg border border-border text-text-muted hover:border-cyan/40 hover:text-cyan cursor-pointer transition-all">
+          <ImageIcon size={18} />
+          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
+            const file = e.target.files?.[0]; if (!file || !file.type.startsWith('image/')) return
+            const reader = new FileReader()
+            reader.onload = () => setPendingImage({ base64: reader.result.split(',')[1], mediaType: file.type, thumbnail: reader.result })
+            reader.readAsDataURL(file); e.target.value = ''
+          }} />
+        </label>
 
         {SpeechRecognition && (JSON.parse(localStorage.getItem('jos-settings') || '{}').voiceInput !== false) && (
           <button onClick={handleMicClick}

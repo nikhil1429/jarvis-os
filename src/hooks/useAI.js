@@ -30,6 +30,61 @@ const CROSS_MODE_MAP = {
   'recruiter-ghost': ['interview-sim', 'presser'],
 }
 
+// Tool definitions — JARVIS can take actions
+const JARVIS_TOOLS = [
+  { name: 'complete_task', description: 'Mark a build task as complete when Sir says he finished it.', input_schema: { type: 'object', properties: { taskId: { type: 'number', description: 'Task ID number' } }, required: ['taskId'] } },
+  { name: 'update_concept_strength', description: 'Update mastery strength of an AI concept after assessment.', input_schema: { type: 'object', properties: { conceptName: { type: 'string' }, newStrength: { type: 'number', description: '0-100' }, reason: { type: 'string' } }, required: ['conceptName', 'newStrength'] } },
+  { name: 'update_identity', description: 'Save life updates from Sir — job, location, relationships, goals.', input_schema: { type: 'object', properties: { field: { type: 'string', enum: ['career','location','relationships','health','goals','achievements','notes'] }, value: { type: 'string' } }, required: ['field', 'value'] } },
+  { name: 'create_quick_capture', description: 'Save a thought or insight to Second Brain.', input_schema: { type: 'object', properties: { text: { type: 'string' }, category: { type: 'string', enum: ['insight','idea','todo','learning','personal'] } }, required: ['text'] } },
+  { name: 'get_concept_strength', description: 'Look up current strength of a concept.', input_schema: { type: 'object', properties: { conceptName: { type: 'string' } }, required: ['conceptName'] } },
+  { name: 'get_today_stats', description: 'Get live stats — tasks, streak, energy, day number.', input_schema: { type: 'object', properties: {} } },
+  { name: 'log_application', description: 'Log a job application.', input_schema: { type: 'object', properties: { company: { type: 'string' }, role: { type: 'string' }, status: { type: 'string', enum: ['applied','screening','interview','rejected','offer'] } }, required: ['company', 'role'] } },
+]
+
+function executeToolCall(name, input) {
+  try {
+    if (name === 'complete_task') {
+      const core = JSON.parse(localStorage.getItem('jos-core') || '{}')
+      const done = core.completedTasks || []
+      if (!done.includes(input.taskId)) { done.push(input.taskId); core.completedTasks = done; localStorage.setItem('jos-core', JSON.stringify(core)); window.dispatchEvent(new CustomEvent('jarvis-task-toggled')) }
+      return { success: true, tasksCompleted: done.length }
+    }
+    if (name === 'update_concept_strength') {
+      const concepts = JSON.parse(localStorage.getItem('jos-concepts') || '[]')
+      const c = concepts.find(x => x.name.toLowerCase().includes(input.conceptName.toLowerCase()))
+      if (c) { const old = c.strength; c.strength = Math.min(100, Math.max(0, input.newStrength)); c.lastReviewed = new Date().toISOString(); localStorage.setItem('jos-concepts', JSON.stringify(concepts)); return { success: true, old, new: c.strength } }
+      return { error: 'Concept not found' }
+    }
+    if (name === 'update_identity') {
+      const id = JSON.parse(localStorage.getItem('jos-identity') || '{}')
+      id[input.field] = input.value + ` [${new Date().toISOString().split('T')[0]}]`
+      localStorage.setItem('jos-identity', JSON.stringify(id)); return { success: true }
+    }
+    if (name === 'create_quick_capture') {
+      const caps = JSON.parse(localStorage.getItem('jos-quick-capture') || '[]')
+      caps.push({ timestamp: new Date().toISOString(), text: input.text, category: input.category || 'insight', source: 'jarvis-tool' })
+      localStorage.setItem('jos-quick-capture', JSON.stringify(caps)); return { success: true }
+    }
+    if (name === 'get_concept_strength') {
+      const concepts = JSON.parse(localStorage.getItem('jos-concepts') || '[]')
+      const c = concepts.find(x => x.name.toLowerCase().includes(input.conceptName.toLowerCase()))
+      return c ? { name: c.name, strength: c.strength, lastReviewed: c.lastReviewed } : { error: 'Not found' }
+    }
+    if (name === 'get_today_stats') {
+      const core = JSON.parse(localStorage.getItem('jos-core') || '{}')
+      return { tasks: (core.completedTasks||[]).length, total: 82, streak: core.streak||0, energy: core.energy||3, rank: core.rank||'Recruit' }
+    }
+    if (name === 'log_application') {
+      const apps = JSON.parse(localStorage.getItem('jos-applications') || '[]')
+      apps.push({ date: new Date().toISOString(), company: input.company, role: input.role, status: input.status || 'applied' })
+      localStorage.setItem('jos-applications', JSON.stringify(apps)); return { success: true }
+    }
+    return { error: 'Unknown tool' }
+  } catch (e) { return { error: e.message } }
+}
+
+const TOOL_MODES = ['chat', 'body-double', 'quiz', 'impostor-killer', 'alter-ego']
+
 export default function useAI() {
   const { get, update } = useStorage()
   const [isStreaming, setIsStreaming] = useState(false)
@@ -141,10 +196,16 @@ export default function useAI() {
       const history = get(msgKey) || []
       const recentHistory = history.slice(-50)
 
+      // Build user content (text or text+image)
+      const image = options.image || null
+      const userContent = image
+        ? [{ type: 'image', source: { type: 'base64', media_type: image.mediaType, data: image.base64 } }, { type: 'text', text: userMessage || 'Analyse this image.' }]
+        : userMessage
+
       // Build messages array for the API
       const messages = [
         ...recentHistory.map(m => ({ role: m.role, content: m.content })),
-        { role: 'user', content: userMessage },
+        { role: 'user', content: userContent },
       ]
 
       // Save user message to history
@@ -164,17 +225,66 @@ export default function useAI() {
       const abortController = new AbortController()
       abortRef.current = abortController
 
-      // Make the API call with streaming
+      // Decide: streaming (fast display) vs non-streaming (tool use support)
+      const useTools = TOOL_MODES.includes(mode)
+      const requestBody = {
+        model: routing.model,
+        max_tokens: 2048,
+        system: systemPrompt,
+        messages,
+        ...(useTools ? { tools: [...JARVIS_TOOLS, { type: 'web_search_20250305', name: 'web_search' }] } : {}),
+        stream: !useTools,
+      }
+
+      // Non-streaming with tool use
+      if (useTools) {
+        const resp = await fetch('/api/claude', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
+          signal: abortController.signal,
+        })
+        if (!resp.ok) throw new Error(`API error ${resp.status}`)
+        const data = await resp.json()
+
+        // Handle tool use
+        const toolBlocks = (data.content || []).filter(b => b.type === 'tool_use')
+        let finalText = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('')
+
+        if (toolBlocks.length > 0) {
+          console.log('TOOLS EXECUTED:', toolBlocks.map(b => b.name))
+          const toolResults = toolBlocks.map(b => ({
+            type: 'tool_result', tool_use_id: b.id,
+            content: JSON.stringify(executeToolCall(b.name, b.input)),
+          }))
+          toolBlocks.forEach(b => window.dispatchEvent(new CustomEvent('jarvis-tool-executed', { detail: { tool: b.name, input: b.input } })))
+
+          // Follow-up with tool results
+          const followResp = await fetch('/api/claude', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...requestBody, stream: false, messages: [...messages, { role: 'assistant', content: data.content }, { role: 'user', content: toolResults }] }),
+            signal: abortController.signal,
+          })
+          if (followResp.ok) {
+            const followData = await followResp.json()
+            finalText = (followData.content || []).filter(b => b.type === 'text').map(b => b.text).join('')
+          }
+        }
+
+        setStreamingText(finalText)
+        const latencyMs = Date.now() - startTime
+        update(msgKey, prev => [...(prev || []), { role: 'assistant', content: finalText, timestamp: new Date().toISOString(), model: routing.model, tier: routing.tier }].slice(-50))
+        logAPICall({ model: routing.model, mode, inputTokens: data.usage?.input_tokens || 0, outputTokens: data.usage?.output_tokens || 0, latencyMs, autoUpgraded: routing.autoUpgraded, reason: routing.reason })
+        setIsStreaming(false)
+        return { text: finalText, model: routing.model, tier: routing.tier, autoUpgraded: routing.autoUpgraded, reason: routing.reason }
+      }
+
+      // Streaming (no tools) — existing flow
       const response = await fetch('/api/claude', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: routing.model,
-          max_tokens: 2048,
-          system: systemPrompt,
-          messages,
-          stream: true,
-        }),
+        body: JSON.stringify(requestBody),
         signal: abortController.signal,
       })
 
