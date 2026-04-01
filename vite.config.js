@@ -1,20 +1,39 @@
-// vite.config.js — Vite configuration with Anthropic API proxy
-// WHY: The browser can't call api.anthropic.com directly due to CORS restrictions.
-// Vite's dev proxy forwards /api/claude requests to Anthropic's endpoint, injecting
-// the API key and required headers server-side. This means our frontend code just
-// calls fetch('/api/claude', ...) and it works without CORS issues.
-// In production, Vercel serverless functions (api/claude.js) handle this instead.
+// vite.config.js — Vite configuration with API proxy, PWA, and code splitting
 
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig(({ mode }) => {
-  // WHY loadEnv: Vite only exposes VITE_ prefixed vars to client code by default.
-  // We need the API key on the server (proxy) side, so we load it explicitly here.
   const env = loadEnv(mode, process.cwd(), '')
 
   return {
-    plugins: [react()],
+    plugins: [
+      react(),
+      VitePWA({
+        registerType: 'autoUpdate',
+        workbox: {
+          globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+          runtimeCaching: [
+            { urlPattern: /^https:\/\/fonts\.googleapis\.com/, handler: 'CacheFirst', options: { cacheName: 'google-fonts' } },
+            { urlPattern: /\/api\//, handler: 'NetworkFirst', options: { cacheName: 'api-cache', networkTimeoutSeconds: 10 } },
+          ],
+        },
+        manifest: false, // using public/manifest.json
+      }),
+    ],
+    build: {
+      chunkSizeWarningLimit: 600,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            three: ['three'],
+            recharts: ['recharts'],
+            supabase: ['@supabase/supabase-js'],
+          },
+        },
+      },
+    },
     server: {
       proxy: {
         '/api/claude': {
@@ -22,14 +41,11 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: (path) => '/v1/messages',
           configure: (proxy) => {
-            proxy.on('proxyReq', (proxyReq, req) => {
-              // WHY remove origin/referer: Anthropic's API rejects requests with
-              // browser origin headers (CORS protection). Stripping them makes the
-              // proxy request look like a server-to-server call.
+            proxy.on('proxyReq', (proxyReq) => {
               proxyReq.removeHeader('origin')
               proxyReq.removeHeader('referer')
               proxyReq.setHeader('x-api-key', env.VITE_ANTHROPIC_API_KEY || '')
-              proxyReq.setHeader('anthropic-version', '2023-06-01')
+              proxyReq.setHeader('anthropic-version', '2025-04-14')
               proxyReq.setHeader('content-type', 'application/json')
             })
           },

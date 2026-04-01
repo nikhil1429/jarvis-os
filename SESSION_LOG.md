@@ -4,6 +4,25 @@
 
 ---
 
+### Session 48 — Audit Fixes + Deploy Polish (2026-04-02)
+
+**7 fixes from rigorous code audit. Main bundle -887KB.**
+
+- **Fix C1 — ErrorBoundary:** React class component wrapping each tab. Crashed component shows "SYSTEM MALFUNCTION" + RECOVER button instead of white screen.
+- **Fix C2 — PWA Configuration:** VitePWA plugin in vite.config.js. Cache-first static, network-first API. Service worker auto-updates. `sw.js` + `workbox.js` generated.
+- **Fix C3 — Three.js Lazy Loading:** MemoryPalace via `React.lazy()`. Three.js split to separate 499KB chunk. Main bundle: **783KB** (was 1670KB, -53%).
+- **Fix M1 — renderMd Code Blocks:** Triple backtick → styled `<pre><code>` with JARVIS theme.
+- **Fix M3 — VizSmartCards try-catch:** localStorage read wrapped safely.
+- **Fix M4 — anthropic-version:** `2023-06-01` → `2025-04-14` in proxy + serverless.
+- **Fix O4 — PortfolioNarrator:** Mode changed to `weakness-radar` for Opus routing.
+
+**Build: 0 errors, 36.38s. Main: 783KB, Three.js: 499KB (separate chunk). PWA: 10 precached entries.**
+
+**Files created (1):** ErrorBoundary.jsx
+**Files updated (7):** App.jsx, vite.config.js, DnaTab.jsx, ChatView.jsx, VizSmartCards.jsx, api/claude.js, PortfolioNarrator.jsx
+
+---
+
 ### Session 47 — JARVIS Self-Awareness + Final Fixes + Deploy Ready (2026-04-02)
 
 **FINAL SESSION. JARVIS knows what it can do. Deploy-ready.**

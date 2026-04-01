@@ -17,6 +17,7 @@ import useNotifications from './hooks/useNotifications.js'
 import useAutoBackup from './hooks/useAutoBackup.js'
 import useContextSave from './hooks/useContextSave.js'
 import Boot from './components/Boot.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
 import Header from './components/Header.jsx'
 import BottomNav from './components/BottomNav.jsx'
 import CmdTab from './components/cmd/CmdTab.jsx'
@@ -358,32 +359,25 @@ function App() {
   }
 
   const renderTab = () => {
-    switch (activeTab) {
-      case 'cmd':
-        return (
-          <CmdTab
-            completedTasks={completedTasks}
-            onToggleTask={handleToggleTask}
-            pulse={pulse}
-            onDismissPulse={dismissPulse}
-            weakness={weakness}
-            onWeaknessTap={() => setShowDepTree(true)}
-            onWeaknessDismiss={dismissWeakness}
-          />
-        )
-      case 'train':
-        return <TrainTab weekNumber={weekNumber} requestedMode={requestedMode} onModeOpened={handleModeOpened} />
-      case 'log':
-        return <LogTab elapsed={elapsed} />
-      case 'dna':
-        return <DnaTab />
-      case 'stats':
-        return <StatsTab />
-      case 'wins':
-        return <WinsTab />
-      default:
-        return null
-    }
+    const content = (() => {
+      switch (activeTab) {
+        case 'cmd':
+          return <CmdTab completedTasks={completedTasks} onToggleTask={handleToggleTask} pulse={pulse} onDismissPulse={dismissPulse} weakness={weakness} onWeaknessTap={() => setShowDepTree(true)} onWeaknessDismiss={dismissWeakness} />
+        case 'train':
+          return <TrainTab weekNumber={weekNumber} requestedMode={requestedMode} onModeOpened={handleModeOpened} />
+        case 'log':
+          return <LogTab elapsed={elapsed} />
+        case 'dna':
+          return <DnaTab />
+        case 'stats':
+          return <StatsTab />
+        case 'wins':
+          return <WinsTab />
+        default:
+          return null
+      }
+    })()
+    return <ErrorBoundary>{content}</ErrorBoundary>
   }
 
   return (

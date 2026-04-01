@@ -77,7 +77,8 @@ function ResponseCharts({ response, mode }) {
 
   let compData = null, trendData = null
   try {
-    const feelings = JSON.parse(localStorage.getItem('jos-feelings') || '[]')
+    let feelings = []
+    try { feelings = JSON.parse(localStorage.getItem('jos-feelings') || '[]') } catch { /* ok */ }
     if (viz.some(v => v.type === 'comparison') && feelings.length >= 7) {
       const thisWeek = feelings.slice(-7), lastWeek = feelings.slice(-14, -7)
       const avg = (arr, key) => arr.length ? arr.reduce((s, f) => s + (f[key] || 0), 0) / arr.length : 0

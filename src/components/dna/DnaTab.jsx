@@ -3,11 +3,11 @@
 // spaced repetition alerts, and category filtering. Overdue concepts sort to top
 // so Nikhil reviews them first. Search + filter pills let him find concepts fast.
 
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react'
 import { Search } from 'lucide-react'
 import CONCEPTS from '../../data/concepts.js'
 import ConceptCard from './ConceptCard.jsx'
-import MemoryPalace from './MemoryPalace.jsx'
+const MemoryPalace = lazy(() => import('./MemoryPalace.jsx'))
 import useStorage from '../../hooks/useStorage.js'
 import useEventBus from '../../hooks/useEventBus.js'
 import { getReviewSchedule } from '../../utils/spacedRepetition.js'
@@ -148,7 +148,9 @@ export default function DnaTab() {
       {/* Map view */}
       {viewMode === 'map' && (
         <div className="mb-4">
-          <MemoryPalace onSelectConcept={(id) => { setViewMode('list'); /* scroll handled by list */ }} />
+          <Suspense fallback={<div className="glass-card p-8 text-center"><p className="font-mono text-xs text-text-muted">LOADING NEURAL MAP...</p></div>}>
+            <MemoryPalace onSelectConcept={(id) => { setViewMode('list') }} />
+          </Suspense>
         </div>
       )}
 
