@@ -4,6 +4,39 @@
 
 ---
 
+### Session 40 — Soul Injection: Identity + FinOps + Lifelong Companion (2026-04-01)
+
+**JARVIS now knows WHO Nikhil is, WHY he's building, and HOW his brain works.**
+
+**prompts.js — Major rewrite (3 new constants):**
+- `BASE_PERSONALITY` (~800 tokens): Full identity — DTU, Zomato 4yr, 3 dev jobs (~2yr total), AI eval work, FinOps Copilot, ADHD-PI, Nidhi, London plans, Radha-Krishna faith, mother as north star, lifelong companion phases
+- `NIKHIL_DEEP_CONTEXT`: Psychology (perfection→freeze cycle, Warrior vs Shadow voices, ADHD specifics, triggers, fixes), coaching style (firm compassion, data>feelings, micro-actions, movie-first), survival story (domestic violence, repeated year, Zomato burnout, TWO career pivots, overcame dependencies), superpowers, growth edges
+- `FINOPS_CONTEXT`: FinOps Copilot architecture, TDS domain (194C/194J/194H/194I/194A with thresholds+rates), GST, Akshay validation
+
+**9 mode prompts enriched:**
+- impostor-killer: reference 7x EOM, survival story, "Warrior returns", frame praise as DATA
+- alter-ego: voice REAL Shadow doubts ("starting at 30", "repeated a year"), destroy with evidence
+- body-double: ADHD-aware micro-actions on freeze, "system stronger than mood"
+- chat: lifelong companion, detect planning-dopamine loops, engage with life not just code
+- weakness-radar: psychological pattern detection, ADHD avoidance, micro-action prescriptions
+- quiz: FinOps/TDS questions mixed with AI theory
+- presser: grill on FinOps costs, TDS misclassification, Zomato mapping
+- scenario-bomb: FinOps production disasters (false positives, API down, data sync)
+- akshay-qs: real Akshay perspective, Hinglish, "will this save 3 hours daily?"
+
+**buildSystemPrompt updated:**
+- `deepModes` (5 modes) get NIKHIL_DEEP_CONTEXT injected
+- `finopsModes` (14 modes) get FINOPS_CONTEXT injected
+- Dynamic identity read from `jos-identity` localStorage
+
+**Identity system:**
+- ChatView: `checkIdentityUpdate()` — detects "JARVIS, remember that..." → saves to jos-identity
+- Settings: IDENTITY DATA section with editable JSON textarea
+
+**Verification: 22/22 checks passed. Build: 0 errors.**
+
+---
+
 ### Session 39 — Fix All Hoisting Crashes (2026-04-01)
 
 **Reordered useCallback/useMemo above useEffect in 11 files. Boot.jsx dead Three.js code caused duplicate symbols — restored and kept original.**

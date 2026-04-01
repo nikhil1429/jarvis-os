@@ -267,6 +267,18 @@ export default function Settings({ isOpen, onClose }) {
               SHUTDOWN JARVIS
             </button>
 
+            {/* Identity Data */}
+            <div className="glass-card p-3 mt-3">
+              <h3 className="font-display text-xs font-bold text-cyan tracking-wider neon-heading mb-2">IDENTITY DATA</h3>
+              <p className="font-body text-[10px] text-text-muted mb-2">Tell JARVIS "remember that..." to update. Or edit directly:</p>
+              <textarea
+                defaultValue={(() => { try { return JSON.stringify(JSON.parse(localStorage.getItem('jos-identity') || '{}'), null, 2) } catch { return '{}' } })()}
+                onBlur={e => { try { JSON.parse(e.target.value); localStorage.setItem('jos-identity', e.target.value) } catch { /* invalid json */ } }}
+                className="w-full bg-void border border-border rounded-lg font-mono text-[10px] text-text p-2 focus:outline-none focus:border-cyan"
+                style={{ height: 100, resize: 'vertical' }}
+              />
+            </div>
+
             {/* Version */}
             <div className="text-center pt-3 border-t border-border">
               <p className="font-mono text-[9px] text-text-muted tracking-widest">

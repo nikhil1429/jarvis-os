@@ -130,9 +130,24 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
     }
   }, [sendMessage, mode.id, weekNumber, play, voice, checkIn, onModeSwitch, stopThinking, startThinking])
 
+  // Identity update detection
+  const checkIdentityUpdate = (msg) => {
+    const match = msg.match(/jarvis,?\s*(?:remember|note|update|save)\s*(?:that)?\s*:?\s*(.+)/i)
+    if (match) {
+      try {
+        const identity = JSON.parse(localStorage.getItem('jos-identity') || '{}')
+        if (!identity.notes) identity.notes = ''
+        identity.notes += (identity.notes ? ' | ' : '') + match[1].trim() + ` [${new Date().toISOString().split('T')[0]}]`
+        localStorage.setItem('jos-identity', JSON.stringify(identity))
+        console.log('IDENTITY UPDATE:', match[1].trim())
+      } catch { /* ok */ }
+    }
+  }
+
   const handleSend = useCallback(() => {
     const text = input.trim()
     if (!text || isStreaming) return
+    checkIdentityUpdate(text)
     voice.stopListening()
     voice.setTypedInput()
     handleSendDirect(text)
