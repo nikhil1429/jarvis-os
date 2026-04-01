@@ -4,6 +4,28 @@
 
 ---
 
+### Session 41B — 2035 Voice Interface: 10 God-Tier Enhancements (2026-04-01)
+
+**10 enhancements to VoiceMode.jsx Canvas reactor.**
+
+- **E1 — Circular Orbital Waveform**: 64-point polar waveform wraps AROUND core (replaces flat line). Radius = baseRadius + sin * amplitude * voiceLevel. Glows cyan/gold.
+- **E3 — Word-Burst Particles**: each word JARVIS speaks spawns 3-5 particles from core. Special words ("Sir", rank titles, "evidence") spawn 8+ gold particles + reactor flash.
+- **E5 — Silence Contemplation**: 2s silence during LISTENING → particles slow 20%, core gentle heartbeat, rings dim 40%. After 3s: "Take your time, Sir." ghost text fades in.
+- **E6 — Conversation Energy Arc**: thin line at canvas bottom showing energy per message. Cyan for user, gold for JARVIS. Smooth curve, max 50 points.
+- **E7 — Light Traces**: new messages trigger light dot traveling from core to transcript position (400ms). Faint persistent lines remain connecting core to message positions.
+- **E8 — Tier Visual Escalation**: Opus responses → all rings brighten 1.5x for 30 frames. Tier flash from word-burst special words too.
+- **E9 — Thinking Fragmentation**: during PROCESSING, core splits into 5 orbiting arc fragments. Rotation accelerates, fragments drift outward. On response: snap back + white flash.
+- **E10 — Voice Memory Echo**: on unmount, saves 64 voice level samples to `jos-voice-echo`. On mount, draws dim ghost ring showing previous session's waveform signature. Fades when user speaks.
+
+**New refs**: wordBurstRef, silenceFramesRef, contemplatingRef, energyArcRef, lightTracesRef, tierFlashRef, fragmentsRef, voiceEchoRef, voiceSamplesRef.
+
+**Build: 0 errors, 49.77s**
+
+**Files updated (1):** VoiceMode.jsx
+**New localStorage key:** jos-voice-echo
+
+---
+
 ### Session 41 — Exocortex Voice Interface (2026-04-01)
 
 **Replaced QuickVoiceOverlay with full-screen exocortex. ONE voice interface.**

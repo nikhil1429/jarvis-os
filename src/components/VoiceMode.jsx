@@ -31,6 +31,16 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
   const voiceLevelRef = useRef(0)
   const mouseRef = useRef({ x: 250, y: 250 })
   const transcriptEndRef = useRef(null)
+  // Enhancement refs
+  const wordBurstRef = useRef([]) // E3: word-burst particles
+  const silenceFramesRef = useRef(0) // E5: contemplation tracker
+  const contemplatingRef = useRef(false)
+  const energyArcRef = useRef([]) // E6: conversation energy
+  const lightTracesRef = useRef([]) // E7: message light traces
+  const tierFlashRef = useRef(0) // E8: tier escalation frames
+  const fragmentsRef = useRef(null) // E9: thinking fragments
+  const voiceEchoRef = useRef(null) // E10: ghost echo
+  const voiceSamplesRef = useRef([]) // E10: collect samples for echo
 
   const currentMode = MODES.find(m => m.id === currentModeId) || MODES[0]
   const vs = voice.voiceState
@@ -64,6 +74,27 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
         const clean = stripQuizTags(result.text)
         setMessages(prev => [...prev, { role: 'assistant', content: clean, timestamp: new Date().toISOString(), tier: result.tier }])
         play('receive'); voice.speak(clean)
+        // E3: trigger word-burst particles
+        const words = clean.split(/\s+/)
+        const special = ['sir','recruit','operative','commander','architect','opus','excellent','data','evidence','warrior']
+        words.forEach((w, wi) => {
+          setTimeout(() => {
+            const isSpecial = special.includes(w.toLowerCase().replace(/[.,!?]/g, ''))
+            const count = isSpecial ? 8 : 3
+            for (let p = 0; p < count; p++) {
+              const angle = Math.random() * TAU
+              wordBurstRef.current.push({ x: 0, y: 0, vx: Math.cos(angle) * (2 + Math.random() * 2), vy: Math.sin(angle) * (2 + Math.random() * 2), life: 30 + Math.random() * 20, maxLife: 50, gold: isSpecial, size: 1 + Math.random() })
+            }
+            if (isSpecial) tierFlashRef.current = Math.max(tierFlashRef.current, 10) // brief reactor flash
+          }, wi * 40)
+        })
+        // E6: energy arc data point
+        energyArcRef.current.push({ energy: 0.5 + (result.tier || 1) * 0.15, role: 'assistant' })
+        if (energyArcRef.current.length > 50) energyArcRef.current.shift()
+        // E7: light trace
+        lightTracesRef.current.push({ progress: 0, color: result.tier >= 2 ? '#d4a853' : '#00b4d8', role: 'assistant' })
+        // E8: tier escalation
+        if (result.tier >= 2) tierFlashRef.current = 30
       }
     } catch (err) { console.error('[VoiceMode]', err) }
   }, [sendMessage, currentModeId, weekNumber, play, voice, checkIn, onClose])
@@ -103,65 +134,182 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
     canvas.addEventListener('pointermove', handleMouse)
     const dataArray = new Uint8Array(128)
 
-    let t = 0
+    // E10: load ghost echo
+    try {
+      const echo = JSON.parse(localStorage.getItem('jos-voice-echo') || 'null')
+      if (echo && Date.now() - new Date(echo.timestamp).getTime() < 7 * 24 * 3600000) voiceEchoRef.current = echo
+    } catch { /* ok */ }
+
+    // E9: fragment state
+    fragmentsRef.current = { active: false, frags: Array.from({length:5}, (_,i) => ({angle: i/5*TAU, rOff: 0, speed: 2})), startTime: 0 }
+
+    let t = 0, echoFade = voiceEchoRef.current ? 1 : 0
+
     const draw = () => {
       t += 0.016; ctx.clearRect(0, 0, S, S)
-      if (analyserRef.current && voice.voiceState === 'LISTENING') {
+      const vs = voice.voiceState
+
+      // Analyser
+      if (analyserRef.current && vs === 'LISTENING') {
         analyserRef.current.getByteFrequencyData(dataArray)
         voiceLevelRef.current = dataArray.reduce((a, b) => a + b, 0) / dataArray.length / 255
-      } else if (voice.voiceState === 'SPEAKING') {
+        voiceSamplesRef.current.push(voiceLevelRef.current)
+        if (voiceSamplesRef.current.length > 64) voiceSamplesRef.current.shift()
+      } else if (vs === 'SPEAKING') {
         voiceLevelRef.current = 0.3 + Math.sin(t * 8) * 0.2 + Math.random() * 0.1
       } else { voiceLevelRef.current *= 0.92 }
 
-      const active = voice.voiceState !== 'IDLE'
-      const gold = voice.voiceState === 'SPEAKING' || voice.voiceState === 'PROCESSING'
+      const active = vs !== 'IDLE'
+      const gold = vs === 'SPEAKING' || vs === 'PROCESSING'
       const dim = active ? 1 : 0.5
-      const spd = voice.voiceState === 'PROCESSING' ? 1.5 : active ? 1 : 0.5
+      const spd = vs === 'PROCESSING' ? 1.5 : active ? 1 : 0.5
+      const flashMult = tierFlashRef.current > 0 ? 1.5 : 1
 
-      // Guide rings
-      ;[90, 70, 50].forEach(r => { ctx.beginPath(); ctx.arc(C, C, r, 0, TAU); ctx.strokeStyle = `rgba(0,180,216,${0.06 * dim})`; ctx.lineWidth = 0.5; ctx.stroke() })
+      // E5: contemplation tracking
+      if (vs === 'LISTENING' && voiceLevelRef.current < 0.05) {
+        silenceFramesRef.current++
+        if (silenceFramesRef.current > 120) contemplatingRef.current = true // ~2s
+      } else { silenceFramesRef.current = 0; contemplatingRef.current = false }
+      const contemplate = contemplatingRef.current
 
-      // Dashed rings
+      // E8: tier flash decay
+      if (tierFlashRef.current > 0) tierFlashRef.current--
+
+      // 1. Guide rings
+      const ringDim = contemplate ? 0.4 : dim
+      ;[90, 70, 50].forEach(r => { ctx.beginPath(); ctx.arc(C, C, r, 0, TAU); ctx.strokeStyle = `rgba(0,180,216,${0.06 * ringDim * flashMult})`; ctx.lineWidth = 0.5; ctx.stroke() })
+
+      // E10: Ghost echo ring
+      if (voiceEchoRef.current && echoFade > 0) {
+        const levels = voiceEchoRef.current.levels || []
+        if (levels.length > 0) {
+          ctx.beginPath()
+          for (let i = 0; i < 64; i++) {
+            const angle = (i / 64) * TAU
+            const r = 45 + (levels[i % levels.length] || 0) * 10
+            const x = C + Math.cos(angle) * r, y = C + Math.sin(angle) * r
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+          }
+          ctx.closePath(); ctx.strokeStyle = `rgba(26,58,77,${0.06 * echoFade})`; ctx.lineWidth = 1; ctx.stroke()
+        }
+        if (voiceLevelRef.current > 0.1) echoFade = Math.max(0, echoFade - 0.016)
+      }
+
+      // 2. Dashed rings
+      const rSpd = contemplate ? spd * 0.2 : spd
       ctx.save(); ctx.translate(C, C)
-      ;[{ r: 88, s: t * 0.52 * spd, c: '#00b4d8', d: [8, 12], w: 1.2 },
-        { r: 72, s: -t * 0.78 * spd, c: '#d4a853', d: [5, 10], w: 0.8 },
-        { r: 55, s: t * 0.31 * spd, c: '#00b4d8', d: [3, 8], w: 0.6 }
-      ].forEach(ring => { ctx.beginPath(); ctx.setLineDash(ring.d); ctx.arc(0, 0, ring.r, ring.s, ring.s + TAU * 0.85); ctx.strokeStyle = ring.c + (active ? '60' : '30'); ctx.lineWidth = ring.w; ctx.stroke() })
+      ;[{ r: 88, s: t * 0.52 * rSpd, c: '#00b4d8', d: [8, 12], w: 1.2 },
+        { r: 72, s: -t * 0.78 * rSpd, c: '#d4a853', d: [5, 10], w: 0.8 },
+        { r: 55, s: t * 0.31 * rSpd, c: '#00b4d8', d: [3, 8], w: 0.6 }
+      ].forEach(ring => { ctx.beginPath(); ctx.setLineDash(ring.d); ctx.arc(0, 0, ring.r, ring.s, ring.s + TAU * 0.85); ctx.strokeStyle = ring.c + (active ? (tierFlashRef.current > 0 ? '90' : '60') : '30'); ctx.lineWidth = ring.w; ctx.stroke() })
       ctx.setLineDash([]); ctx.restore()
 
-      // Particles
-      ;[{ r: 80, s: t * 1.1, sz: 2, g: false }, { r: 65, s: -t * 0.7, sz: 1.5, g: true }, { r: 52, s: t * 1.5, sz: 2.5, g: false }].forEach(p => {
+      // 3. Orbiting particles
+      const pSpd = contemplate ? 0.2 : 1
+      ;[{ r: 80, s: t * 1.1 * pSpd, sz: 2, g: false }, { r: 65, s: -t * 0.7 * pSpd, sz: 1.5, g: true }, { r: 52, s: t * 1.5 * pSpd, sz: 2.5, g: false }].forEach(p => {
         ctx.beginPath(); ctx.arc(C + Math.cos(p.s) * p.r, C + Math.sin(p.s) * p.r, p.sz, 0, TAU)
         ctx.fillStyle = p.g ? `rgba(212,168,83,${0.6 * dim})` : `rgba(0,180,216,${0.5 * dim})`; ctx.shadowBlur = 4; ctx.shadowColor = p.g ? '#d4a853' : '#00b4d8'; ctx.fill(); ctx.shadowBlur = 0
       })
 
-      // Core
-      const pulse = 1 + Math.sin(t * 2.1) * 0.08
-      const og = ctx.createRadialGradient(C, C, 0, C, C, 24 * pulse)
-      og.addColorStop(0, gold ? 'rgba(212,168,83,0.3)' : 'rgba(0,180,216,0.3)'); og.addColorStop(1, 'transparent')
-      ctx.fillStyle = og; ctx.beginPath(); ctx.arc(C, C, 24 * pulse, 0, TAU); ctx.fill()
-      const ig = ctx.createRadialGradient(C, C, 0, C, C, 10 * pulse)
-      ig.addColorStop(0, 'rgba(212,168,83,0.8)'); ig.addColorStop(1, 'transparent')
-      ctx.fillStyle = ig; ctx.beginPath(); ctx.arc(C, C, 10 * pulse, 0, TAU); ctx.fill()
-      ctx.beginPath(); ctx.arc(C, C, 3, 0, TAU)
-      ctx.fillStyle = `rgba(255,255,255,${0.5 + Math.sin(t * 4.2) * 0.3})`; ctx.shadowBlur = 8; ctx.shadowColor = '#ffd080'; ctx.fill(); ctx.shadowBlur = 0
+      // E3: Word-burst particles
+      wordBurstRef.current = wordBurstRef.current.filter(p => {
+        p.x += p.vx; p.y += p.vy; p.life--
+        if (p.life <= 0) return false
+        const alpha = p.life / p.maxLife
+        ctx.beginPath(); ctx.arc(C + p.x, C + p.y, p.size, 0, TAU)
+        ctx.fillStyle = p.gold ? `rgba(212,168,83,${alpha * 0.7})` : `rgba(0,240,255,${alpha * 0.5})`
+        ctx.fill(); return true
+      })
 
-      // Waveform
+      // 4. Core (or E9 fragments if PROCESSING)
+      const pulse = contemplate ? 1 + Math.sin(t * 4.2) * 0.05 : 1 + Math.sin(t * 2.1) * 0.08
+      if (vs === 'PROCESSING' && fragmentsRef.current) {
+        // E9: Thinking fragments
+        fragmentsRef.current.active = true
+        fragmentsRef.current.frags.forEach((f, i) => {
+          f.angle += f.speed * 0.02; f.rOff = Math.min(8, f.rOff + 0.02); f.speed = Math.min(8, f.speed + 0.01)
+          const startA = f.angle, endA = f.angle + TAU / 5 * 0.8
+          ctx.beginPath(); ctx.arc(C, C, 22 + f.rOff, startA, endA)
+          ctx.strokeStyle = `rgba(212,168,83,${0.5 + f.rOff / 16})`; ctx.lineWidth = 2
+          ctx.shadowBlur = 4 + f.rOff; ctx.shadowColor = '#d4a853'; ctx.stroke(); ctx.shadowBlur = 0
+        })
+        ctx.beginPath(); ctx.arc(C, C, 3, 0, TAU)
+        ctx.fillStyle = `rgba(255,255,255,${0.6 + Math.sin(t * 12.6) * 0.4})`; ctx.fill()
+      } else {
+        // Reset fragments
+        if (fragmentsRef.current?.active) {
+          fragmentsRef.current.active = false
+          fragmentsRef.current.frags.forEach(f => { f.rOff = 0; f.speed = 2 })
+        }
+        // Normal core
+        const og = ctx.createRadialGradient(C, C, 0, C, C, 24 * pulse)
+        og.addColorStop(0, gold ? `rgba(212,168,83,${0.3 * flashMult})` : `rgba(0,180,216,${0.3 * flashMult})`); og.addColorStop(1, 'transparent')
+        ctx.fillStyle = og; ctx.beginPath(); ctx.arc(C, C, 24 * pulse, 0, TAU); ctx.fill()
+        const ig = ctx.createRadialGradient(C, C, 0, C, C, 10 * pulse)
+        ig.addColorStop(0, 'rgba(212,168,83,0.8)'); ig.addColorStop(1, 'transparent')
+        ctx.fillStyle = ig; ctx.beginPath(); ctx.arc(C, C, 10 * pulse, 0, TAU); ctx.fill()
+        ctx.beginPath(); ctx.arc(C, C, 3, 0, TAU)
+        ctx.fillStyle = `rgba(255,255,255,${0.5 + Math.sin(t * 4.2) * 0.3})`; ctx.shadowBlur = 8; ctx.shadowColor = '#ffd080'; ctx.fill(); ctx.shadowBlur = 0
+      }
+
+      // E1: Circular orbital waveform (replaces flat waveform)
       const vl = voiceLevelRef.current
+      const waveR = 35
       ctx.beginPath()
-      for (let i = 0; i <= 10; i++) {
-        const x = C - 60 + i * 12
-        const baseAmp = voice.voiceState === 'PROCESSING' ? 1 + Math.random() * 2 : 3 + Math.sin(t * 2 + i * 0.8) * 2
-        const y = C + Math.sin(t * 3 + i * 0.9) * (baseAmp + vl * 25)
+      for (let i = 0; i < 64; i++) {
+        const angle = (i / 64) * TAU
+        const baseAmp = vs === 'PROCESSING' ? 0.5 + Math.random() * 1 : 2 + Math.sin(t * 2 + i * 0.3) * 1.5
+        const amp = baseAmp + vl * 15
+        const r = waveR + Math.sin(angle * 4 + t * 3) * amp
+        const x = C + Math.cos(angle) * r, y = C + Math.sin(angle) * r
         i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
       }
-      ctx.strokeStyle = gold ? 'rgba(212,168,83,0.6)' : 'rgba(0,240,255,0.5)'; ctx.lineWidth = 1.5; ctx.stroke()
+      ctx.closePath()
+      ctx.strokeStyle = gold ? 'rgba(212,168,83,0.5)' : 'rgba(0,240,255,0.4)'
+      ctx.lineWidth = 1.5; ctx.shadowBlur = 6; ctx.shadowColor = gold ? '#d4a853' : '#00f0ff'; ctx.stroke(); ctx.shadowBlur = 0
+
+      // E7: Light traces
+      lightTracesRef.current = lightTracesRef.current.filter(tr => {
+        tr.progress += 0.025
+        if (tr.progress >= 1 && !tr.persistent) { tr.persistent = true; return true }
+        if (tr.persistent) {
+          // Faint persistent line from core downward
+          ctx.beginPath(); ctx.moveTo(C, C); ctx.lineTo(tr.role === 'user' ? S - 40 : 40, S - 30)
+          ctx.strokeStyle = `rgba(0,180,216,0.03)`; ctx.lineWidth = 0.5; ctx.stroke()
+          return lightTracesRef.current.filter(x => x.persistent).length <= 10
+        }
+        const p = tr.progress
+        const endX = tr.role === 'user' ? S - 40 : 40, endY = S - 30
+        const cx = C + (endX - C) * p, cy = C + (endY - C) * p
+        ctx.beginPath(); ctx.arc(cx, cy, 3, 0, TAU)
+        ctx.fillStyle = tr.color; ctx.shadowBlur = 6; ctx.shadowColor = tr.color; ctx.fill(); ctx.shadowBlur = 0
+        return true
+      })
+
+      // E6: Energy arc
+      if (energyArcRef.current.length > 1) {
+        ctx.beginPath()
+        energyArcRef.current.forEach((pt, i) => {
+          const x = 20 + (i / Math.max(1, energyArcRef.current.length - 1)) * (S - 40)
+          const y = S - 15 - pt.energy * 25
+          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+        })
+        ctx.strokeStyle = 'rgba(0,180,216,0.3)'; ctx.lineWidth = 1; ctx.stroke()
+        ctx.font = '8px "Share Tech Mono"'; ctx.fillStyle = '#2a4a60'; ctx.fillText('ENERGY', 5, S - 5)
+      }
 
       // Mouse glow
       const mx = mouseRef.current.x, my = mouseRef.current.y
       const mg = ctx.createRadialGradient(mx, my, 0, mx, my, 40)
       mg.addColorStop(0, 'rgba(0,240,255,0.04)'); mg.addColorStop(1, 'transparent')
       ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(mx, my, 40, 0, TAU); ctx.fill()
+
+      // E5: Contemplation ghost text
+      if (contemplate && silenceFramesRef.current > 180) {
+        const textAlpha = Math.min(0.4, (silenceFramesRef.current - 180) / 60 * 0.4)
+        ctx.font = '11px "Share Tech Mono"'; ctx.fillStyle = `rgba(42,74,96,${textAlpha})`
+        ctx.textAlign = 'center'; ctx.fillText('Take your time, Sir.', C, C + 50); ctx.textAlign = 'start'
+      }
 
       animRef.current = requestAnimationFrame(draw)
     }
@@ -173,6 +321,16 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
       canvas.removeEventListener('pointermove', handleMouse)
       if (audioStreamRef.current) audioStreamRef.current.getTracks().forEach(t => t.stop())
       voice.stopListening(); voice.stopSpeaking()
+      // E10: save voice echo for next session
+      if (voiceSamplesRef.current.length > 0) {
+        try {
+          localStorage.setItem('jos-voice-echo', JSON.stringify({
+            levels: voiceSamplesRef.current.slice(-64),
+            timestamp: new Date().toISOString(),
+            messageCount: messages.length,
+          }))
+        } catch { /* ok */ }
+      }
     }
   }, [])
 
