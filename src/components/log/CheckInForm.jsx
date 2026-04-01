@@ -106,27 +106,13 @@ export default function CheckInForm() {
   })
 
   // Load today's check-in if exists
-  useEffect(() => {
-    const feelings = get('feelings') || []
-    const todayEntry = feelings.find(f => f.date === today)
-    if (todayEntry) {
-      setForm(prev => ({ ...prev, ...todayEntry }))
-    }
-  }, [get, today])
 
   // Load existing debrief for today
-  useEffect(() => {
-    const weekly = get('weekly') || {}
-    const debriefs = weekly.debriefs || []
-    const todayDebrief = debriefs.find(w => w.date === today && w.type === 'daily-debrief')
-    if (todayDebrief) setDebrief(todayDebrief)
-  }, [get, today])
-
   const updateField = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }))
   }
-
   // WHY: Generate daily debrief via Opus API after check-in save
+
   const generateDebrief = useCallback(async () => {
     setDebriefing(true)
     try {
@@ -195,6 +181,22 @@ Tone: JARVIS formal British, call him Sir. Keep under 150 words. No markdown.`
       setDebriefing(false)
     }
   }, [get, update, today, tts])
+
+  useEffect(() => {
+    const feelings = get('feelings') || []
+    const todayEntry = feelings.find(f => f.date === today)
+    if (todayEntry) {
+      setForm(prev => ({ ...prev, ...todayEntry }))
+    }
+  }, [get, today])
+
+  useEffect(() => {
+    const weekly = get('weekly') || {}
+    const debriefs = weekly.debriefs || []
+    const todayDebrief = debriefs.find(w => w.date === today && w.type === 'daily-debrief')
+    if (todayDebrief) setDebrief(todayDebrief)
+  }, [get, today])
+
 
   const handleSave = () => {
     const entry = {

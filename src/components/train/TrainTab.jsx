@@ -32,33 +32,17 @@ export default function TrainTab({ weekNumber, requestedMode, onModeOpened }) {
   const antiCrutch = getAntiCrutchLevel(weekNumber)
 
   // External navigation request (from GlobalMic / voice command)
-  useEffect(() => {
-    if (requestedMode) {
-      setActiveMode(requestedMode)
-      setAutoMic(true)
-      onModeOpened?.()
-    }
-  }, [requestedMode, onModeOpened])
 
   // Listen for jarvis-open-mode events (from GlobalMic)
-  useEffect(() => {
-    const handler = (e) => {
-      const modeId = e.detail?.mode || 'chat'
-      setActiveMode(modeId)
-      setAutoMic(true)
-    }
-    window.addEventListener('jarvis-open-mode', handler)
-    return () => window.removeEventListener('jarvis-open-mode', handler)
-  }, [])
+  // WHY: Auto-quiz trigger — find concepts that need urgent review.
+  // Criteria: strength < 60% OR overdue for spaced repetition.
+  // Show max 2, sorted by urgency (most overdue first).
 
   const handleModeSwitch = useCallback((modeId) => {
     setActiveMode(modeId)
     setAutoMic(true)
   }, [])
 
-  // WHY: Auto-quiz trigger — find concepts that need urgent review.
-  // Criteria: strength < 60% OR overdue for spaced repetition.
-  // Show max 2, sorted by urgency (most overdue first).
   const overdueAlerts = useMemo(() => {
     const savedConcepts = get('concepts') || []
     const alerts = []
@@ -88,6 +72,25 @@ export default function TrainTab({ weekNumber, requestedMode, onModeOpened }) {
 
     return alerts.slice(0, 2)
   }, [get])
+
+  useEffect(() => {
+    if (requestedMode) {
+      setActiveMode(requestedMode)
+      setAutoMic(true)
+      onModeOpened?.()
+    }
+  }, [requestedMode, onModeOpened])
+
+  useEffect(() => {
+    const handler = (e) => {
+      const modeId = e.detail?.mode || 'chat'
+      setActiveMode(modeId)
+      setAutoMic(true)
+    }
+    window.addEventListener('jarvis-open-mode', handler)
+    return () => window.removeEventListener('jarvis-open-mode', handler)
+  }, [])
+
 
   // Body Double mode has its own special UI
   if (activeMode === 'body-double') {

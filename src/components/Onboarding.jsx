@@ -87,29 +87,9 @@ export default function Onboarding({ onComplete }) {
   const globalQuestionNum = useRef(0)
 
   // Cleanup
-  useEffect(() => {
-    return () => {
-      if (typewriterRef.current) clearInterval(typewriterRef.current)
-      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
-      voice.stopListening()
-      voice.stopSpeaking()
-    }
-  }, [])
 
   // Listen for voice send events
-  useEffect(() => {
-    const onSend = (e) => {
-      if (phase === 'listening') handleAnswer(e.detail.text)
-    }
-    window.addEventListener('jarvis-voice-send', onSend)
-    return () => window.removeEventListener('jarvis-voice-send', onSend)
-  }, [phase, sectionIdx, questionIdx])
-
   // Start intro after mount
-  useEffect(() => {
-    const timer = setTimeout(() => startIntro(), 800)
-    return () => clearTimeout(timer)
-  }, [])
 
   const typeText = useCallback((text, onDone) => {
     if (typewriterRef.current) clearInterval(typewriterRef.current)
@@ -318,6 +298,29 @@ Structure:
     await speakElevenLabs(msg)
     setTimeout(() => onComplete(), 3000)
   }, [onComplete, typeText])
+
+  useEffect(() => {
+    return () => {
+      if (typewriterRef.current) clearInterval(typewriterRef.current)
+      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
+      voice.stopListening()
+      voice.stopSpeaking()
+    }
+  }, [])
+
+  useEffect(() => {
+    const onSend = (e) => {
+      if (phase === 'listening') handleAnswer(e.detail.text)
+    }
+    window.addEventListener('jarvis-voice-send', onSend)
+    return () => window.removeEventListener('jarvis-voice-send', onSend)
+  }, [phase, sectionIdx, questionIdx])
+
+  useEffect(() => {
+    const timer = setTimeout(() => startIntro(), 800)
+    return () => clearTimeout(timer)
+  }, [])
+
 
   // Calculate progress
   let questionsSoFar = 0

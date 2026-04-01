@@ -30,62 +30,11 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
   const currentMode = MODES.find(m => m.id === currentModeId) || MODES[0]
 
   // Load history
-  useEffect(() => {
-    setMessages((get(`msgs-${currentModeId}`) || []).slice(-10))
-  }, [currentModeId, get])
 
   // Auto-scroll
-  useEffect(() => {
-    transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
-
   // Cleanup
-  useEffect(() => {
-    return () => {
-      voice.stopListening()
-      voice.stopSpeaking()
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
-      if (audioStreamRef.current) audioStreamRef.current.getTracks().forEach(t => t.stop())
-    }
-  }, [])
-
   // Auto-start listening + setup analyser
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        audioStreamRef.current = stream
-        try {
-          const ctx = new (window.AudioContext || window.webkitAudioContext)()
-          const source = ctx.createMediaStreamSource(stream)
-          const analyser = ctx.createAnalyser()
-          analyser.fftSize = 256
-          source.connect(analyser)
-          analyserRef.current = analyser
-          const dataArray = new Uint8Array(analyser.frequencyBinCount)
-          const tick = () => {
-            analyser.getByteFrequencyData(dataArray)
-            setVoiceLevel(dataArray.reduce((a, b) => a + b, 0) / dataArray.length / 255)
-            animFrameRef.current = requestAnimationFrame(tick)
-          }
-          tick()
-        } catch { /* ok */ }
-      }).catch(() => {})
-      voice.startListening()
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [])
-
   // Listen for voice events
-  useEffect(() => {
-    const onSend = (e) => handleSend(e.detail.text)
-    const onInterrupt = (e) => handleSend(e.detail.text) // interrupted speech → treat as new input
-    window.addEventListener('jarvis-voice-send', onSend)
-    window.addEventListener('jarvis-voice-interrupt', onInterrupt)
-    return () => {
-      window.removeEventListener('jarvis-voice-send', onSend)
-      window.removeEventListener('jarvis-voice-interrupt', onInterrupt)
-    }
-  }, [])
 
   const handleSend = useCallback(async (text) => {
     const trimmed = text?.trim()
@@ -122,6 +71,60 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
       }
     } catch (err) { console.error('[VoiceMode] Send failed:', err) }
   }, [sendMessage, currentModeId, weekNumber, play, voice, checkIn, onClose])
+
+  useEffect(() => {
+    setMessages((get(`msgs-${currentModeId}`) || []).slice(-10))
+  }, [currentModeId, get])
+
+  useEffect(() => {
+    transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  useEffect(() => {
+    return () => {
+      voice.stopListening()
+      voice.stopSpeaking()
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
+      if (audioStreamRef.current) audioStreamRef.current.getTracks().forEach(t => t.stop())
+    }
+  }, [])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        audioStreamRef.current = stream
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)()
+          const source = ctx.createMediaStreamSource(stream)
+          const analyser = ctx.createAnalyser()
+          analyser.fftSize = 256
+          source.connect(analyser)
+          analyserRef.current = analyser
+          const dataArray = new Uint8Array(analyser.frequencyBinCount)
+          const tick = () => {
+            analyser.getByteFrequencyData(dataArray)
+            setVoiceLevel(dataArray.reduce((a, b) => a + b, 0) / dataArray.length / 255)
+            animFrameRef.current = requestAnimationFrame(tick)
+          }
+          tick()
+        } catch { /* ok */ }
+      }).catch(() => {})
+      voice.startListening()
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    const onSend = (e) => handleSend(e.detail.text)
+    const onInterrupt = (e) => handleSend(e.detail.text) // interrupted speech → treat as new input
+    window.addEventListener('jarvis-voice-send', onSend)
+    window.addEventListener('jarvis-voice-interrupt', onInterrupt)
+    return () => {
+      window.removeEventListener('jarvis-voice-send', onSend)
+      window.removeEventListener('jarvis-voice-interrupt', onInterrupt)
+    }
+  }, [])
+
 
   const handleCircleTap = () => {
     if (voice.voiceState === 'SPEAKING') voice.stopSpeaking()

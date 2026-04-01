@@ -5,9 +5,8 @@ import { useEffect, useMemo } from 'react'
 
 export default function useComeback() {
   // Save today as last session date
-  useEffect(() => {
-    localStorage.setItem('jos-last-session-date', new Date().toISOString().split('T')[0])
-  }, [])
+
+  // Set comeback mode in core if needed
 
   const comebackState = useMemo(() => {
     try {
@@ -33,7 +32,10 @@ export default function useComeback() {
     } catch { return { type: 'normal', daysSince: 0 } }
   }, [])
 
-  // Set comeback mode in core if needed
+  useEffect(() => {
+    localStorage.setItem('jos-last-session-date', new Date().toISOString().split('T')[0])
+  }, [])
+
   useEffect(() => {
     if (comebackState.reducedTargets) {
       try {
@@ -43,6 +45,7 @@ export default function useComeback() {
       } catch { /* ok */ }
     }
   }, [comebackState])
+
 
   return comebackState
 }

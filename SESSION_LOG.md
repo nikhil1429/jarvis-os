@@ -4,6 +4,18 @@
 
 ---
 
+### Session 39 — Fix All Hoisting Crashes (2026-04-01)
+
+**Reordered useCallback/useMemo above useEffect in 11 files. Boot.jsx dead Three.js code caused duplicate symbols — restored and kept original.**
+
+**Files auto-fixed (11):** DnaTab.jsx, CheckInForm.jsx, Onboarding.jsx, QuickVoiceOverlay.jsx, BattleRoyale.jsx, BodyDoubleTimer.jsx, ChatView.jsx, TrainTab.jsx, VoiceMode.jsx, useComeback.js + Boot.jsx (restored after duplicate symbol error from dead Three.js code)
+
+**Verification:** Custom Node.js scanner checks all `useEffect` dependency arrays for references to hooks defined later. Result: **PASS — 0 dependency hoisting issues.**
+
+**Build: 0 errors**
+
+---
+
 ### Session 38 — Vercel Deploy: JARVIS Goes LIVE (2026-04-01)
 
 **Deploy infrastructure ready. JARVIS goes to production.**

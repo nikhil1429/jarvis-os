@@ -33,62 +33,17 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
   const inputRef = useRef(null)
 
   // Scroll on new messages
-  useEffect(() => {
-    setTimeout(() => {
-      const c = messagesContainerRef.current
-      if (c) c.scrollTop = c.scrollHeight
-    }, 100)
-  }, [messages, streamingText])
 
   // Load history + mode events
-  useEffect(() => {
-    const history = get(`msgs-${mode.id}`) || []
-    setMessages(history)
-    modeEnterTime.current = Date.now()
-    eventBus.emit('mode:enter', { mode: mode.id })
-    return () => {
-      const dur = Math.round((Date.now() - modeEnterTime.current) / 1000)
-      eventBus.emit('mode:exit', { mode: mode.id, durationSeconds: dur })
-      voice.stopListening()
-      voice.stopSpeaking()
-    }
-  }, [mode.id])
-
   // Auto-mic on mount
-  useEffect(() => {
-    inputRef.current?.focus()
-    if (autoMic) setTimeout(() => voice.startListening(), 400)
-  }, [])
-
   // External mic activation (from GlobalMic)
-  useEffect(() => {
-    const h = () => { if (voice.voiceState === 'IDLE') voice.startListening() }
-    window.addEventListener('jarvis-activate-mic', h)
-    return () => window.removeEventListener('jarvis-activate-mic', h)
-  }, [voice.voiceState])
-
   // Listen for voice hook events
-  useEffect(() => {
-    const onSend = (e) => handleSendDirect(e.detail.text)
-    const onInterrupt = (e) => {
-      setInput(e.detail.text)
-      // Silence timer already started by hook, will fire jarvis-voice-send
-    }
-    const onInterim = (e) => setInput(e.detail.text)
-
-    window.addEventListener('jarvis-voice-send', onSend)
-    window.addEventListener('jarvis-voice-interrupt', onInterrupt)
-    window.addEventListener('jarvis-voice-interim', onInterim)
-    return () => {
-      window.removeEventListener('jarvis-voice-send', onSend)
-      window.removeEventListener('jarvis-voice-interrupt', onInterrupt)
-      window.removeEventListener('jarvis-voice-interim', onInterim)
-    }
-  }, [])
-
   // ============================================================
   // SEND
   // ============================================================
+  // Typed send
+  // Mic button
+
   const handleSendDirect = useCallback(async (text) => {
     const trimmed = text?.trim()
     if (!trimmed) return
@@ -175,7 +130,6 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
     }
   }, [sendMessage, mode.id, weekNumber, play, voice, checkIn, onModeSwitch, stopThinking, startThinking])
 
-  // Typed send
   const handleSend = useCallback(() => {
     const text = input.trim()
     if (!text || isStreaming) return
@@ -184,7 +138,6 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
     handleSendDirect(text)
   }, [input, isStreaming, voice, handleSendDirect])
 
-  // Mic button
   const handleMicClick = useCallback(() => {
     if (voice.voiceState === 'SPEAKING') {
       voice.stopSpeaking()
@@ -201,6 +154,56 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
       voice.startListening()
     }
   }, [voice, input])
+
+  useEffect(() => {
+    setTimeout(() => {
+      const c = messagesContainerRef.current
+      if (c) c.scrollTop = c.scrollHeight
+    }, 100)
+  }, [messages, streamingText])
+
+  useEffect(() => {
+    const history = get(`msgs-${mode.id}`) || []
+    setMessages(history)
+    modeEnterTime.current = Date.now()
+    eventBus.emit('mode:enter', { mode: mode.id })
+    return () => {
+      const dur = Math.round((Date.now() - modeEnterTime.current) / 1000)
+      eventBus.emit('mode:exit', { mode: mode.id, durationSeconds: dur })
+      voice.stopListening()
+      voice.stopSpeaking()
+    }
+  }, [mode.id])
+
+  useEffect(() => {
+    inputRef.current?.focus()
+    if (autoMic) setTimeout(() => voice.startListening(), 400)
+  }, [])
+
+  useEffect(() => {
+    const h = () => { if (voice.voiceState === 'IDLE') voice.startListening() }
+    window.addEventListener('jarvis-activate-mic', h)
+    return () => window.removeEventListener('jarvis-activate-mic', h)
+  }, [voice.voiceState])
+
+  useEffect(() => {
+    const onSend = (e) => handleSendDirect(e.detail.text)
+    const onInterrupt = (e) => {
+      setInput(e.detail.text)
+      // Silence timer already started by hook, will fire jarvis-voice-send
+    }
+    const onInterim = (e) => setInput(e.detail.text)
+
+    window.addEventListener('jarvis-voice-send', onSend)
+    window.addEventListener('jarvis-voice-interrupt', onInterrupt)
+    window.addEventListener('jarvis-voice-interim', onInterim)
+    return () => {
+      window.removeEventListener('jarvis-voice-send', onSend)
+      window.removeEventListener('jarvis-voice-interrupt', onInterrupt)
+      window.removeEventListener('jarvis-voice-interim', onInterim)
+    }
+  }, [])
+
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }

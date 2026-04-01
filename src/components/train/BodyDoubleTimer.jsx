@@ -49,29 +49,9 @@ export default function BodyDoubleTimer() {
   const messagesEndRef = useRef(null)
 
   // Auto-scroll messages
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
 
   // Listen for voice send events
-  useEffect(() => {
-    const onSend = (e) => { if (isRunning) handleChat(e.detail.text) }
-    const onInterim = (e) => setInput(e.detail.text)
-    window.addEventListener('jarvis-voice-send', onSend)
-    window.addEventListener('jarvis-voice-interim', onInterim)
-    return () => {
-      window.removeEventListener('jarvis-voice-send', onSend)
-      window.removeEventListener('jarvis-voice-interim', onInterim)
-    }
-  }, [isRunning, handleChat])
-
   // Cleanup
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
-      if (ghostRef.current) clearInterval(ghostRef.current)
-    }
-  }, [])
 
   const addMessage = useCallback((role, content) => {
     setMessages(prev => [...prev, { role, content, timestamp: new Date().toISOString() }])
@@ -162,6 +142,29 @@ export default function BodyDoubleTimer() {
     else if (voice.voiceState === 'LISTENING') voice.stopListening()
     else voice.startListening()
   }, [voice])
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  useEffect(() => {
+    const onSend = (e) => { if (isRunning) handleChat(e.detail.text) }
+    const onInterim = (e) => setInput(e.detail.text)
+    window.addEventListener('jarvis-voice-send', onSend)
+    window.addEventListener('jarvis-voice-interim', onInterim)
+    return () => {
+      window.removeEventListener('jarvis-voice-send', onSend)
+      window.removeEventListener('jarvis-voice-interim', onInterim)
+    }
+  }, [isRunning, handleChat])
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+      if (ghostRef.current) clearInterval(ghostRef.current)
+    }
+  }, [])
+
 
   const timerColor = isRunning ? getTimerColor(remaining, duration * 60) : '#00f0ff'
 

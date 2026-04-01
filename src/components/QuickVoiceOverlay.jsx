@@ -20,44 +20,11 @@ export default function QuickVoiceOverlay({ onClose }) {
   const autoHideTimerRef = useRef(null)
 
   // Slide in
-  useEffect(() => { requestAnimationFrame(() => setVisible(true)) }, [])
 
   // Cleanup
-  useEffect(() => {
-    return () => {
-      if (autoHideTimerRef.current) clearTimeout(autoHideTimerRef.current)
-      voice.stopListening()
-      voice.stopSpeaking()
-      stopThinking()
-    }
-  }, [stopThinking])
-
   // Auto-hide 8s after IDLE with messages
-  useEffect(() => {
-    if (autoHideTimerRef.current) clearTimeout(autoHideTimerRef.current)
-    if (voice.voiceState === 'IDLE' && messages.length > 0) {
-      autoHideTimerRef.current = setTimeout(() => handleClose(), 8000)
-    }
-    return () => { if (autoHideTimerRef.current) clearTimeout(autoHideTimerRef.current) }
-  }, [voice.voiceState, messages.length])
-
   // Auto-start listening
-  useEffect(() => {
-    const t = setTimeout(() => voice.startListening(), 200)
-    return () => clearTimeout(t)
-  }, [])
-
   // Listen for voice events
-  useEffect(() => {
-    const onSend = (e) => handleSend(e.detail.text)
-    const onInterrupt = (e) => handleSend(e.detail.text)
-    window.addEventListener('jarvis-voice-send', onSend)
-    window.addEventListener('jarvis-voice-interrupt', onInterrupt)
-    return () => {
-      window.removeEventListener('jarvis-voice-send', onSend)
-      window.removeEventListener('jarvis-voice-interrupt', onInterrupt)
-    }
-  }, [])
 
   const handleClose = useCallback(() => {
     voice.stopSpeaking()
@@ -105,6 +72,43 @@ export default function QuickVoiceOverlay({ onClose }) {
       stopTick(); stopThinking()
     }
   }, [sendMessage, voice, checkIn, handleClose, startThinking, stopThinking])
+
+  useEffect(() => { requestAnimationFrame(() => setVisible(true)) }, [])
+
+
+  useEffect(() => {
+    return () => {
+      if (autoHideTimerRef.current) clearTimeout(autoHideTimerRef.current)
+      voice.stopListening()
+      voice.stopSpeaking()
+      stopThinking()
+    }
+  }, [stopThinking])
+
+  useEffect(() => {
+    if (autoHideTimerRef.current) clearTimeout(autoHideTimerRef.current)
+    if (voice.voiceState === 'IDLE' && messages.length > 0) {
+      autoHideTimerRef.current = setTimeout(() => handleClose(), 8000)
+    }
+    return () => { if (autoHideTimerRef.current) clearTimeout(autoHideTimerRef.current) }
+  }, [voice.voiceState, messages.length])
+
+  useEffect(() => {
+    const t = setTimeout(() => voice.startListening(), 200)
+    return () => clearTimeout(t)
+  }, [])
+
+  useEffect(() => {
+    const onSend = (e) => handleSend(e.detail.text)
+    const onInterrupt = (e) => handleSend(e.detail.text)
+    window.addEventListener('jarvis-voice-send', onSend)
+    window.addEventListener('jarvis-voice-interrupt', onInterrupt)
+    return () => {
+      window.removeEventListener('jarvis-voice-send', onSend)
+      window.removeEventListener('jarvis-voice-interrupt', onInterrupt)
+    }
+  }, [])
+
 
   const vs = voice.voiceState
   const stateDisplay = {

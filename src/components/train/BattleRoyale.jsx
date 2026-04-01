@@ -23,18 +23,7 @@ export default function BattleRoyale({ onClose }) {
   const [results, setResults] = useState([]) // per-round results
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    const saved = get('concepts') || []
-    const sorted = CONCEPTS.map(c => {
-      const s = saved.find(x => x.id === c.id)
-      return { ...c, strength: s?.strength || 0 }
-    }).sort((a, b) => a.strength - b.strength).slice(0, 5)
-    setWeakest(sorted)
 
-    const onSend = (e) => setAnswer(e.detail.text)
-    window.addEventListener('jarvis-voice-send', onSend)
-    return () => window.removeEventListener('jarvis-voice-send', onSend)
-  }, [get])
 
   const startRound = useCallback(async (idx) => {
     setRound(idx)
@@ -88,6 +77,20 @@ export default function BattleRoyale({ onClose }) {
       }
     }
   }, [answer, currentQ, questions, round, weakest, results, voice])
+
+  useEffect(() => {
+    const saved = get('concepts') || []
+    const sorted = CONCEPTS.map(c => {
+      const s = saved.find(x => x.id === c.id)
+      return { ...c, strength: s?.strength || 0 }
+    }).sort((a, b) => a.strength - b.strength).slice(0, 5)
+    setWeakest(sorted)
+
+    const onSend = (e) => setAnswer(e.detail.text)
+    window.addEventListener('jarvis-voice-send', onSend)
+    return () => window.removeEventListener('jarvis-voice-send', onSend)
+  }, [get])
+
 
   const diffColor = { EASY: '#22c55e', MEDIUM: '#d4a853', HARD: '#ef4444' }
 

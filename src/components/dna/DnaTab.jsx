@@ -29,23 +29,22 @@ export default function DnaTab() {
   const [refreshKey, setRefreshKey] = useState(0)
 
   // Live update when quiz scores change concepts
-  useEffect(() => {
-    const unsub = eventBus.subscribe('quiz:score', () => setRefreshKey(k => k + 1))
-    return () => unsub?.()
-  }, [eventBus])
+
   const [search, setSearch] = useState('')
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('jos-dna-view') || 'list')
   const [activeCategory, setActiveCategory] = useState('All')
-
   // Load saved concept data from localStorage
   const savedConcepts = get('concepts') || []
-
   // Merge static concept data with saved user data
+  // Handle concept update — merge into jos-concepts
+  // Filter and sort concepts
+  // Count overdue concepts
+  // Count per category
+
   const getSavedData = useCallback((conceptId) => {
     return savedConcepts.find(c => c.id === conceptId) || null
   }, [savedConcepts])
 
-  // Handle concept update — merge into jos-concepts
   const handleUpdate = useCallback((conceptId, updates) => {
     update('concepts', prev => {
       const existing = prev || []
@@ -65,7 +64,6 @@ export default function DnaTab() {
     })
   }, [update])
 
-  // Filter and sort concepts
   const filteredConcepts = useMemo(() => {
     let filtered = CONCEPTS
 
@@ -101,7 +99,6 @@ export default function DnaTab() {
     })
   }, [activeCategory, search, getSavedData])
 
-  // Count overdue concepts
   const overdueCount = useMemo(() => {
     return CONCEPTS.filter(c => {
       const saved = getSavedData(c.id)
@@ -109,7 +106,6 @@ export default function DnaTab() {
     }).length
   }, [getSavedData])
 
-  // Count per category
   const categoryCounts = useMemo(() => {
     const counts = { All: CONCEPTS.length }
     CATEGORIES.slice(1).forEach(cat => {
@@ -117,6 +113,12 @@ export default function DnaTab() {
     })
     return counts
   }, [])
+
+  useEffect(() => {
+    const unsub = eventBus.subscribe('quiz:score', () => setRefreshKey(k => k + 1))
+    return () => unsub?.()
+  }, [eventBus])
+
 
   return (
     <div className="max-w-2xl mx-auto">
