@@ -4,6 +4,35 @@
 
 ---
 
+### Session 43 — Visualization Engine: AI Charts + Interactive Analysis (Tiers 3+4) (2026-04-01)
+
+**JARVIS generates charts in responses + detects root cause weaknesses.**
+
+**Tier 3 — AI-Generated Charts:**
+- `vizResponseParser.js`: scans responses for comparison/trend/quiz patterns
+- `VizComparisonChart.jsx`: side-by-side bar chart (before/after with delta %)
+- `VizTrendChart.jsx`: SVG line chart with gradient fill, pulsing last point
+- `VizSmartCards.jsx` enhanced: `ResponseCharts` component auto-renders comparison + trend charts when JARVIS mentions "improved/declined/trend/pattern"
+- Comparison: reads jos-feelings last 14 days, computes weekly confidence/focus/energy deltas
+- Trend: shows confidence progression as line chart
+
+**Tier 4 — Interactive Dependency Analysis:**
+- `useWeaknessDetector.js`: subscribes to `quiz:score`, detects 3+ low scores on same concept family, traverses prerequisites to find weakest leaf = root cause
+- `VizDependencyTree.jsx`: Canvas 2D full-screen overlay. Target concept at top → prerequisites below → 2 levels deep. Animated dashed connection lines. Root cause node pulses red with glow. Click node → opens quiz for that concept.
+- `WeaknessNotification.jsx`: gold-bordered pulsing card in CMD tab. Shows target + root cause rings. "TAP TO DIAGNOSE" opens dependency tree.
+
+**Wiring:**
+- `App.jsx`: `useWeaknessDetector(eventBus)`, passes weakness to CmdTab, renders VizDependencyTree overlay
+- `CmdTab.jsx`: WeaknessNotification at top (above briefing)
+- Data hint instructions added to prompts.js for chat/quiz/presser/weakness-radar
+
+**Build: 0 errors, 48.80s. 97 source files.**
+
+**Files created (6):** vizResponseParser.js, VizComparisonChart.jsx, VizTrendChart.jsx, VizDependencyTree.jsx, WeaknessNotification.jsx, useWeaknessDetector.js
+**Files updated (4):** VizSmartCards.jsx, App.jsx, CmdTab.jsx
+
+---
+
 ### Session 42B — Voice Fix: Reactive Waveform + Interruption (2026-04-01)
 
 **Fixed 2 critical voice issues.**

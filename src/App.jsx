@@ -36,7 +36,9 @@ import ShutdownSequence from './components/ShutdownSequence.jsx'
 import CommandLine from './components/CommandLine.jsx'
 import useComeback from './hooks/useComeback.js'
 import useVizEngine from './hooks/useVizEngine.js'
+import useWeaknessDetector from './hooks/useWeaknessDetector.js'
 import DashboardOverlay from './components/viz/DashboardOverlay.jsx'
+import VizDependencyTree from './components/viz/VizDependencyTree.jsx'
 import { getDayNumber, getWeekNumber } from './utils/dateUtils.js'
 import { speakElevenLabs } from './utils/elevenLabsSpeak.js'
 // smartVoiceRouter removed — always ElevenLabs
@@ -122,6 +124,8 @@ function App() {
 
   const comebackState = useComeback()
   const { dashboard, showDashboard, closeDashboard } = useVizEngine(eventBus)
+  const { weakness, dismissWeakness } = useWeaknessDetector(eventBus)
+  const [showDepTree, setShowDepTree] = useState(false)
   useStreak(eventBus)
   useAchievements()
   useNotifications()
@@ -353,6 +357,9 @@ function App() {
             onToggleTask={handleToggleTask}
             pulse={pulse}
             onDismissPulse={dismissPulse}
+            weakness={weakness}
+            onWeaknessTap={() => setShowDepTree(true)}
+            onWeaknessDismiss={dismissWeakness}
           />
         )
       case 'train':
@@ -418,6 +425,11 @@ function App() {
 
       {/* Viz Dashboard Overlay */}
       {dashboard && <DashboardOverlay type={dashboard.type} onClose={closeDashboard} />}
+
+      {/* Dependency Tree */}
+      {showDepTree && weakness && (
+        <VizDependencyTree rootConcept={weakness.concept} onQuizConcept={() => { setShowDepTree(false); setActiveTab('train') }} onClose={() => setShowDepTree(false)} />
+      )}
 
       {/* Shutdown Sequence */}
       {showShutdown && <ShutdownSequence />}

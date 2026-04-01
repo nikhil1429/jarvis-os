@@ -3,8 +3,11 @@ import { useMemo } from 'react'
 import VizConceptRing from './VizConceptRing.jsx'
 import VizSparkline from './VizSparkline.jsx'
 import VizBlocker from './VizBlocker.jsx'
+import VizComparisonChart from './VizComparisonChart.jsx'
+import VizTrendChart from './VizTrendChart.jsx'
 import CONCEPTS from '../../data/concepts.js'
 import { extractQuizScores } from '../../utils/quizScoring.js'
+import { parseResponseForViz } from '../../utils/vizResponseParser.js'
 
 export default function VizSmartCards({ response, mode }) {
   const vizData = useMemo(() => {
@@ -62,6 +65,37 @@ export default function VizSmartCards({ response, mode }) {
       {vizData.some(d => d.blocker) && vizData.filter(d => d.blocker).map((d, i) => (
         <VizBlocker key={`b${i}`} blocked={d.blocker.blockedName} blocker={d.blocker.name} blockedStrength={d.blocker.blockedStrength} blockerStrength={d.blocker.strength} />
       ))}
+      <ResponseCharts response={response} mode={mode} />
+    </div>
+  )
+}
+
+// Tier 3: AI-generated charts from response patterns
+function ResponseCharts({ response, mode }) {
+  const viz = parseResponseForViz(response, mode)
+  if (viz.length === 0) return null
+
+  let compData = null, trendData = null
+  try {
+    const feelings = JSON.parse(localStorage.getItem('jos-feelings') || '[]')
+    if (viz.some(v => v.type === 'comparison') && feelings.length >= 7) {
+      const thisWeek = feelings.slice(-7), lastWeek = feelings.slice(-14, -7)
+      const avg = (arr, key) => arr.length ? arr.reduce((s, f) => s + (f[key] || 0), 0) / arr.length : 0
+      compData = [
+        { label: 'Conf', before: Math.round(avg(lastWeek, 'confidence') * 10) / 10, after: Math.round(avg(thisWeek, 'confidence') * 10) / 10 },
+        { label: 'Focus', before: Math.round(avg(lastWeek, 'focus') * 10) / 10, after: Math.round(avg(thisWeek, 'focus') * 10) / 10 },
+        { label: 'Energy', before: Math.round(avg(lastWeek, 'energy') * 10) / 10, after: Math.round(avg(thisWeek, 'energy') * 10) / 10 },
+      ]
+    }
+    if (viz.some(v => v.type === 'trend') && feelings.length >= 3) {
+      trendData = feelings.slice(-7).map(f => f.confidence || 3)
+    }
+  } catch { /* ok */ }
+
+  return (
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {compData && <VizComparisonChart data={compData} />}
+      {trendData && <VizTrendChart data={trendData} label="CONFIDENCE TREND" />}
     </div>
   )
 }

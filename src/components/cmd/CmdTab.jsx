@@ -10,6 +10,7 @@ import DailyBuildLog from './DailyBuildLog.jsx'
 import Briefing from './Briefing.jsx'
 import SecondBrain from './SecondBrain.jsx'
 import TimeCapsule from '../reports/TimeCapsule.jsx'
+import WeaknessNotification from '../viz/WeaknessNotification.jsx'
 import useAdaptiveUI from '../../hooks/useAdaptiveUI.js'
 import useStorage from '../../hooks/useStorage.js'
 
@@ -38,11 +39,14 @@ function WeeklyNewsletter() {
   )
 }
 
-export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissPulse }) {
+export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissPulse, weakness, onWeaknessTap, onWeaknessDismiss }) {
   const { suggestions } = useAdaptiveUI()
 
   return (
     <div className="space-y-4 max-w-2xl mx-auto">
+      {/* Weakness notification */}
+      {weakness && <WeaknessNotification weakness={weakness} onTap={onWeaknessTap} onDismiss={onWeaknessDismiss} />}
+
       {/* Morning Briefing */}
       <div className="card-enter" style={{ animationDelay: '0ms' }}><Briefing /></div>
       <WeeklyNewsletter />
