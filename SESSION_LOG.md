@@ -4,6 +4,38 @@
 
 ---
 
+### Session 38 — Vercel Deploy: JARVIS Goes LIVE (2026-04-01)
+
+**Deploy infrastructure ready. JARVIS goes to production.**
+
+**Created `api/claude.js` (Vercel serverless function):**
+- Proxies POST requests to `https://api.anthropic.com/v1/messages`
+- Reads `ANTHROPIC_API_KEY` from `process.env` (server-side, never exposed to client)
+- Supports SSE streaming (pipes ReadableStream chunks to response)
+- CORS headers for cross-origin requests
+- OPTIONS preflight handling
+
+**Created `vercel.json`:**
+- Rewrite rule: `/api/claude` → `/api/claude.js`
+- CORS headers on all `/api/*` routes
+
+**Verified API paths:**
+- `useAI.js` line 168: `fetch('/api/claude', ...)` ✅
+- `Boot.jsx` line 471: `fetch('/api/claude', ...)` ✅
+- `Onboarding.jsx` line 248: `fetch('/api/claude', ...)` ✅
+- `CheckInForm.jsx` line 155: `fetch('/api/claude', ...)` ✅
+- All use same `/api/claude` path — Vite proxy in dev, Vercel serverless in prod
+
+**Deploy steps for user:**
+1. `vercel login` (or import repo at vercel.com)
+2. Set env var: `ANTHROPIC_API_KEY` in Vercel project settings
+3. `vercel --prod` (or auto-deploy from GitHub push)
+4. ElevenLabs key: user enters in Settings (client-side, no proxy needed)
+
+**Build: 0 errors, 19.20s. 83 source files. Ready for production.**
+
+---
+
 ### Session 36 — Power Features: Phantom Mode + Battle Royale + Command Line + Comeback (2026-04-01)
 
 **4 power tools for specific high-impact situations.**
