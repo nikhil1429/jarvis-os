@@ -55,10 +55,15 @@ export default function BodyDoubleTimer() {
 
   // Listen for voice send events
   useEffect(() => {
-    const h = (e) => { if (isRunning) handleChat(e.detail.text) }
-    window.addEventListener('jarvis-voice-send', h)
-    return () => window.removeEventListener('jarvis-voice-send', h)
-  }, [isRunning])
+    const onSend = (e) => { if (isRunning) handleChat(e.detail.text) }
+    const onInterim = (e) => setInput(e.detail.text)
+    window.addEventListener('jarvis-voice-send', onSend)
+    window.addEventListener('jarvis-voice-interim', onInterim)
+    return () => {
+      window.removeEventListener('jarvis-voice-send', onSend)
+      window.removeEventListener('jarvis-voice-interim', onInterim)
+    }
+  }, [isRunning, handleChat])
 
   // Cleanup
   useEffect(() => {
@@ -152,6 +157,12 @@ export default function BodyDoubleTimer() {
     }
   }, [sendMessage, voice, addMessage])
 
+  const handleMicClick = useCallback(() => {
+    if (voice.voiceState === 'SPEAKING') voice.stopSpeaking()
+    else if (voice.voiceState === 'LISTENING') voice.stopListening()
+    else voice.startListening()
+  }, [voice])
+
   const timerColor = isRunning ? getTimerColor(remaining, duration * 60) : '#00f0ff'
 
   // Not started view
@@ -227,14 +238,24 @@ export default function BodyDoubleTimer() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input bar */}
+      {/* Input bar with mic */}
       {isRunning && (
         <div className="flex gap-2 p-3 border-t border-border" style={{ flexShrink: 0 }}>
           <input type="text" value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { handleChat(input); setInput('') } }}
-            placeholder="Chat with JARVIS..."
-            className="flex-1 bg-void border border-border rounded-lg px-3 py-2 font-body text-xs text-text
-              placeholder:text-text-muted focus:outline-none focus:border-cyan" />
+            placeholder={voice.voiceState === 'LISTENING' ? 'Listening...' : 'Chat with JARVIS...'}
+            className={`flex-1 bg-void border rounded-lg px-3 py-2 font-body text-xs text-text
+              placeholder:text-text-muted focus:outline-none transition-all ${
+              voice.voiceState === 'LISTENING' ? 'border-cyan shadow-[0_0_12px_rgba(0,180,216,0.3)]' : 'border-border focus:border-cyan'
+            }`} />
+          <button onClick={handleMicClick}
+            className={`p-2 rounded-lg border transition-all ${
+              voice.voiceState === 'LISTENING' ? 'bg-cyan/15 border-cyan text-cyan animate-pulse'
+              : voice.voiceState === 'SPEAKING' ? 'bg-gold/10 border-gold/40 text-gold'
+              : 'border-border text-text-muted hover:border-cyan/40 hover:text-cyan'
+            }`}>
+            <Mic size={16} />
+          </button>
           <button onClick={() => { handleChat(input); setInput('') }}
             disabled={!input.trim()}
             className="p-2 rounded-lg border border-border text-text-muted hover:border-cyan/40 hover:text-cyan disabled:opacity-30">

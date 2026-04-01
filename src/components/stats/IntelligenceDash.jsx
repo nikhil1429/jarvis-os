@@ -3,6 +3,7 @@
 // Confidence grows from PRIORS (40%) → LOCKED_IN (95%) as data accumulates.
 
 import useIntelligence from '../../hooks/useIntelligence.js'
+import { initTilt } from '../../utils/tiltEffect.js'
 
 const FEATURES = [
   { key: 'energy', name: 'Energy Map', desc: 'Peak hours, crash patterns, caffeine effects' },
@@ -55,13 +56,15 @@ export default function IntelligenceDash() {
       <h3 className="font-display text-sm font-bold text-cyan tracking-wider uppercase neon-heading mb-3">
         Intelligence System
       </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" ref={(el) => {
+        if (el) el.querySelectorAll('[data-tilt]').forEach(c => initTilt(c))
+      }}>
         {FEATURES.map((feat, i) => {
           const intel = getFeatureIntelligence(feat.key)
           const color = getConfidenceColor(intel.confidence)
 
           return (
-            <div key={i} className="glass-card p-3 border border-border">
+            <div key={i} data-tilt className="glass-card p-3 border border-border">
               <div className="flex items-start gap-3">
                 <ConfidenceRing confidence={intel.confidence} />
                 <div className="flex-1 min-w-0">

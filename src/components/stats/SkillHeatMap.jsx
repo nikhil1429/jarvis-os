@@ -6,6 +6,7 @@
 
 import CONCEPTS from '../../data/concepts.js'
 import useStorage from '../../hooks/useStorage.js'
+import { initTilt } from '../../utils/tiltEffect.js'
 
 function getCellColor(strength) {
   if (strength < 30) return { bg: '#ef444420', border: '#ef444440', text: '#ef4444' }
@@ -30,13 +31,16 @@ export default function SkillHeatMap() {
           Skill Heat Map
         </h3>
 
-        <div className="grid grid-cols-5 gap-1.5">
+        <div className="grid grid-cols-5 gap-1.5" ref={(el) => {
+          if (el) el.querySelectorAll('[data-tilt]').forEach(c => initTilt(c))
+        }}>
           {CONCEPTS.map(concept => {
             const strength = getStrength(concept.id)
             const colors = getCellColor(strength)
             return (
               <div
                 key={concept.id}
+                data-tilt
                 className={`rounded p-1.5 text-center transition-all duration-200 border hover:scale-105 ${
                   strength >= 80 ? 'heatmap-glow-gold' : strength >= 60 ? 'heatmap-glow-green'
                   : strength >= 10 ? 'heatmap-glow-yellow' : 'heatmap-glow-red'

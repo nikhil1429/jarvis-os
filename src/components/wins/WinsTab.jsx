@@ -6,6 +6,7 @@
 import { Trophy, Lock } from 'lucide-react'
 import ACHIEVEMENTS from '../../data/achievements.js'
 import useStorage from '../../hooks/useStorage.js'
+import { initTilt } from '../../utils/tiltEffect.js'
 
 export default function WinsTab() {
   const { get } = useStorage()
@@ -30,7 +31,9 @@ export default function WinsTab() {
       </div>
 
       {/* Achievement grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3" ref={(el) => {
+        if (el) el.querySelectorAll('[data-tilt]').forEach(c => initTilt(c))
+      }}>
         {ACHIEVEMENTS.map(achievement => {
           const isUnlocked = !!unlockedMap[achievement.id]
           const unlockData = unlockedMap[achievement.id]
@@ -38,6 +41,7 @@ export default function WinsTab() {
           return (
             <div
               key={achievement.id}
+              data-tilt
               className={`glass-card p-4 text-center transition-all duration-300 ${
                 isUnlocked ? 'achievement-unlocked' : 'achievement-locked grayscale'
               }`}

@@ -13,6 +13,7 @@ import { getReviewSchedule } from '../../utils/spacedRepetition.js'
 import useStorage from '../../hooks/useStorage.js'
 import ChatView from './ChatView.jsx'
 import BodyDoubleTimer from './BodyDoubleTimer.jsx'
+import { initTilt } from '../../utils/tiltEffect.js'
 
 const TIER_STYLES = {
   1: { label: 'T1', bg: 'bg-cyan/10', border: 'border-cyan/30', text: 'text-cyan' },
@@ -170,12 +171,15 @@ export default function TrainTab({ weekNumber, requestedMode, onModeOpened }) {
       )}
 
       {/* 2-column grid of mode cards */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3" ref={(el) => {
+        if (el) el.querySelectorAll('[data-tilt]').forEach(c => initTilt(c))
+      }}>
         {MODES.map(mode => {
           const tier = TIER_STYLES[mode.tier]
           return (
             <button
               key={mode.id}
+              data-tilt
               onClick={() => setActiveMode(mode.id)}
               className="glass-card p-3 text-left transition-all duration-200
                 hover:border-cyan/40 group"
