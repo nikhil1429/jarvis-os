@@ -273,8 +273,14 @@ export default function Settings({ isOpen, onClose }) {
               {(() => { try { return !!JSON.parse(localStorage.getItem('jos-voice-print')) } catch { return false } })() ? (
                 <div>
                   <p className="font-body text-[10px] mb-2" style={{ color: '#10b981' }}>Voice print enrolled. JARVIS recognizes your voice.</p>
-                  <button onClick={() => { localStorage.removeItem('jos-voice-print') }}
-                    className="font-mono text-[10px] text-gold border border-gold/30 px-3 py-1 rounded hover:bg-gold/10 transition-all">RE-ENROLL</button>
+                  <div className="flex gap-2 mt-1">
+                    <button onClick={() => { localStorage.removeItem('jos-voice-print') }}
+                      className="font-mono text-[10px] text-gold border border-gold/30 px-3 py-1 rounded hover:bg-gold/10 transition-all">RE-ENROLL</button>
+                    <button onClick={() => {
+                      const name = prompt('Speaker name (e.g., Nidhi):')
+                      if (name) { localStorage.setItem('jos-enroll-speaker', name); alert('Open voice mode to enroll ' + name) }
+                    }} className="font-mono text-[10px] text-cyan border border-cyan/30 px-3 py-1 rounded hover:bg-cyan/10 transition-all">+ SPEAKER</button>
+                  </div>
                 </div>
               ) : (
                 <p className="font-body text-[10px] text-text-muted">No voice print. Open voice mode to enroll.</p>

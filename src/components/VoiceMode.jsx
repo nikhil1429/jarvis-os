@@ -331,7 +331,10 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
     setTimeout(() => {
       voice.startListening()
       // Start voice verification if enrolled
-      if (isEnrolled() && analyserRef.current) verification.startVerification(analyserRef.current)
+      if (isEnrolled() && analyserRef.current) {
+        verification.startVerification(analyserRef.current)
+        verification.startContinuousVerification(analyserRef.current) // E5: 30s re-checks
+      }
     }, 200)
 
     return () => {
@@ -392,16 +395,31 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
         </p>
         <p style={{ fontFamily: 'Share Tech Mono', fontSize: 9, color: '#2a4a60', marginTop: 8, letterSpacing: '0.2em' }}>{currentMode.emoji} {currentMode.name.toUpperCase()} · EXOCORTEX</p>
 
-        {/* Voice verification */}
-        {verification.status === 'verified' && (
-          <p style={{ fontFamily: 'Share Tech Mono', fontSize: 8, color: '#10b981', letterSpacing: '0.15em', marginTop: 4 }}>IDENTITY VERIFIED ({verification.confidence}%)</p>
-        )}
-        {verification.status === 'mismatch' && (
-          <p className="animate-pulse" style={{ fontFamily: 'Share Tech Mono', fontSize: 8, color: '#ef4444', letterSpacing: '0.15em', marginTop: 4 }}>VOICE MISMATCH — UNRECOGNIZED</p>
-        )}
-        {verification.status === 'checking' && (
-          <p style={{ fontFamily: 'Share Tech Mono', fontSize: 8, color: '#d4a853', letterSpacing: '0.15em', marginTop: 4 }}>VERIFYING...</p>
-        )}
+        {/* Voice biometrics status */}
+        <div style={{ textAlign: 'center', marginTop: 4, minHeight: 30 }}>
+          {verification.status === 'verified' && (
+            <p style={{ fontFamily: 'Share Tech Mono', fontSize: 8, color: '#10b981', letterSpacing: '0.12em' }}>
+              IDENTITY VERIFIED {verification.confidence}% | LEVEL {verification.authLevel.level}
+            </p>
+          )}
+          {verification.status === 'mismatch' && (
+            <p className="animate-pulse" style={{ fontFamily: 'Share Tech Mono', fontSize: 8, color: '#ef4444', letterSpacing: '0.12em' }}>
+              {verification.speaker?.name !== 'unknown' ? `SPEAKER: ${verification.speaker.name.toUpperCase()} — SHOW MODE` : 'UNRECOGNIZED SPEAKER'}
+            </p>
+          )}
+          {verification.status === 'drift' && (
+            <p className="animate-pulse" style={{ fontFamily: 'Share Tech Mono', fontSize: 8, color: '#ef4444', letterSpacing: '0.12em' }}>VOICE DRIFT — SECURE MODE</p>
+          )}
+          {verification.status === 'checking' && (
+            <p style={{ fontFamily: 'Share Tech Mono', fontSize: 8, color: '#d4a853', letterSpacing: '0.12em' }}>VERIFYING...</p>
+          )}
+          {verification.detectedMood.mood !== 'neutral' && verification.detectedMood.confidence > 45 && (
+            <p style={{ fontFamily: 'Share Tech Mono', fontSize: 7, letterSpacing: '0.1em', marginTop: 2, opacity: 0.6,
+              color: { stressed: '#ef4444', excited: '#d4a853', tired: '#5a7a94', focused: '#10b981' }[verification.detectedMood.mood] || '#5a7a94' }}>
+              MOOD: {verification.detectedMood.mood.toUpperCase()} | VITALS: {verification.voiceVitals.status === 'normal' ? 'NOMINAL' : verification.voiceVitals.status.toUpperCase()}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Transcript */}
