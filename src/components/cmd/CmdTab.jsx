@@ -9,6 +9,7 @@ import BattlePlan from './BattlePlan.jsx'
 import DailyBuildLog from './DailyBuildLog.jsx'
 import Briefing from './Briefing.jsx'
 import SecondBrain from './SecondBrain.jsx'
+import TimeCapsule from '../reports/TimeCapsule.jsx'
 import useAdaptiveUI from '../../hooks/useAdaptiveUI.js'
 import useStorage from '../../hooks/useStorage.js'
 
@@ -90,6 +91,7 @@ export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissP
       <div className="card-enter" style={{ animationDelay: '160ms' }}><BattlePlan /></div>
       <div className="card-enter" style={{ animationDelay: '240ms' }}><DailyBuildLog /></div>
       <div className="card-enter" style={{ animationDelay: '320ms' }}><SecondBrain /></div>
+      <div className="card-enter" style={{ animationDelay: '400ms' }}><TimeCapsule /></div>
     </div>
   )
 }

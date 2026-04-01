@@ -4,6 +4,48 @@
 
 ---
 
+### Session 34 — Cinematic Reports: Quarterly + Interview Brief + Time Capsule + Replay (2026-04-01)
+
+**4 premium report components — the crown jewels of JARVIS intelligence.**
+
+**QuarterlyReport.jsx (STATS tab, gold Opus theme):**
+- Full-screen overlay with "CLASSIFICATION: EYES ONLY" badge
+- Opus API call with compileSummary() generates 7 sections (THE ARC, CONCEPT EVOLUTION, BATTLE STATS, PATTERNS, SELF-KNOWLEDGE, BLIND SPOTS, TRAJECTORY)
+- IntersectionObserver scroll reveal — sections slide in as user scrolls
+- ElevenLabs speaks first section on open
+- Saves to jos-weekly.quarterlyReport
+
+**InterviewBrief.jsx (STATS tab, cyan theme):**
+- Full-screen overlay with company/role input form
+- Opus generates 5 sections (TARGET ANALYSIS, WEAPON SELECTION, PREDICTED QUESTIONS, TALKING POINTS, CONFIDENCE)
+- Card-enter stagger animation on sections
+- Saves to jos-applications array
+
+**TimeCapsule.jsx (CMD tab):**
+- "Create Capsule" → Sonnet writes 150-word letter to future self
+- Capsule SEALED for 14 days — shows lock icon, countdown "Opens in Xd"
+- On unlock day: "READY TO OPEN" with gold pulse → tap reveals content
+- ElevenLabs speaks letter on first open
+- Past capsules list with opened/sealed states
+
+**ReplayTheater.jsx (STATS tab):**
+- Scans all quiz-mode messages for scores 7+/10
+- Top 5 best moments listed with score/concept/mode
+- Click replay → full-screen dark overlay → cinematic typewriter:
+  User message types (cyan) → pause → JARVIS response types → score reveals (gold glow)
+  "This was your finest moment, Sir."
+
+**Wired into UI:**
+- StatsTab: 3 trigger buttons (Quarterly Report / Interview Brief / Best Moments) as glass-card grid
+- CmdTab: TimeCapsule card below SecondBrain with staggered entrance
+
+**Build: 0 errors, 21.01s**
+
+**Files created (4):** QuarterlyReport.jsx, InterviewBrief.jsx, TimeCapsule.jsx, ReplayTheater.jsx
+**Files updated (2):** StatsTab.jsx (report triggers + overlays), CmdTab.jsx (TimeCapsule)
+
+---
+
 ### Session 33 — Boot Sequence Cinematic Redesign (2026-04-01)
 
 **Boot sequence now has 6 cinematic phases with phase-aware reactor.**
