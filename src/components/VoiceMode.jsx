@@ -18,6 +18,42 @@ import MODES from '../data/modes.js'
 const TAU = Math.PI * 2
 const MODE_PILLS = ['chat', 'quiz', 'presser', 'teach', 'battle']
 
+function renderMd(text) {
+  if (!text) return ''
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/```(\w*)\n?([\s\S]*?)```/g, (_, l, code) =>
+      `<pre style="background:rgba(0,180,216,0.08);padding:8px;border-radius:4px;overflow-x:auto;margin:4px 0;border:1px solid rgba(0,180,216,0.12)"><code style="font-family:Share Tech Mono,monospace;font-size:0.8em;color:#48cae4">${code.trim()}</code></pre>`)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code style="background:rgba(0,180,216,0.1);padding:1px 4px;border-radius:3px;font-family:Share Tech Mono,monospace;font-size:0.85em">$1</code>')
+    .replace(/\n/g, '<br/>')
+}
+
+function TranscriptMessage({ msg }) {
+  const [expanded, setExpanded] = useState(false)
+  const isUser = msg.role === 'user', isOpus = msg.tier >= 2
+  const isLong = (msg.content?.length || 0) > 200
+  const display = isLong && !expanded ? msg.content.substring(0, 200) : msg.content
+  return (
+    <div style={{ textAlign: isUser ? 'right' : 'left' }}>
+      <span onClick={() => isLong && setExpanded(!expanded)} style={{
+        display: 'inline-block', maxWidth: '90%', padding: '8px 12px', borderRadius: 8, fontSize: 12,
+        fontFamily: 'Exo 2', lineHeight: 1.5, cursor: isLong ? 'pointer' : 'default',
+        ...(isUser ? { background: 'rgba(0,180,216,0.1)', color: 'rgba(0,180,216,0.85)', borderLeft: '2px solid rgba(0,180,216,0.3)' }
+          : isOpus ? { background: 'rgba(212,168,83,0.08)', color: 'rgba(212,168,83,0.85)', borderLeft: '2px solid rgba(212,168,83,0.3)' }
+          : { background: 'rgba(6,20,34,0.8)', color: '#d0e8f8', borderLeft: '2px solid rgba(0,180,216,0.15)' }),
+      }}>
+        {isOpus && !isUser && <span style={{ fontSize: 9, color: '#d4a853', marginRight: 4 }}>&#9889;</span>}
+        <span dangerouslySetInnerHTML={{ __html: renderMd(display) }} />
+        {isLong && <span style={{ display: 'block', fontSize: 9, color: '#5a7a94', marginTop: 4, fontFamily: 'Share Tech Mono', letterSpacing: '0.1em' }}>
+          {expanded ? '\u25B4 COLLAPSE' : 'TAP TO EXPAND \u25BE'}
+        </span>}
+      </span>
+    </div>
+  )
+}
+
 export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber }) {
   const { sendMessage } = useAI()
   const { get } = useStorage()
@@ -357,7 +393,7 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
 
   // Enrollment screen
   if (showEnrollment) {
-    return <VoiceEnrollment analyserRef={analyserRef} onComplete={() => setShowEnrollment(false)} onSkip={() => setShowEnrollment(false)} />
+    return <VoiceEnrollment onComplete={() => setShowEnrollment(false)} onSkip={() => setShowEnrollment(false)} />
   }
 
   const stateLabel = { IDLE: 'TAP TO SPEAK', LISTENING: 'LISTENING...', PROCESSING: 'PROCESSING...', SPEAKING: 'SPEAKING...' }[vs]
@@ -422,19 +458,10 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
         </div>
       </div>
 
-      {/* Transcript */}
-      <div className="px-5 pb-5 overflow-y-auto" style={{ maxHeight: '35vh', flexShrink: 0 }}>
+      {/* Transcript — expandable messages with markdown */}
+      <div className="px-5 pb-5 overflow-y-auto" style={{ maxHeight: '40vh', flexShrink: 0 }}>
         {messages.length > 0 && <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {messages.slice(-10).map((msg, i) => (
-            <div key={i} style={{ textAlign: msg.role === 'user' ? 'right' : 'left' }}>
-              <span style={{ display: 'inline-block', maxWidth: '85%', padding: '6px 10px', borderRadius: 6, fontSize: 12, fontFamily: 'Exo 2', lineHeight: 1.4,
-                ...(msg.role === 'user' ? { background: 'rgba(0,180,216,0.1)', color: 'rgba(0,180,216,0.8)' }
-                  : msg.tier >= 2 ? { background: 'rgba(212,168,83,0.08)', color: 'rgba(212,168,83,0.8)' }
-                  : { background: 'rgba(6,20,34,0.8)', color: '#d0e8f8' }),
-              }}>{msg.tier >= 2 && msg.role === 'assistant' && <span style={{ fontSize: 9, color: '#d4a853', marginRight: 4 }}>⚡</span>}
-                {msg.content?.length > 180 ? msg.content.substring(0, 180) + '...' : msg.content}</span>
-            </div>
-          ))}
+          {messages.slice(-10).map((msg, i) => <TranscriptMessage key={i} msg={msg} />)}
           <div ref={transcriptEndRef} />
         </div>}
       </div>

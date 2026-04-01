@@ -4,6 +4,20 @@
 
 ---
 
+### Session 48B — Mic Fix + VoiceMode Messages (2026-04-02)
+
+**3 fixes from manual testing.**
+
+- **Fix A — VoiceEnrollment mic (CRITICAL):** Chicken-and-egg — enrollment blocked VoiceMode canvas from rendering → analyserRef never created. Fix: VoiceEnrollment creates own getUserMedia + AudioContext + analyser on mount. No longer depends on parent's ref. Cleaned up on unmount.
+- **Fix B — VoiceMode messages:** Removed 180-char hard truncation. New `TranscriptMessage` component with expand/collapse (tap). Added `renderMd()` for markdown (bold, italic, inline code, code blocks) via `dangerouslySetInnerHTML`. Max height increased to 40vh.
+- **Fix C — Voice check-in verified:** `processVoiceCommand` already wired in VoiceMode's `handleSend` — "check in" triggers `useVoiceCheckIn` flow correctly.
+
+**Build: 0 errors, 25.99s**
+
+**Files updated (2):** VoiceEnrollment.jsx (own mic), VoiceMode.jsx (TranscriptMessage + renderMd)
+
+---
+
 ### Session 48 — Audit Fixes + Deploy Polish (2026-04-02)
 
 **7 fixes from rigorous code audit. Main bundle -887KB.**
