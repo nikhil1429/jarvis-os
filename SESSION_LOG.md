@@ -4,6 +4,27 @@
 
 ---
 
+### Session 42B — Voice Fix: Reactive Waveform + Interruption (2026-04-01)
+
+**Fixed 2 critical voice issues.**
+
+**Fix 1 — Orbital waveform now reacts to voice:**
+- Root cause: `voice.voiceState` was captured in stale closure inside `useEffect([], [])`. The draw function read the mount-time value forever.
+- Fix: added `voiceStateStrRef` that syncs on every render. Draw function reads `voiceStateStrRef.current` instead of `voice.voiceState`.
+- Also: analyser now reads data EVERY frame (not gated by state), voice level logged every 60 frames for debugging.
+- Waveform amplitude: LISTENING uses `vl * 25`, SPEAKING uses `vl * 15`, IDLE uses `2` (gentle).
+
+**Fix 2 — Interruption during JARVIS speech:**
+- `useJarvisVoice.js`: interruption now triggers on INTERIM results with 2+ words (was only final results). Faster response — user doesn't need to wait for speech recognition to finalize.
+- Kill chain verified: `jarvisStopAll()` → `_jarvisStopped=true` + `speechSynthesis.cancel()` + `_jarvisAudio.pause()` + all `<audio>` paused + `_thinkingStop()`.
+- Recognition stays active during SPEAKING (onend restarts if SPEAKING/PROCESSING/LISTENING).
+
+**Build: 0 errors, 34.25s**
+
+**Files updated (2):** VoiceMode.jsx (stale closure fix + amplitude), useJarvisVoice.js (interim interruption)
+
+---
+
 ### Session 42 — Visualization Engine: Smart Cards + Dashboard Overlays (2026-04-01)
 
 **Proactive data visualization — JARVIS decides what to show and when.**

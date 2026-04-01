@@ -41,9 +41,11 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
   const fragmentsRef = useRef(null) // E9: thinking fragments
   const voiceEchoRef = useRef(null) // E10: ghost echo
   const voiceSamplesRef = useRef([]) // E10: collect samples for echo
+  const voiceStateStrRef = useRef('IDLE') // sync ref for canvas loop (avoids stale closure)
 
   const currentMode = MODES.find(m => m.id === currentModeId) || MODES[0]
   const vs = voice.voiceState
+  voiceStateStrRef.current = vs // keep ref in sync for canvas loop
 
   useEffect(() => { setMessages((get(`msgs-${currentModeId}`) || []).slice(-10)) }, [currentModeId, get])
   useEffect(() => { transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
@@ -145,11 +147,17 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
 
     let t = 0, echoFade = voiceEchoRef.current ? 1 : 0
 
+    let frameCount = 0
     const draw = () => {
-      t += 0.016; ctx.clearRect(0, 0, S, S)
-      const vs = voice.voiceState
+      t += 0.016; frameCount++; ctx.clearRect(0, 0, S, S)
+      const vs = voiceStateStrRef.current // read from REF, not stale closure
 
-      // Analyser
+      // Analyser — read EVERY frame regardless of state (for smooth transitions)
+      if (analyserRef.current) {
+        analyserRef.current.getByteFrequencyData(dataArray)
+        const rawLevel = dataArray.reduce((a, b) => a + b, 0) / dataArray.length / 255
+        if (frameCount % 60 === 0 && rawLevel > 0) console.log('VOICE LEVEL:', rawLevel.toFixed(3), 'state:', vs)
+      }
       if (analyserRef.current && vs === 'LISTENING') {
         analyserRef.current.getByteFrequencyData(dataArray)
         voiceLevelRef.current = dataArray.reduce((a, b) => a + b, 0) / dataArray.length / 255
@@ -252,14 +260,15 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
         ctx.fillStyle = `rgba(255,255,255,${0.5 + Math.sin(t * 4.2) * 0.3})`; ctx.shadowBlur = 8; ctx.shadowColor = '#ffd080'; ctx.fill(); ctx.shadowBlur = 0
       }
 
-      // E1: Circular orbital waveform (replaces flat waveform)
+      // E1: Circular orbital waveform — amplitude driven by voice
       const vl = voiceLevelRef.current
       const waveR = 35
+      const waveAmp = vs === 'LISTENING' ? vl * 25 : vs === 'SPEAKING' ? vl * 15 : 2
       ctx.beginPath()
       for (let i = 0; i < 64; i++) {
         const angle = (i / 64) * TAU
         const baseAmp = vs === 'PROCESSING' ? 0.5 + Math.random() * 1 : 2 + Math.sin(t * 2 + i * 0.3) * 1.5
-        const amp = baseAmp + vl * 15
+        const amp = baseAmp + waveAmp
         const r = waveR + Math.sin(angle * 4 + t * 3) * amp
         const x = C + Math.cos(angle) * r, y = C + Math.sin(angle) * r
         i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)

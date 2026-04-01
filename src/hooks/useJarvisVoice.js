@@ -283,8 +283,8 @@ export default function useJarvisVoice() {
             }
           }
 
-          // Interruption during SPEAKING — any final speech = real user
-          if (stateRef.current === VS.SPEAKING && isFinal) {
+          // Interruption during SPEAKING — any speech with 2+ words = real user (interim or final)
+          if (stateRef.current === VS.SPEAKING && (isFinal || transcript.trim().split(/\s+/).length >= 2)) {
             console.log('INTERRUPT: user spoke during JARVIS speech')
             jarvisStopAll()
             jarvisSpeakingRef.current = false
