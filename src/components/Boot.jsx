@@ -389,6 +389,7 @@ export default function Boot({ onComplete }) {
 
   const [phase, setPhase] = useState(1)
   const [reactorVisible, setReactorVisible] = useState(false)
+  const [reactorPhase, setReactorPhase] = useState('void') // void|ignition|running|ambient|briefing|exit
   const [bootLines, setBootLines] = useState([])
   const [currentLineText, setCurrentLineText] = useState('')
   const [currentLineStatus, setCurrentLineStatus] = useState(null)
@@ -495,13 +496,25 @@ export default function Boot({ onComplete }) {
   // PHASE ORCHESTRATION
   // ============================================================
 
-  // Phase 1 → 2: darkness → reactor ignites
+  // Phase 1 → 2: void → ignition → reactor running
   useEffect(() => {
-    const t1 = setTimeout(() => {
-      setPhase(2)
+    if (isReturning.current) {
+      // Returning user: skip void/ignition
+      setReactorPhase('running')
       setReactorVisible(true)
-    }, isReturning.current ? 200 : 600)
-    return () => clearTimeout(t1)
+      setTimeout(() => setPhase(2), 200)
+    } else {
+      // First boot: void phase (particles converge)
+      setReactorPhase('void')
+      setReactorVisible(true)
+      // After 1.5s void → ignition
+      setTimeout(() => setReactorPhase('ignition'), 1500)
+      // After 3.5s → running + advance to phase 2
+      setTimeout(() => {
+        setReactorPhase('running')
+        setPhase(2)
+      }, 3500)
+    }
   }, [])
 
   // Phase 2 → 3: reactor visible → boot text starts typing
@@ -524,9 +537,10 @@ export default function Boot({ onComplete }) {
         setStatusColor(null)
       }
 
-      // → Phase 4: transition inputs
+      // → Phase 4: transition inputs (reactor dims to ambient)
       setTimeout(() => {
         setPhase(4)
+        setReactorPhase('ambient')
         setShowInputs(true)
         setInputStep(1)
       }, isReturning.current ? 200 : 400)
@@ -569,6 +583,7 @@ export default function Boot({ onComplete }) {
 
     setShowInputs(false)
     setPhase(5)
+    setReactorPhase('briefing')
 
     // WHY: Fetch real AI briefing from Sonnet. If it fails, use a static fallback.
     // We start the fetch immediately and type the response character by character.
@@ -678,6 +693,7 @@ export default function Boot({ onComplete }) {
     }
 
     setIsExiting(true)
+    setReactorPhase('exit')
     setTimeout(() => onComplete(), 800)
   }, [onComplete])
 
@@ -702,7 +718,7 @@ export default function Boot({ onComplete }) {
           transition: isExiting ? 'opacity 0.6s ease-out' : 'opacity 1.2s ease-in',
         }}
       >
-        <BootReactor visible={reactorVisible} />
+        <BootReactor phase={reactorPhase} />
       </div>
 
       {/* LAYER 2: Vignette overlay */}
@@ -758,12 +774,16 @@ export default function Boot({ onComplete }) {
           backdropFilter: 'blur(8px)', borderRadius: '8px',
         }}>
 
-          {/* Completed boot lines */}
+          {/* Completed boot lines — glass row per line */}
           {bootLines.map((line, i) => (
-            <div key={i} className="font-mono text-xs leading-relaxed flex items-center gap-2" style={{ marginBottom: '2px', textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>
-              <span style={{ color: '#00b4d8' }}>{line.text}</span>
+            <div key={i} className="glass-card px-3 py-1.5 flex items-center justify-between boot-line-enter"
+              style={{ marginBottom: '3px', animationDelay: `${i * 50}ms` }}>
+              <span className="font-mono text-xs" style={{ color: '#00b4d8', textShadow: '0 0 6px rgba(0,180,216,0.3)' }}>
+                ▸ {line.text}
+              </span>
               {line.status && (
-                <span style={{ color: '#22c55e', fontWeight: 700 }}>{line.status}</span>
+                <span className="status-pop font-mono text-[10px] font-bold"
+                  style={{ color: '#22c55e', textShadow: '0 0 8px rgba(34,197,94,0.5)' }}>{line.status}</span>
               )}
             </div>
           ))}
@@ -797,32 +817,31 @@ export default function Boot({ onComplete }) {
             <div className="animate-fade-in" style={{ marginTop: '20px' }}>
 
               {inputStep >= 1 && (
-                <div style={{ marginBottom: '16px' }}>
-                  <p className="font-mono text-xs" style={{ color: '#00b4d8', marginBottom: '8px' }}>
-                    {'>'} Energy level, Sir?
+                <div style={{ marginBottom: '16px' }} className="card-enter">
+                  <p className="font-display text-xs font-semibold tracking-wider" style={{ color: '#00b4d8', marginBottom: '10px', textShadow: '0 0 8px rgba(0,180,216,0.3)' }}>
+                    ENERGY LEVEL
                   </p>
-                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <button
-                        key={n}
-                        onClick={() => { setEnergy(n); if (inputStep === 1) setInputStep(2) }}
-                        className="font-display font-bold"
-                        style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '50%',
-                          border: `2px solid ${energy === n ? '#00f0ff' : '#0d2137'}`,
-                          background: energy === n ? 'rgba(0, 180, 216, 0.15)' : 'transparent',
-                          color: energy === n ? '#00f0ff' : '#5a7a94',
-                          fontSize: '14px',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s',
-                          boxShadow: energy === n ? '0 0 12px rgba(0, 240, 255, 0.3)' : 'none',
-                        }}
-                      >
-                        {n}
-                      </button>
-                    ))}
+                  <div style={{ display: 'flex', gap: '14px', justifyContent: 'center' }}>
+                    {[1, 2, 3, 4, 5].map((n) => {
+                      const active = energy === n
+                      const colors = { 1: '#ef4444', 2: '#f97316', 3: '#00b4d8', 4: '#00f0ff', 5: '#d4a853' }
+                      const c = colors[n]
+                      return (
+                        <button key={n}
+                          onClick={() => { setEnergy(n); if (inputStep === 1) setInputStep(2) }}
+                          className={`font-display font-bold ${active ? 'orb-ignite' : ''}`}
+                          style={{
+                            width: '44px', height: '44px', borderRadius: '50%',
+                            border: `2px solid ${active ? c : '#0d2137'}`,
+                            background: active ? `radial-gradient(circle, ${c}30 0%, transparent 70%)` : 'transparent',
+                            color: active ? c : '#2a4a60',
+                            fontSize: '15px', cursor: 'pointer', transition: 'all 0.3s',
+                            boxShadow: active ? `0 0 16px ${c}50, 0 0 32px ${c}20, inset 0 0 8px ${c}15` : 'none',
+                          }}>
+                          {n}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
               )}
@@ -946,37 +965,20 @@ export default function Boot({ onComplete }) {
             </div>
           )}
 
-          {/* Phase 6: ENTER JARVIS */}
+          {/* Phase 6: ENTER JARVIS — THE MOMENT */}
           {showEnterBtn && (
-            <div style={{ textAlign: 'center', marginTop: '28px' }}>
-              <button
-                onClick={handleEnter}
-                className="font-display animate-glow-pulse"
+            <div style={{ textAlign: 'center', marginTop: '32px' }} className="card-enter">
+              <button onClick={handleEnter}
+                className="font-display enter-pulse"
                 style={{
-                  fontSize: '20px',
-                  fontWeight: 700,
-                  letterSpacing: '0.25em',
-                  padding: '14px 44px',
-                  color: '#00f0ff',
-                  border: '2px solid #00f0ff',
-                  borderRadius: '8px',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  textShadow: '0 0 12px rgba(0,240,255,0.6), 0 0 30px rgba(0,240,255,0.3)',
-                  boxShadow: '0 0 20px rgba(0,240,255,0.15), inset 0 0 20px rgba(0,240,255,0.05)',
+                  fontSize: '22px', fontWeight: 700, letterSpacing: '0.3em',
+                  padding: '16px 52px', color: '#00f0ff', border: '2px solid #00f0ff',
+                  borderRadius: '8px', background: 'transparent', cursor: 'pointer',
+                  textShadow: '0 0 15px rgba(0,240,255,0.7), 0 0 40px rgba(0,240,255,0.3)',
                   transition: 'all 0.3s',
                 }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = 'rgba(0, 180, 216, 0.08)'
-                  e.target.style.color = '#00f0ff'
-                  e.target.style.borderColor = '#00f0ff'
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'transparent'
-                  e.target.style.color = '#00b4d8'
-                  e.target.style.borderColor = '#00b4d8'
-                }}
-              >
+                onMouseEnter={(e) => { e.target.style.background = 'rgba(0,240,255,0.06)' }}
+                onMouseLeave={(e) => { e.target.style.background = 'transparent' }}>
                 ENTER JARVIS
               </button>
             </div>

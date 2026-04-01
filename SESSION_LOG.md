@@ -4,6 +4,47 @@
 
 ---
 
+### Session 33 — Boot Sequence Cinematic Redesign (2026-04-01)
+
+**Boot sequence now has 6 cinematic phases with phase-aware reactor.**
+
+**BootReactor.jsx — Phase-Aware Rendering:**
+- `phase='void'`: only convergent particles drifting from edges toward center
+- `phase='ignition'`: sequential layer reveal (core → rings → segments → arms), shockwave rings, max intensity (1.5x)
+- `phase='running'`: full 12-layer reactor at normal intensity
+- `phase='ambient'`: dimmed to 50% intensity, slower particles (during input phase)
+- `phase='briefing'`: 75% intensity, normal speed
+- `phase='exit'`: particles scatter outward from center, core fades
+
+**Boot.jsx Phase Transitions:**
+- Phase 1 (void, 0-1.5s): particles converge from edges → center. Black screen.
+- Phase 1→2 (ignition, 1.5-3.5s): white flash, reactor core ignites, rings materialize, shockwave burst
+- Phase 3 (boot text): reactor runs full, dark gradient panel slides up, boot lines type
+- Phase 4 (inputs): reactor dims to ambient, energy orbs + inputs one at a time
+- Phase 5 (briefing): reactor at 80%, text decode with shimmer, ElevenLabs voice
+- Phase 6 (ENTER): dramatic neon button with enter-pulse animation
+- Exit: reactor scatters, fade to app
+
+**Returning Users:** Skip void/ignition, start with running reactor immediately.
+
+**Visual Upgrades:**
+- Boot lines: glass-card per line with `boot-line-enter` animation + `status-pop` for status tags
+- Energy orbs: color-coded (red→orange→cyan→neon→gold) with radial glow, `orb-ignite` animation
+- ENTER JARVIS button: intense neon with `enter-pulse` animation (pulsing box-shadow)
+- Text panel: glass gradient background with backdrop-filter
+
+**New CSS Animations (`global.css`):**
+- `enterPulse`: box-shadow pulse for ENTER button (2s)
+- `statusPop`: scale(0→1.2→1) for boot status tags (0.3s)
+- `bootLineSlide`: translateX(-10px→0) + opacity for boot lines (0.3s)
+- `orbIgnite`: scale(0.8→1.15→1) for energy orb selection (0.3s)
+
+**Build: 0 errors, 19.20s**
+
+**Files updated (3):** BootReactor.jsx (phase-aware rewrite), Boot.jsx (phased transitions + visual upgrades), global.css (new animations)
+
+---
+
 ### Session 32 — Fixes + BattlePlan + PortfolioNarrator + Voice Evolution (2026-04-01)
 
 **1 fix + 4 new features.**

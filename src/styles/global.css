@@ -596,6 +596,49 @@ input:focus, textarea:focus {
 }
 
 /* ============================================================
+   BOOT SEQUENCE — Cinematic animations
+   ============================================================ */
+
+/* ENTER JARVIS button pulse */
+.enter-pulse {
+  animation: enterPulse 2s ease-in-out infinite;
+}
+@keyframes enterPulse {
+  0%, 100% { box-shadow: 0 0 25px rgba(0,240,255,0.2), 0 0 50px rgba(0,240,255,0.08), inset 0 0 25px rgba(0,240,255,0.05); }
+  50% { box-shadow: 0 0 35px rgba(0,240,255,0.35), 0 0 70px rgba(0,240,255,0.15), inset 0 0 35px rgba(0,240,255,0.08); }
+}
+
+/* Status tag pop-in */
+.status-pop {
+  animation: statusPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes statusPop {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Boot line slide in */
+.boot-line-enter {
+  animation: bootLineSlide 0.3s ease-out forwards;
+  opacity: 0;
+}
+@keyframes bootLineSlide {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Energy orb ignite */
+.orb-ignite {
+  animation: orbIgnite 0.3s ease-out forwards;
+}
+@keyframes orbIgnite {
+  0% { transform: scale(0.8); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+/* ============================================================
    Reduced motion — respect user preference
    ============================================================ */
 @media (prefers-reduced-motion: reduce) {
