@@ -4,6 +4,27 @@
 
 ---
 
+### Session 48E — Voice Boot Transition (2026-04-02)
+
+**Phase 4 redesigned — form → voice conversation over full-screen 3D reactor.**
+
+- **369 lines of dead Three.js code deleted** (ReactorRing, ReactorCore, ShockwaveRing, OrbitalParticles, GoldParticles, ArcReactor)
+- **Reactor**: 55vh → 100vh (fills entire screen, never hidden)
+- **Reactor phase**: stays 'running' during questions (was 'ambient'/dimmed)
+- **Deleted**: entire glass-card form system from Session 48C
+- **New**: voice transition overlay fixed at bottom with gradient fade
+- **JARVIS speaks** each question via speakElevenLabs ("Energy level, Sir?", "Primary focus?", etc.)
+- **Energy orbs**: 56px floating over reactor (no card wrapper), backdrop-filter blur
+- **Text inputs**: single chat-style rounded input bar with send button
+- **Progress dots**: 4 dots showing current step (cyan glow on active)
+- **Voice flow**: JARVIS speaks → user types/speaks → 300ms pause → next question
+- **Morning Bet**: gold-themed input (step 4)
+- **Boot.jsx**: 947 lines → 580 lines (-39%)
+
+**Build: 0 errors, 24.82s**
+
+---
+
 ### Session 48D — Three.js 3D Arc Reactor (2026-04-02)
 
 **BootReactor.jsx rewritten: Canvas 2D → Three.js 3D with 9 scene elements.**

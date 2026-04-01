@@ -12,375 +12,8 @@ import { speakElevenLabs } from '../utils/elevenLabsSpeak.js'
 import BootReactor from './BootReactor.jsx'
 import TASKS from '../data/tasks.js'
 
-// Three.js reactor components below are DEPRECATED — replaced by BootReactor.jsx (Canvas 2D)
-// Kept as dead code; tree-shaking removes them from bundle.
+// Dead Three.js code deleted in Session 48E
 
-function ReactorRing({ radius, tubeRadius, color, emissiveColor, speed, axis, emissiveIntensity = 0.7, opacity = 0.8 }) {
-  const ref = useRef()
-  const initialRotation = useMemo(() => {
-    if (axis === 'x') return [Math.PI / 6, 0, 0]
-    if (axis === 'z') return [0, 0, Math.PI / 5]
-    return [0, 0, 0]
-  }, [axis])
-
-  useFrame((_, delta) => {
-    if (!ref.current) return
-    if (axis === 'y') ref.current.rotation.y += delta * speed
-    else if (axis === 'x') ref.current.rotation.x += delta * speed
-    else ref.current.rotation.z += delta * speed
-  })
-
-  return (
-    <mesh ref={ref} rotation={initialRotation}>
-      <torusGeometry args={[radius, tubeRadius, 24, 100]} />
-      <meshStandardMaterial
-        color={color}
-        emissive={emissiveColor || color}
-        emissiveIntensity={emissiveIntensity}
-        transparent
-        opacity={opacity}
-        toneMapped={false}
-      />
-    </mesh>
-  )
-}
-
-function ReactorCore() {
-  const ref = useRef()
-  useFrame(({ clock }) => {
-    if (!ref.current) return
-    const s = 1 + Math.sin(clock.elapsedTime * 2) * 0.1
-    ref.current.scale.set(s, s, s)
-  })
-
-  return (
-    <group>
-      <mesh ref={ref}>
-        <sphereGeometry args={[0.35, 32, 32]} />
-        <meshStandardMaterial
-          color="#ffffff"
-          emissive="#ffd080"
-          emissiveIntensity={4}
-          toneMapped={false}
-        />
-      </mesh>
-      <mesh>
-        <sphereGeometry args={[0.6, 32, 32]} />
-        <meshStandardMaterial
-          color="#00b4d8"
-          emissive="#00b4d8"
-          emissiveIntensity={1.5}
-          transparent
-          opacity={0.15}
-          toneMapped={false}
-        />
-      </mesh>
-    </group>
-  )
-}
-
-function ShockwaveRing({ delay }) {
-  const ref = useRef()
-  const matRef = useRef()
-  const startTime = useRef(null)
-
-  useFrame(({ clock }) => {
-    if (!ref.current || !matRef.current) return
-    if (startTime.current === null) startTime.current = clock.elapsedTime
-
-    const t = clock.elapsedTime - startTime.current - delay
-    if (t < 0) { matRef.current.opacity = 0; return }
-    if (t > 2.0) { matRef.current.opacity = 0; return }
-
-    const progress = t / 2.0
-    const scale = 0.5 + progress * 5
-    ref.current.scale.set(scale, scale, scale)
-    matRef.current.opacity = (1 - progress) * 0.5
-  })
-
-  return (
-    <mesh ref={ref} rotation={[Math.PI / 2, 0, 0]}>
-      <ringGeometry args={[0.9, 1.05, 64]} />
-      <meshBasicMaterial ref={matRef} color="#00f0ff" transparent opacity={0} side={THREE.DoubleSide} />
-    </mesh>
-  )
-}
-
-function OrbitalParticles({ count = 170, mousePos }) {
-  const meshRef = useRef()
-  const dummy = useMemo(() => new THREE.Object3D(), [])
-
-  const particles = useMemo(() => {
-    return Array.from({ length: count }, () => {
-      const radius = 0.8 + Math.random() * 3.0
-      return {
-        radius,
-        speed: (0.3 + Math.random() * 0.9) * (2.5 / (radius + 0.5)),
-        phase: Math.random() * Math.PI * 2,
-        eccentricity: 0.6 + Math.random() * 0.4,
-        tiltX: (Math.random() - 0.5) * 1.2,
-        tiltZ: (Math.random() - 0.5) * 0.8,
-        yAmplitude: 0.3 + Math.random() * 1.2,
-        yFreq: 0.5 + Math.random() * 1.5,
-        size: 0.012 + Math.random() * 0.028,
-      }
-    })
-  }, [count])
-
-  useFrame(({ clock }) => {
-    if (!meshRef.current) return
-    const t = clock.elapsedTime
-
-    particles.forEach((p, i) => {
-      const angle = t * p.speed + p.phase
-      let x = Math.cos(angle) * p.radius
-      let z = Math.sin(angle) * p.radius * p.eccentricity
-      let y = Math.sin(angle * p.yFreq) * p.yAmplitude
-
-      const tiltedY = y * Math.cos(p.tiltX) - z * Math.sin(p.tiltX)
-      const tiltedZ = y * Math.sin(p.tiltX) + z * Math.cos(p.tiltX)
-
-      let fx = x
-      let fy = tiltedY
-      let fz = tiltedZ
-
-      if (mousePos) {
-        const dx = fx - mousePos.x * 4
-        const dy = fy - mousePos.y * 4
-        const dist = Math.sqrt(dx * dx + dy * dy)
-        if (dist < 2.5 && dist > 0.01) {
-          const push = (2.5 - dist) * 0.2
-          fx += (dx / dist) * push
-          fy += (dy / dist) * push
-        }
-      }
-
-      dummy.position.set(fx, fy, fz)
-      dummy.scale.setScalar(p.size * (1 + Math.sin(t * 3 + p.phase) * 0.4))
-      dummy.updateMatrix()
-      meshRef.current.setMatrixAt(i, dummy.matrix)
-    })
-    meshRef.current.instanceMatrix.needsUpdate = true
-  })
-
-  return (
-    <instancedMesh ref={meshRef} args={[null, null, count]}>
-      <sphereGeometry args={[1, 8, 8]} />
-      <meshBasicMaterial color="#00d4ff" transparent opacity={0.85} toneMapped={false} />
-    </instancedMesh>
-  )
-}
-
-function GoldParticles({ count = 40, mousePos }) {
-  const meshRef = useRef()
-  const dummy = useMemo(() => new THREE.Object3D(), [])
-
-  const particles = useMemo(() => {
-    return Array.from({ length: count }, () => {
-      const radius = 0.5 + Math.random() * 1.5
-      return {
-        radius,
-        speed: (0.2 + Math.random() * 0.5) * (2.0 / (radius + 0.5)),
-        phase: Math.random() * Math.PI * 2,
-        eccentricity: 0.7 + Math.random() * 0.3,
-        tiltX: (Math.random() - 0.5) * 0.6,
-        yAmplitude: 0.2 + Math.random() * 0.8,
-        yFreq: 0.3 + Math.random() * 1.0,
-        size: 0.015 + Math.random() * 0.035,
-      }
-    })
-  }, [count])
-
-  useFrame(({ clock }) => {
-    if (!meshRef.current) return
-    const t = clock.elapsedTime
-    particles.forEach((p, i) => {
-      const angle = t * p.speed + p.phase
-      let x = Math.cos(angle) * p.radius
-      let z = Math.sin(angle) * p.radius * p.eccentricity
-      let y = Math.sin(angle * p.yFreq) * p.yAmplitude
-
-      const tiltedY = y * Math.cos(p.tiltX) - z * Math.sin(p.tiltX)
-      const tiltedZ = y * Math.sin(p.tiltX) + z * Math.cos(p.tiltX)
-
-      let fx = x, fy = tiltedY, fz = tiltedZ
-
-      if (mousePos) {
-        const dx = fx - mousePos.x * 4
-        const dy = fy - mousePos.y * 4
-        const dist = Math.sqrt(dx * dx + dy * dy)
-        if (dist < 2.5 && dist > 0.01) {
-          const push = (2.5 - dist) * 0.15
-          fx += (dx / dist) * push
-          fy += (dy / dist) * push
-        }
-      }
-
-      dummy.position.set(fx, fy, fz)
-      dummy.scale.setScalar(p.size * (1 + Math.sin(t * 4 + p.phase) * 0.5))
-      dummy.updateMatrix()
-      meshRef.current.setMatrixAt(i, dummy.matrix)
-    })
-    meshRef.current.instanceMatrix.needsUpdate = true
-  })
-
-  return (
-    <instancedMesh ref={meshRef} args={[null, null, count]}>
-      <sphereGeometry args={[1, 8, 8]} />
-      <meshBasicMaterial color="#ffc85a" transparent opacity={0.9} toneMapped={false} />
-    </instancedMesh>
-  )
-}
-
-function ArcReactor({ mousePos, visible }) {
-  return (
-    <group visible={visible}>
-      <ambientLight intensity={0.1} />
-      <pointLight position={[0, 0, 2]} intensity={3} color="#00b4d8" distance={15} />
-      <pointLight position={[0, 0, -2]} intensity={1.5} color="#00b4d8" distance={10} />
-
-      <ReactorCore />
-
-      <ReactorRing radius={1.0} tubeRadius={0.04} color="#00d4ff" emissiveColor="#00b4d8"
-        speed={0.8} axis="y" emissiveIntensity={0.8} opacity={0.9} />
-      <ReactorRing radius={1.5} tubeRadius={0.03} color="#00f0ff" emissiveColor="#00f0ff"
-        speed={-0.5} axis="x" emissiveIntensity={0.6} opacity={0.7} />
-      <ReactorRing radius={2.0} tubeRadius={0.025} color="#0090b0" emissiveColor="#00b4d8"
-        speed={0.3} axis="z" emissiveIntensity={0.5} opacity={0.5} />
-
-      <ShockwaveRing delay={0} />
-      <ShockwaveRing delay={0.2} />
-      <ShockwaveRing delay={0.4} />
-      <ShockwaveRing delay={0.6} />
-
-      <OrbitalParticles count={170} mousePos={mousePos} />
-      <GoldParticles count={40} mousePos={mousePos} />
-
-      <EffectComposer>
-        <Bloom
-          intensity={1.5}
-          luminanceThreshold={0.2}
-          luminanceSmoothing={0.4}
-          radius={0.8}
-          mipmapBlur
-        />
-      </EffectComposer>
-    </group>
-  )
-}
-
-// ============================================================
-// BOOT TEXT DATA
-// ============================================================
-const BOOT_LINES = [
-  { text: '> JARVIS OS v2050.2', status: null },
-  { text: '> ▸ Neural interface..............', status: '[ ONLINE ]' },
-  { text: '> ▸ Anti-crutch protocols.........', status: '[ CALIBRATED ]' },
-  { text: '> ▸ Concept DNA [35 nodes]........', status: '[ SYNCED ]' },
-  { text: '> ▸ Intelligence systems..........', status: '[ 43% ]' },
-  { text: '> ▸ Build telemetry...............', status: '[ TRACKING ]' },
-  { text: '> ▸ Voice synthesis...............', status: '[ ARMED ]' },
-  { text: '> All systems nominal.', status: null },
-]
-
-// ============================================================
-// MORNING BRIEFING BUILDER — Constructs the prompt for Sonnet
-// ============================================================
-function buildBriefingPrompt(core, get) {
-  const startDate = core.startDate || new Date().toISOString()
-  const dayNumber = getDayNumber(startDate)
-  const weekNumber = getWeekNumber(startDate)
-  const streak = core.streak || 0
-  const energy = core.lastEnergy || core.energy || 3
-  const timeOfDay = getTimeOfDay()
-  const hour = new Date().getHours()
-  const dayName = new Date().toLocaleDateString('en-IN', { weekday: 'long' })
-
-  // Pending tasks
-  const completedTasks = core.completedTasks || []
-  const totalTasks = TASKS.length
-  const pendingCount = totalTasks - completedTasks.length
-  const completionPct = Math.round((completedTasks.length / totalTasks) * 100)
-
-  // Overdue concepts
-  let overdueCount = 0
-  let overdueConcepts = []
-  try {
-    const concepts = get('concepts') || []
-    concepts.forEach(c => {
-      if (c.strength != null && c.strength < 60) {
-        overdueConcepts.push(`${c.name || c.id} (${c.strength}%)`)
-        overdueCount++
-      }
-    })
-  } catch { /* ignore */ }
-
-  // Yesterday's build log
-  let yesterdayBuild = ''
-  try {
-    const builds = get('daily-build') || []
-    if (builds.length > 0) {
-      const last = builds[builds.length - 1]
-      yesterdayBuild = last.summary || ''
-    }
-  } catch { /* ignore */ }
-
-  // Avoidance detection — modes not used in 5+ days
-  const avoidedModes = []
-  try {
-    const allModes = ['chat', 'quiz', 'presser', 'timed', 'speed', 'battle', 'teach',
-      'body-double', 'alter-ego', 'recruiter-ghost', 'forensics', 'akshay-qs',
-      'time-machine', 'code-autopsy', 'scenario-bomb', 'interview-sim',
-      'impostor-killer', 'weakness-radar']
-    const fiveDaysAgo = Date.now() - (5 * 24 * 60 * 60 * 1000)
-    allModes.forEach(mode => {
-      const msgs = get(`msgs-${mode}`) || []
-      if (msgs.length === 0) return // Never used — skip, not avoidance
-      const lastMsg = msgs[msgs.length - 1]
-      if (lastMsg?.timestamp && new Date(lastMsg.timestamp).getTime() < fiveDaysAgo) {
-        avoidedModes.push(mode)
-      }
-    })
-  } catch { /* ignore */ }
-
-  // Time-aware behavior context
-  let timeContext = ''
-  if (timeOfDay === 'morning') {
-    timeContext = 'Morning session. Energy recommendations: tackle hardest tasks first while cortisol peaks.'
-  } else if (dayName === 'Friday' && timeOfDay === 'evening') {
-    timeContext = 'Friday evening. Weekly wrap-up time. Summarize wins, set Monday priorities.'
-  } else if (dayName === 'Sunday') {
-    timeContext = 'Sunday. Weekly prep day. Review upcoming tasks, concept reviews, set the week.'
-  } else if (hour >= 23 || hour < 4) {
-    timeContext = 'LATE NIGHT WARNING. Code written after midnight has a 60% higher bug rate. Recommend sleep, Sir.'
-  } else if (timeOfDay === 'afternoon') {
-    timeContext = 'Afternoon session. Post-lunch energy dip likely. Consider a Body Double session or lighter mode.'
-  }
-
-  const prompt = `Generate a morning briefing for Nikhil Panwar. Context:
-- Day ${dayNumber}, Week ${weekNumber}, ${dayName}, ${timeOfDay}
-- Current hour: ${hour}:00
-- Streak: ${streak} days
-- Energy level: ${energy}/5
-- Tasks: ${completedTasks.length}/${totalTasks} complete (${completionPct}%), ${pendingCount} pending
-- Rank: ${core.rank || 'Recruit'}
-${overdueCount > 0 ? `- Overdue concepts (below 60%): ${overdueConcepts.slice(0, 5).join(', ')}` : '- All concepts on track'}
-${yesterdayBuild ? `- Yesterday's build: ${yesterdayBuild.slice(0, 200)}` : '- No build log from yesterday'}
-${avoidedModes.length > 0 ? `- AVOIDANCE DETECTED: These modes haven't been used in 5+ days: ${avoidedModes.join(', ')}` : '- No mode avoidance detected'}
-${timeContext ? `- TIME CONTEXT: ${timeContext}` : ''}
-
-Write a 3-5 sentence briefing in JARVIS voice (formal British, call him "Sir"). Include:
-1. Greeting appropriate to time of day
-2. Key stats (day, streak, completion)
-3. One specific recommendation based on the data
-4. If avoidance detected, call it out directly
-5. If late night, warn about sleep
-Keep it under 100 words. No markdown. Plain text only.`
-
-  return prompt
-}
-
-// ============================================================
 // MAIN BOOT COMPONENT
 // ============================================================
 export default function Boot({ onComplete }) {
@@ -406,7 +39,11 @@ export default function Boot({ onComplete }) {
   const [focus, setFocus] = useState('')
   const [blockers, setBlockers] = useState('')
   const [morningBet, setMorningBet] = useState('')
-  const [inputStep, setInputStep] = useState(0)
+  const [voiceStep, setVoiceStep] = useState(0)
+  const [voiceQuestion, setVoiceQuestion] = useState('')
+  const [isListeningBoot, setIsListeningBoot] = useState(false)
+
+  const VOICE_QS = ['', 'Energy level, Sir?', 'Primary focus today?', 'Any blockers?', 'Morning bet — what will you accomplish today?']
 
   // Check if returning user (compressed boot)
   const isReturning = useRef(false)
@@ -540,9 +177,13 @@ export default function Boot({ onComplete }) {
       // → Phase 4: transition inputs (reactor dims to ambient)
       setTimeout(() => {
         setPhase(4)
-        setReactorPhase('ambient')
+        setReactorPhase('running') // reactor stays full power during voice questions
         setShowInputs(true)
-        setInputStep(1)
+        // Start voice transition
+        setVoiceStep(1)
+        setVoiceQuestion(VOICE_QS[1])
+        const s = JSON.parse(localStorage.getItem('jos-settings') || '{}')
+        if (s.voice !== false) speakElevenLabs('Energy level, Sir?').catch(() => {})
       }, isReturning.current ? 200 : 400)
     }, delay)
 
@@ -713,7 +354,7 @@ export default function Boot({ onComplete }) {
           top: 0,
           left: 0,
           width: '100vw',
-          height: '55vh',
+          height: '100vh',
           zIndex: 40,
           display: 'flex',
           alignItems: 'center',
@@ -816,97 +457,82 @@ export default function Boot({ onComplete }) {
             }} />
           )}
 
-          {/* Phase 4: Transition Ritual Inputs */}
-          {showInputs && (
-            <div className="animate-fade-in" style={{ marginTop: '20px' }}>
+          {/* Phase 4: handled by voice overlay below */}
 
-              {/* Phase 4 inputs — glass-card wrapped, one at a time */}
-              {inputStep >= 1 && (
-                <div className="card-enter" style={{ marginBottom: 16, background: 'linear-gradient(135deg, rgba(6,20,34,0.9), rgba(2,10,19,0.95))', border: '1px solid rgba(0,180,216,0.12)', borderRadius: 6, padding: '16px 20px', position: 'relative' }}>
-                  <div style={{ position:'absolute', top:4, left:4, width:12, height:12, borderLeft:'1.5px solid rgba(0,240,255,0.2)', borderTop:'1.5px solid rgba(0,240,255,0.2)' }} />
-                  <div style={{ position:'absolute', bottom:4, right:4, width:12, height:12, borderRight:'1.5px solid rgba(0,240,255,0.2)', borderBottom:'1.5px solid rgba(0,240,255,0.2)' }} />
-                  <p style={{ fontFamily: 'Share Tech Mono', fontSize: 11, letterSpacing: '0.08em', color: '#00b4d8', marginBottom: 12, textShadow: '0 0 8px rgba(0,180,216,0.25)' }}>
-                    <span style={{ color: '#00f0ff', marginRight: 6 }}>▸</span>ENERGY LEVEL
-                  </p>
-                  <div style={{ display: 'flex', gap: 16, justifyContent: 'center', padding: '8px 0' }}>
-                    {[1,2,3,4,5].map(n => {
-                      const active = energy === n
-                      const c = { 1:'#ef4444', 2:'#f97316', 3:'#00b4d8', 4:'#00f0ff', 5:'#d4a853' }[n]
-                      return (
-                        <button key={n} onClick={() => { setEnergy(n); if (inputStep === 1) setTimeout(() => setInputStep(2), 400) }}
-                          className={active ? 'orb-ignite' : ''} style={{
-                            width: 52, height: 52, borderRadius: '50%', border: `2px solid ${active ? c : '#0d213780'}`,
-                            background: active ? `radial-gradient(circle at 40% 40%, ${c}40 0%, ${c}15 50%, transparent 70%)` : 'rgba(6,20,34,0.6)',
-                            color: active ? c : '#2a4a60', fontSize: 16, fontFamily: 'Rajdhani', fontWeight: 700, cursor: 'pointer',
-                            transition: 'all 0.3s cubic-bezier(0.34,1.56,0.64,1)', transform: active ? 'scale(1.12)' : 'scale(1)',
-                            boxShadow: active ? `0 0 20px ${c}40, 0 0 40px ${c}15, inset 0 0 12px ${c}20` : 'none',
-                          }}>{n}</button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
+      {/* Phase 4: Voice Transition Overlay — fixed at bottom over full-screen reactor */}
+      {showInputs && voiceStep > 0 && (
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 45, display: 'flex', flexDirection: 'column', alignItems: 'center', paddingBottom: '5vh', background: 'linear-gradient(to top, rgba(2,10,19,0.85) 0%, rgba(2,10,19,0.4) 60%, transparent 100%)', pointerEvents: 'auto' }}>
+          <p className="animate-fade-in" style={{ fontFamily: 'Share Tech Mono', fontSize: 14, letterSpacing: '0.1em', color: voiceStep === 4 ? '#d4a853' : '#00b4d8', textShadow: `0 0 12px ${voiceStep === 4 ? 'rgba(212,168,83,0.4)' : 'rgba(0,180,216,0.4)'}`, marginBottom: 20, textAlign: 'center' }}>
+            {voiceQuestion}
+          </p>
 
-              {inputStep >= 2 && (
-                <div className="card-enter" style={{ marginBottom: 16, background: 'linear-gradient(135deg, rgba(6,20,34,0.9), rgba(2,10,19,0.95))', border: '1px solid rgba(0,180,216,0.12)', borderRadius: 6, padding: '16px 20px', position: 'relative', animationDelay: '100ms' }}>
-                  <div style={{ position:'absolute', top:4, left:4, width:12, height:12, borderLeft:'1.5px solid rgba(0,240,255,0.2)', borderTop:'1.5px solid rgba(0,240,255,0.2)' }} />
-                  <div style={{ position:'absolute', bottom:4, right:4, width:12, height:12, borderRight:'1.5px solid rgba(0,240,255,0.2)', borderBottom:'1.5px solid rgba(0,240,255,0.2)' }} />
-                  <p style={{ fontFamily: 'Share Tech Mono', fontSize: 11, letterSpacing: '0.08em', color: '#00b4d8', marginBottom: 8, textShadow: '0 0 8px rgba(0,180,216,0.25)' }}>
-                    <span style={{ color: '#00f0ff', marginRight: 6 }}>▸</span>Primary focus today?
-                  </p>
-                  <input type="text" value={focus} onChange={e => setFocus(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && focus.trim() && setTimeout(() => setInputStep(3), 200)}
-                    placeholder="What's the main objective..." autoFocus
-                    style={{ width: '100%', background: 'rgba(2,10,19,0.6)', border: '1px solid #0d2137', borderRadius: 4, padding: '10px 14px', color: '#d0e8f8', fontFamily: 'Exo 2', fontSize: 13, outline: 'none', transition: 'border-color 0.3s, box-shadow 0.3s', caretColor: '#00f0ff' }}
-                    onFocus={e => { e.target.style.borderColor = '#00b4d8'; e.target.style.boxShadow = '0 0 12px rgba(0,180,216,0.15), inset 0 0 6px rgba(0,180,216,0.05)' }}
-                    onBlur={e => { e.target.style.borderColor = '#0d2137'; e.target.style.boxShadow = 'none' }}
-                  />
-                </div>
-              )}
-
-              {inputStep >= 3 && (
-                <div className="card-enter" style={{ marginBottom: 16, background: 'linear-gradient(135deg, rgba(6,20,34,0.9), rgba(2,10,19,0.95))', border: '1px solid rgba(0,180,216,0.12)', borderRadius: 6, padding: '16px 20px', position: 'relative', animationDelay: '100ms' }}>
-                  <div style={{ position:'absolute', top:4, left:4, width:12, height:12, borderLeft:'1.5px solid rgba(0,240,255,0.2)', borderTop:'1.5px solid rgba(0,240,255,0.2)' }} />
-                  <div style={{ position:'absolute', bottom:4, right:4, width:12, height:12, borderRight:'1.5px solid rgba(0,240,255,0.2)', borderBottom:'1.5px solid rgba(0,240,255,0.2)' }} />
-                  <p style={{ fontFamily: 'Share Tech Mono', fontSize: 11, letterSpacing: '0.08em', color: '#00b4d8', marginBottom: 8, textShadow: '0 0 8px rgba(0,180,216,0.25)' }}>
-                    <span style={{ color: '#00f0ff', marginRight: 6 }}>▸</span>Any blockers?
-                  </p>
-                  <input type="text" value={blockers} onChange={e => setBlockers(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && setTimeout(() => setInputStep(4), 200)}
-                    placeholder="Anything in the way..." autoFocus
-                    style={{ width: '100%', background: 'rgba(2,10,19,0.6)', border: '1px solid #0d2137', borderRadius: 4, padding: '10px 14px', color: '#d0e8f8', fontFamily: 'Exo 2', fontSize: 13, outline: 'none', transition: 'border-color 0.3s, box-shadow 0.3s', caretColor: '#00f0ff' }}
-                    onFocus={e => { e.target.style.borderColor = '#00b4d8'; e.target.style.boxShadow = '0 0 12px rgba(0,180,216,0.15), inset 0 0 6px rgba(0,180,216,0.05)' }}
-                    onBlur={e => { e.target.style.borderColor = '#0d2137'; e.target.style.boxShadow = 'none' }}
-                  />
-                </div>
-              )}
-
-              {inputStep >= 4 && (
-                <div className="card-enter" style={{ marginBottom: 12, background: 'linear-gradient(135deg, rgba(40,30,5,0.4), rgba(2,10,19,0.95))', border: '1px solid rgba(212,168,83,0.15)', borderRadius: 6, padding: '16px 20px', position: 'relative', animationDelay: '100ms' }}>
-                  <div style={{ position:'absolute', top:4, left:4, width:12, height:12, borderLeft:'1.5px solid rgba(212,168,83,0.2)', borderTop:'1.5px solid rgba(212,168,83,0.2)' }} />
-                  <div style={{ position:'absolute', bottom:4, right:4, width:12, height:12, borderRight:'1.5px solid rgba(212,168,83,0.2)', borderBottom:'1.5px solid rgba(212,168,83,0.2)' }} />
-                  <p style={{ fontFamily: 'Share Tech Mono', fontSize: 11, letterSpacing: '0.08em', color: '#d4a853', marginBottom: 8, textShadow: '0 0 8px rgba(212,168,83,0.25)' }}>
-                    <span style={{ color: '#d4a853', marginRight: 6 }}>▸</span>Morning Bet: What will you accomplish today?
-                  </p>
-                  <input type="text" value={morningBet} onChange={e => setMorningBet(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleInputsComplete()}
-                    placeholder="I will..." autoFocus
-                    style={{ width: '100%', background: 'rgba(2,10,19,0.6)', border: '1px solid rgba(212,168,83,0.2)', borderRadius: 4, padding: '10px 14px', color: '#d0e8f8', fontFamily: 'Exo 2', fontSize: 13, outline: 'none', transition: 'border-color 0.3s, box-shadow 0.3s', caretColor: '#d4a853' }}
-                    onFocus={e => { e.target.style.borderColor = '#d4a853'; e.target.style.boxShadow = '0 0 12px rgba(212,168,83,0.15), inset 0 0 6px rgba(212,168,83,0.05)' }}
-                    onBlur={e => { e.target.style.borderColor = 'rgba(212,168,83,0.2)'; e.target.style.boxShadow = 'none' }}
-                  />
-                  <div style={{ textAlign: 'center', marginTop: 14 }}>
-                    <button onClick={handleInputsComplete} className="enter-pulse"
-                      style={{ padding: '10px 28px', color: '#00f0ff', border: '1.5px solid rgba(0,240,255,0.4)', borderRadius: 4, background: 'rgba(0,240,255,0.04)', cursor: 'pointer', fontFamily: 'Rajdhani', fontSize: 13, fontWeight: 600, letterSpacing: '0.12em', transition: 'all 0.3s', textShadow: '0 0 8px rgba(0,240,255,0.4)', boxShadow: '0 0 15px rgba(0,240,255,0.08), inset 0 0 8px rgba(0,240,255,0.04)' }}
-                      onMouseEnter={e => { e.target.style.background = 'rgba(0,240,255,0.1)'; e.target.style.boxShadow = '0 0 25px rgba(0,240,255,0.2), inset 0 0 12px rgba(0,240,255,0.08)' }}
-                      onMouseLeave={e => { e.target.style.background = 'rgba(0,240,255,0.04)'; e.target.style.boxShadow = '0 0 15px rgba(0,240,255,0.08), inset 0 0 8px rgba(0,240,255,0.04)' }}>
-                      CONFIRM ▸
-                    </button>
-                  </div>
-                </div>
-              )}
+          {voiceStep === 1 && (
+            <div className="card-enter" style={{ display: 'flex', gap: 20, justifyContent: 'center', marginBottom: 16 }}>
+              {[1,2,3,4,5].map(n => {
+                const active = energy === n
+                const c = {1:'#ef4444',2:'#f97316',3:'#00b4d8',4:'#00f0ff',5:'#d4a853'}[n]
+                return (
+                  <button key={n} onClick={() => {
+                    setEnergy(n)
+                    setTimeout(() => {
+                      setVoiceStep(2); setVoiceQuestion(VOICE_QS[2])
+                      const s = JSON.parse(localStorage.getItem('jos-settings') || '{}')
+                      if (s.voice !== false) speakElevenLabs(VOICE_QS[2]).catch(() => {})
+                    }, 500)
+                  }} className={active ? 'orb-ignite' : ''} style={{
+                    width: 56, height: 56, borderRadius: '50%', border: `2px solid ${active ? c : 'rgba(13,33,55,0.5)'}`,
+                    background: active ? `radial-gradient(circle at 40% 40%, ${c}50 0%, ${c}20 50%, transparent 70%)` : 'rgba(2,10,19,0.6)',
+                    color: active ? c : '#2a4a60', fontSize: 18, fontFamily: 'Rajdhani', fontWeight: 700, cursor: 'pointer',
+                    transition: 'all 0.35s cubic-bezier(0.34,1.56,0.64,1)', transform: active ? 'scale(1.2)' : 'scale(1)',
+                    boxShadow: active ? `0 0 24px ${c}50, 0 0 48px ${c}20, inset 0 0 16px ${c}25` : 'none',
+                    backdropFilter: 'blur(4px)',
+                  }}>{n}</button>
+                )
+              })}
             </div>
           )}
+
+          {voiceStep >= 2 && voiceStep <= 4 && (
+            <div className="card-enter" style={{ width: '90%', maxWidth: 500 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input type="text"
+                  value={voiceStep === 2 ? focus : voiceStep === 3 ? blockers : morningBet}
+                  onChange={e => { if (voiceStep === 2) setFocus(e.target.value); else if (voiceStep === 3) setBlockers(e.target.value); else setMorningBet(e.target.value) }}
+                  onKeyDown={e => {
+                    if (e.key !== 'Enter') return
+                    if (voiceStep === 4) { handleInputsComplete(); return }
+                    const next = voiceStep + 1
+                    setTimeout(() => {
+                      setVoiceStep(next); setVoiceQuestion(VOICE_QS[next])
+                      const s = JSON.parse(localStorage.getItem('jos-settings') || '{}')
+                      if (s.voice !== false) speakElevenLabs(VOICE_QS[next]).catch(() => {})
+                    }, 300)
+                  }}
+                  placeholder={voiceStep === 2 ? 'Type or speak your focus...' : voiceStep === 3 ? 'Blockers...' : 'I will...'}
+                  autoFocus
+                  style={{ flex: 1, background: 'rgba(2,10,19,0.7)', backdropFilter: 'blur(8px)', border: `1px solid ${voiceStep === 4 ? 'rgba(212,168,83,0.3)' : 'rgba(0,180,216,0.2)'}`, borderRadius: 20, padding: '10px 16px', color: '#d0e8f8', fontFamily: 'Exo 2', fontSize: 13, outline: 'none', caretColor: voiceStep === 4 ? '#d4a853' : '#00f0ff' }}
+                />
+                <button onClick={() => {
+                  if (voiceStep === 4) { handleInputsComplete(); return }
+                  const next = voiceStep + 1
+                  setTimeout(() => {
+                    setVoiceStep(next); setVoiceQuestion(VOICE_QS[next])
+                    const s = JSON.parse(localStorage.getItem('jos-settings') || '{}')
+                    if (s.voice !== false) speakElevenLabs(VOICE_QS[next]).catch(() => {})
+                  }, 300)
+                }} style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(0,240,255,0.08)', border: '1px solid rgba(0,240,255,0.3)', color: '#00f0ff', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>▸</button>
+              </div>
+              {isListeningBoot && <p className="animate-pulse" style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: '#00b4d8', textAlign: 'center', marginTop: 8, letterSpacing: '0.15em' }}>LISTENING...</p>}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+            {[1,2,3,4].map(s => (
+              <div key={s} style={{ width: 6, height: 6, borderRadius: '50%', background: s < voiceStep ? '#00b4d8' : s === voiceStep ? '#00f0ff' : '#0d2137', boxShadow: s === voiceStep ? '0 0 8px rgba(0,240,255,0.5)' : 'none', transition: 'all 0.3s' }} />
+            ))}
+          </div>
+        </div>
+      )}
 
           {/* Phase 5: Briefing text */}
           {phase >= 5 && briefingText && (
