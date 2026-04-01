@@ -13,6 +13,8 @@ import { getReviewSchedule } from '../../utils/spacedRepetition.js'
 import useStorage from '../../hooks/useStorage.js'
 import ChatView from './ChatView.jsx'
 import BodyDoubleTimer from './BodyDoubleTimer.jsx'
+import PhantomMode from './PhantomMode.jsx'
+import BattleRoyale from './BattleRoyale.jsx'
 import { initTilt } from '../../utils/tiltEffect.js'
 
 const TIER_STYLES = {
@@ -23,6 +25,8 @@ const TIER_STYLES = {
 
 export default function TrainTab({ weekNumber, requestedMode, onModeOpened }) {
   const [activeMode, setActiveMode] = useState(null)
+  const [showPhantom, setShowPhantom] = useState(false)
+  const [showBattle, setShowBattle] = useState(false)
   const [autoMic, setAutoMic] = useState(false)
   const { get } = useStorage()
   const antiCrutch = getAntiCrutchLevel(weekNumber)
@@ -134,6 +138,23 @@ export default function TrainTab({ weekNumber, requestedMode, onModeOpened }) {
           {antiCrutch.label}
         </span>
       </div>
+
+      {/* Emergency modes */}
+      <div className="flex gap-2 mb-4">
+        <button onClick={() => setShowPhantom(true)}
+          className="flex-1 glass-card px-3 py-2 text-center border hover:bg-red-500/10 transition-all"
+          style={{ borderColor: 'rgba(239,68,68,0.3)' }}>
+          <span className="font-display text-[10px] font-bold tracking-wider" style={{ color: '#ef4444' }}>PHANTOM MODE</span>
+        </button>
+        <button onClick={() => setShowBattle(true)}
+          className="flex-1 glass-card px-3 py-2 text-center border hover:bg-gold/10 transition-all"
+          style={{ borderColor: 'rgba(212,168,83,0.3)' }}>
+          <span className="font-display text-[10px] font-bold tracking-wider" style={{ color: '#d4a853' }}>BATTLE ROYALE</span>
+        </button>
+      </div>
+
+      {showPhantom && <PhantomMode onClose={() => setShowPhantom(false)} />}
+      {showBattle && <BattleRoyale onClose={() => setShowBattle(false)} />}
 
       {/* Auto-Quiz Alert Cards */}
       {overdueAlerts.length > 0 && (

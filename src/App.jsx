@@ -33,6 +33,8 @@ import VoiceMode from './components/VoiceMode.jsx'
 import QuickVoiceOverlay from './components/QuickVoiceOverlay.jsx'
 import Onboarding from './components/Onboarding.jsx'
 import ShutdownSequence from './components/ShutdownSequence.jsx'
+import CommandLine from './components/CommandLine.jsx'
+import useComeback from './hooks/useComeback.js'
 import { getDayNumber, getWeekNumber } from './utils/dateUtils.js'
 import { speakElevenLabs } from './utils/elevenLabsSpeak.js'
 // smartVoiceRouter removed — always ElevenLabs
@@ -92,6 +94,7 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [showScanSweep, setShowScanSweep] = useState(false)
   const [showShutdown, setShowShutdown] = useState(false)
+  const [showCommandLine, setShowCommandLine] = useState(false)
   const contentRef = useRef(null)
   const { elapsed } = useSessionTimer()
 
@@ -115,6 +118,7 @@ function App() {
     return () => window.removeEventListener('jarvis-task-toggled', h)
   }, [])
 
+  const comebackState = useComeback()
   useStreak(eventBus)
   useAchievements()
   useNotifications()
@@ -148,6 +152,13 @@ function App() {
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
+  }, [])
+
+  // Backtick toggles CommandLine
+  useEffect(() => {
+    const h = (e) => { if (e.key === '`' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); setShowCommandLine(prev => !prev) } }
+    document.addEventListener('keydown', h)
+    return () => document.removeEventListener('keydown', h)
   }, [])
 
   // Shutdown listener (from Settings button + voice command)
@@ -408,6 +419,9 @@ function App() {
       {quickVoiceOpen && (
         <QuickVoiceOverlay onClose={() => setQuickVoiceOpen(false)} />
       )}
+
+      {/* Command Line */}
+      {showCommandLine && <CommandLine onClose={() => setShowCommandLine(false)} />}
 
       {/* Shutdown Sequence */}
       {showShutdown && <ShutdownSequence />}

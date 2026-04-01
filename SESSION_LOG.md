@@ -4,6 +4,51 @@
 
 ---
 
+### Session 36 — Power Features: Phantom Mode + Battle Royale + Command Line + Comeback (2026-04-01)
+
+**4 power tools for specific high-impact situations.**
+
+**PhantomMode.jsx (TRAIN tab):**
+- Emergency interview prep — enter company + role → Opus generates 15 questions
+- 60-second timer per question, red aesthetic (WAR PREPARATION)
+- Answer via voice or text, scored 1-10 immediately
+- Readiness score at end (% with color gauge)
+
+**BattleRoyale.jsx (TRAIN tab):**
+- Identifies 5 weakest concepts from jos-concepts
+- 5 rounds, 3 questions each (EASY → MEDIUM → HARD)
+- Updates concept strength via updateConceptStrength per answer
+- Between-round JARVIS commentary, dramatic reveals
+- Before/after strength comparison
+
+**CommandLine.jsx (backtick ` toggles):**
+- Terminal-style interface: green monospace, blinking cursor
+- Commands: /status, /quiz, /mode, /task, /capture, /energy, /battle, /phantom, /report, /shutdown, /help, /clear
+- Command history (up/down arrows)
+- Dispatches events for overlays (battle royale, phantom, report, shutdown)
+
+**useComeback.js:**
+- Calculates days since last session
+- gentle (2-3 days): warm message, normal targets
+- moderate (4-7 days): reduced targets for 3 days, softer tone
+- extended (7+ days): reduced targets, no pressure, warmest tone
+- Sets jos-core.comebackMode, prompts.js appends warm context
+- "No guilt. Ever." — Bible rule #1
+
+**Wiring:**
+- TrainTab: PHANTOM MODE (red) + BATTLE ROYALE (gold) buttons at top
+- App.jsx: backtick listener toggles CommandLine, useComeback hook
+- prompts.js: comeback mode appends warm personality context, auto-expires after 3 days
+- voiceCommands.js: "phantom mode" and "interview tomorrow" (already covered by voice commands)
+
+**Build: 0 errors, 18.76s**
+
+**Files created (4):** PhantomMode.jsx, BattleRoyale.jsx, CommandLine.jsx, useComeback.js
+**Files updated (4):** TrainTab.jsx, App.jsx, prompts.js, voiceCommands.js
+**Total: 83 source files**
+
+---
+
 ### Session 35 — Atmosphere: Ambient Sound + Shutdown + Dynamic Reactor + Mood Engine (2026-04-01)
 
 **JARVIS now feels ALIVE through audio atmosphere, graceful shutdown, and mood-reactive visuals.**

@@ -257,6 +257,21 @@ export function buildSystemPrompt(mode, context = {}) {
     }
   } catch { /* ok */ }
 
+  // Comeback system — warm re-engagement after absence
+  try {
+    const core = JSON.parse(localStorage.getItem('jos-core') || '{}')
+    if (core.comebackMode?.active) {
+      const startDate = new Date(core.comebackMode.startDate)
+      const daysSinceComeback = Math.floor((Date.now() - startDate) / (1000 * 60 * 60 * 24))
+      if (daysSinceComeback <= (core.comebackMode.reducedDays || 3)) {
+        personalityShift += ' COMEBACK MODE: Sir has been away. Be warm, encouraging. No guilt. Celebrate the return. Reduced targets active.'
+      } else {
+        core.comebackMode = null
+        localStorage.setItem('jos-core', JSON.stringify(core))
+      }
+    }
+  } catch { /* ok */ }
+
   return `${BASE_PERSONALITY}
 
 Current rank: ${rank} Panwar | Day ${dayNumber} | Week ${weekNumber} | Streak: ${streak} | Energy: ${energy}/5
