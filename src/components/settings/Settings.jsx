@@ -269,6 +269,20 @@ export default function Settings({ isOpen, onClose }) {
 
             {/* Cloud Sync */}
             <div className="glass-card p-3 mt-3">
+              <h3 className="font-display text-xs font-bold text-cyan tracking-wider neon-heading mb-2">VOICE IDENTITY</h3>
+              {(() => { try { return !!JSON.parse(localStorage.getItem('jos-voice-print')) } catch { return false } })() ? (
+                <div>
+                  <p className="font-body text-[10px] mb-2" style={{ color: '#10b981' }}>Voice print enrolled. JARVIS recognizes your voice.</p>
+                  <button onClick={() => { localStorage.removeItem('jos-voice-print') }}
+                    className="font-mono text-[10px] text-gold border border-gold/30 px-3 py-1 rounded hover:bg-gold/10 transition-all">RE-ENROLL</button>
+                </div>
+              ) : (
+                <p className="font-body text-[10px] text-text-muted">No voice print. Open voice mode to enroll.</p>
+              )}
+            </div>
+
+            {/* Cloud Sync */}
+            <div className="glass-card p-3 mt-3">
               <h3 className="font-display text-xs font-bold text-cyan tracking-wider neon-heading mb-2">CLOUD SYNC</h3>
               {(() => { try { return !!import.meta.env.VITE_SUPABASE_URL } catch { return false } })() ? (
                 <div>

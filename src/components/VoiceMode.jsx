@@ -10,6 +10,9 @@ import useVoiceCheckIn from '../hooks/useVoiceCheckIn.js'
 import useJarvisVoice from '../hooks/useJarvisVoice.js'
 import { processVoiceCommand } from '../utils/voiceCommands.js'
 import { stripQuizTags } from '../utils/quizScoring.js'
+import { isEnrolled } from '../utils/voiceFingerprint.js'
+import VoiceEnrollment from './VoiceEnrollment.jsx'
+import useVoiceVerification from '../hooks/useVoiceVerification.js'
 import MODES from '../data/modes.js'
 
 const TAU = Math.PI * 2
@@ -23,6 +26,8 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
   const voice = useJarvisVoice()
 
   const [currentModeId, setCurrentModeId] = useState(initialMode)
+  const [showEnrollment, setShowEnrollment] = useState(!isEnrolled())
+  const verification = useVoiceVerification()
   const [messages, setMessages] = useState([])
   const canvasRef = useRef(null)
   const animRef = useRef(null)
@@ -323,7 +328,11 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
       animRef.current = requestAnimationFrame(draw)
     }
     draw()
-    setTimeout(() => voice.startListening(), 200)
+    setTimeout(() => {
+      voice.startListening()
+      // Start voice verification if enrolled
+      if (isEnrolled() && analyserRef.current) verification.startVerification(analyserRef.current)
+    }, 200)
 
     return () => {
       if (animRef.current) cancelAnimationFrame(animRef.current)
@@ -342,6 +351,11 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
       }
     }
   }, [])
+
+  // Enrollment screen
+  if (showEnrollment) {
+    return <VoiceEnrollment analyserRef={analyserRef} onComplete={() => setShowEnrollment(false)} onSkip={() => setShowEnrollment(false)} />
+  }
 
   const stateLabel = { IDLE: 'TAP TO SPEAK', LISTENING: 'LISTENING...', PROCESSING: 'PROCESSING...', SPEAKING: 'SPEAKING...' }[vs]
   const stateColor = vs === 'SPEAKING' || vs === 'PROCESSING' ? '#d4a853' : vs === 'LISTENING' ? '#00b4d8' : '#5a7a94'
@@ -377,6 +391,17 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
           {stateLabel}{voice.silenceCountdown && <span style={{ marginLeft: 8, color: '#5a7a94', fontSize: 10 }}>{voice.silenceCountdown}</span>}
         </p>
         <p style={{ fontFamily: 'Share Tech Mono', fontSize: 9, color: '#2a4a60', marginTop: 8, letterSpacing: '0.2em' }}>{currentMode.emoji} {currentMode.name.toUpperCase()} · EXOCORTEX</p>
+
+        {/* Voice verification */}
+        {verification.status === 'verified' && (
+          <p style={{ fontFamily: 'Share Tech Mono', fontSize: 8, color: '#10b981', letterSpacing: '0.15em', marginTop: 4 }}>IDENTITY VERIFIED ({verification.confidence}%)</p>
+        )}
+        {verification.status === 'mismatch' && (
+          <p className="animate-pulse" style={{ fontFamily: 'Share Tech Mono', fontSize: 8, color: '#ef4444', letterSpacing: '0.15em', marginTop: 4 }}>VOICE MISMATCH — UNRECOGNIZED</p>
+        )}
+        {verification.status === 'checking' && (
+          <p style={{ fontFamily: 'Share Tech Mono', fontSize: 8, color: '#d4a853', letterSpacing: '0.15em', marginTop: 4 }}>VERIFYING...</p>
+        )}
       </div>
 
       {/* Transcript */}

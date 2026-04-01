@@ -4,6 +4,44 @@
 
 ---
 
+### Session 46 — Voice Fingerprint: Speaker Recognition (2026-04-02)
+
+**JARVIS learns Nikhil's voice and detects other speakers.**
+
+**Created `voiceFingerprint.js`:**
+- `extractFeatures(analyser)`: spectral centroid, dominant frequency band, zero crossing rate, spectral flatness, average energy
+- `createVoicePrint(samples)`: mean + std per feature from 40+ samples
+- `verifyVoice(current, stored)`: calculates deviation per feature, returns match boolean + confidence %
+- Threshold: <2.5 std dev = match (50%+ confidence)
+
+**Created `VoiceEnrollment.jsx`:**
+- Full-screen calibration overlay on first voice mode use
+- Collects 40 voice samples over ~20 seconds (200ms intervals, filters silence)
+- Large SVG progress ring (0-100%)
+- "Voice print captured" + completion chime on success
+- Skip button for users who don't want enrollment
+
+**Created `useVoiceVerification.js`:**
+- Continuous verification: checks every 500ms during LISTENING state
+- Averages last 10 feature samples for stability
+- Returns: status (idle/verified/mismatch/checking), confidence %
+- Logs "VOICE MISMATCH: X%" on detection
+
+**Wired into VoiceMode.jsx:**
+- Shows VoiceEnrollment on first open if not enrolled
+- Starts verification after listening begins (if enrolled)
+- Status display: "IDENTITY VERIFIED (X%)" green / "VOICE MISMATCH" red / "VERIFYING..." gold
+
+**Settings.jsx:** Voice Identity section — shows enrolled status + Re-enroll button
+
+**Build: 0 errors, 43.81s**
+
+**Files created (3):** voiceFingerprint.js, VoiceEnrollment.jsx, useVoiceVerification.js
+**Files updated (2):** VoiceMode.jsx, Settings.jsx
+**Total: 105 source files**
+
+---
+
 ### Session 45 — Supabase: Cloud Persistence (2026-04-02)
 
 **JARVIS data survives browser clears, syncs across devices.**
