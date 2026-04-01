@@ -1,7 +1,8 @@
 // Header.jsx — HUD Header Bar with reactor, neon rank, live indicator
 
 import { useEffect, useRef } from 'react'
-import { Settings } from 'lucide-react'
+import { Settings, Cloud, CloudOff } from 'lucide-react'
+import { isSupabaseConfigured } from '../utils/supabase.js'
 
 function MiniReactor({ energy = 3 }) {
   const canvasRef = useRef(null)
@@ -131,6 +132,9 @@ export default function Header({ dayNumber, weekNumber, streak, elapsed, rank, e
         </span>
         <span className="font-mono text-xs neon-pulse" style={{ color: '#00b4d8' }}>
           {formatTime(elapsed || 0)}
+        </span>
+        <span title={isSupabaseConfigured() ? 'Cloud sync active' : 'Local only'}>
+          {isSupabaseConfigured() ? <Cloud size={12} style={{ color: '#10b981', opacity: 0.6 }} /> : <CloudOff size={12} style={{ color: '#5a7a94', opacity: 0.4 }} />}
         </span>
         <button onClick={onSettingsClick}
           className="text-text-dim hover:text-cyan transition-colors duration-300 hover:rotate-90"

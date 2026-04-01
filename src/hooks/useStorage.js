@@ -4,6 +4,7 @@
 // The 'jos-' prefix namespaces our data so it never collides with other apps on the same domain.
 
 import { useCallback } from 'react'
+import { pushToCloud } from '../utils/supabaseSync.js'
 
 const PREFIX = 'jos-'
 
@@ -22,7 +23,9 @@ export default function useStorage() {
 
   const set = useCallback((key, value) => {
     try {
-      localStorage.setItem(PREFIX + key, JSON.stringify(value))
+      const fullKey = PREFIX + key
+      localStorage.setItem(fullKey, JSON.stringify(value))
+      pushToCloud(fullKey) // async cloud sync
     } catch (err) {
       console.error(`[useStorage] Failed to write ${PREFIX}${key}:`, err)
     }
@@ -35,7 +38,9 @@ export default function useStorage() {
       const raw = localStorage.getItem(PREFIX + key)
       const current = raw ? JSON.parse(raw) : null
       const next = updater(current)
-      localStorage.setItem(PREFIX + key, JSON.stringify(next))
+      const fullKey = PREFIX + key
+      localStorage.setItem(fullKey, JSON.stringify(next))
+      pushToCloud(fullKey) // async cloud sync
       return next
     } catch (err) {
       console.error(`[useStorage] Failed to update ${PREFIX}${key}:`, err)

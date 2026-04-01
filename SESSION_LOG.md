@@ -4,6 +4,38 @@
 
 ---
 
+### Session 45 — Supabase: Cloud Persistence (2026-04-02)
+
+**JARVIS data survives browser clears, syncs across devices.**
+
+**Created `supabase.js`:** Client with graceful fallback (no env vars → localStorage only). Device ID for multi-device.
+
+**Created `supabaseSync.js`:**
+- `pushToCloud(key)`: upserts single key to jarvis_data table
+- `syncOnBoot()`: pulls all cloud data → localStorage, pushes local-only keys up
+- `pushAllToCloud()`: manual full sync (21 keys)
+- `logApiCallToCloud(entry)`: logs to jarvis_api_logs table
+- `logCheckinToCloud(checkin)`: logs to jarvis_checkins table
+
+**Created `supabase/setup.sql`:** 3 tables (jarvis_data, jarvis_api_logs, jarvis_checkins) with RLS policies.
+
+**Wired into `useStorage.js`:** Every `set()` and `update()` call does async `pushToCloud()` after localStorage write. Fire-and-forget — never blocks UI.
+
+**Wired into `App.jsx`:** Boot sync (`syncOnBoot()`) runs on mount if Supabase configured.
+
+**Wired into `CheckInForm.jsx`:** `logCheckinToCloud(entry)` after check-in save.
+
+**Header.jsx:** Cloud/CloudOff icon next to session timer shows sync status.
+
+**Settings.jsx:** "CLOUD SYNC" section with status + "FORCE FULL SYNC" button.
+
+**Build: 0 errors, 47.02s. @supabase/supabase-js installed.**
+
+**Files created (3):** supabase.js, supabaseSync.js, supabase/setup.sql
+**Files updated (5):** useStorage.js, App.jsx, Header.jsx, Settings.jsx, CheckInForm.jsx
+
+---
+
 ### Session 44 — Claude Superpowers: Tool Use + Vision + Web Search (2026-04-02)
 
 **JARVIS can now ACT, SEE, and KNOW.**

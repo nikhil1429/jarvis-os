@@ -35,6 +35,8 @@ import Onboarding from './components/Onboarding.jsx'
 import ShutdownSequence from './components/ShutdownSequence.jsx'
 import CommandLine from './components/CommandLine.jsx'
 import useComeback from './hooks/useComeback.js'
+import { syncOnBoot } from './utils/supabaseSync.js'
+import { isSupabaseConfigured } from './utils/supabase.js'
 import useVizEngine from './hooks/useVizEngine.js'
 import useWeaknessDetector from './hooks/useWeaknessDetector.js'
 import useReportGenerator from './hooks/useReportGenerator.js'
@@ -175,6 +177,11 @@ function App() {
     const h = () => setShowShutdown(true)
     window.addEventListener('jarvis-request-shutdown', h)
     return () => window.removeEventListener('jarvis-request-shutdown', h)
+  }, [])
+
+  // Supabase boot sync
+  useEffect(() => {
+    if (isSupabaseConfigured()) syncOnBoot()
   }, [])
 
   // Chrome voices load async — reset cache when they arrive

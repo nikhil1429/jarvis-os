@@ -267,6 +267,25 @@ export default function Settings({ isOpen, onClose }) {
               SHUTDOWN JARVIS
             </button>
 
+            {/* Cloud Sync */}
+            <div className="glass-card p-3 mt-3">
+              <h3 className="font-display text-xs font-bold text-cyan tracking-wider neon-heading mb-2">CLOUD SYNC</h3>
+              {(() => { try { return !!import.meta.env.VITE_SUPABASE_URL } catch { return false } })() ? (
+                <div>
+                  <p className="font-body text-[10px] mb-2" style={{ color: '#10b981' }}>Supabase connected. Data syncs automatically.</p>
+                  <button onClick={async () => {
+                    const { pushAllToCloud } = await import('../../utils/supabaseSync.js')
+                    const count = await pushAllToCloud()
+                    alert(`Synced ${count} keys to cloud`)
+                  }} className="font-mono text-[10px] text-cyan border border-cyan/30 px-3 py-1 rounded hover:bg-cyan/10 transition-all">
+                    FORCE FULL SYNC
+                  </button>
+                </div>
+              ) : (
+                <p className="font-body text-[10px] text-text-muted">Not configured. Add VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY to .env.local</p>
+              )}
+            </div>
+
             {/* Identity Data */}
             <div className="glass-card p-3 mt-3">
               <h3 className="font-display text-xs font-bold text-cyan tracking-wider neon-heading mb-2">IDENTITY DATA</h3>
