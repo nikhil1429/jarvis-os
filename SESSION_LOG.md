@@ -4,6 +4,40 @@
 
 ---
 
+### Session 44B — Complete Reporting Pipeline: 3-Day + Weekly + Newsletter (2026-04-02)
+
+**Reports now actually GENERATE AI content, not just detect when they're due.**
+
+**Created `useReportGenerator.js`:**
+- `generate3DayTrend()`: Sonnet call with last 3 days feelings data → 5-section analysis (trajectory, pattern, energy insight, prediction, one action). Saves to jos-weekly.lastTrendReport.
+- `generateWeeklyReview()`: Sonnet call with 7 days data → 7-section review (headline, wins, gaps, pattern, concept velocity, next focus, JARVIS assessment). Saves to jos-weekly.lastWeeklyReport.
+- `generateNewsletter()`: Sonnet call → 6-section personal newsletter (subject line, opening, numbers, highlight, challenge, JARVIS thought). Saves to jos-weekly.newsletter.
+- All use SSE streaming via /api/claude. Under 250 words each.
+- `generating` state tracks which report is in progress.
+
+**Created `TrendReport.jsx`:**
+- Glass-card display for 3-day trend or weekly review
+- Gold top border for weekly, cyan for trend
+- Timestamp, whitespace-preserved text, close button
+
+**Wired into StatsTab.jsx:**
+- 3 new trigger buttons: "3-DAY TREND" / "WEEKLY REVIEW" / "NEWSLETTER"
+- Disabled during generation, shows "GENERATING..." state
+
+**Wired into CmdTab.jsx:**
+- `RecentReports` component shows trend/weekly reports if generated in last 48 hours
+- Appears below newsletter card
+
+**Wired into App.jsx:**
+- `useReportGenerator()` hook available for auto-triggering
+
+**Build: 0 errors, 50.84s**
+
+**Files created (2):** useReportGenerator.js, TrendReport.jsx
+**Files updated (3):** StatsTab.jsx, CmdTab.jsx, App.jsx
+
+---
+
 ### Session 43 — Visualization Engine: AI Charts + Interactive Analysis (Tiers 3+4) (2026-04-01)
 
 **JARVIS generates charts in responses + detects root cause weaknesses.**

@@ -11,6 +11,7 @@ import Briefing from './Briefing.jsx'
 import SecondBrain from './SecondBrain.jsx'
 import TimeCapsule from '../reports/TimeCapsule.jsx'
 import WeaknessNotification from '../viz/WeaknessNotification.jsx'
+import TrendReport from '../reports/TrendReport.jsx'
 import useAdaptiveUI from '../../hooks/useAdaptiveUI.js'
 import useStorage from '../../hooks/useStorage.js'
 
@@ -39,6 +40,22 @@ function WeeklyNewsletter() {
   )
 }
 
+function RecentReports() {
+  const { get } = useStorage()
+  const weekly = get('weekly') || {}
+  const weeklyObj = typeof weekly === 'object' && !Array.isArray(weekly) ? weekly : {}
+  const trend = weeklyObj.lastTrendReport
+  const review = weeklyObj.lastWeeklyReport
+  // Show if generated in last 48 hours
+  const isRecent = (ts) => ts && (Date.now() - new Date(ts).getTime()) < 48 * 3600000
+  return (
+    <>
+      {trend && isRecent(trend.generatedAt) && <TrendReport report={trend} />}
+      {review && isRecent(review.generatedAt) && <TrendReport report={review} />}
+    </>
+  )
+}
+
 export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissPulse, weakness, onWeaknessTap, onWeaknessDismiss }) {
   const { suggestions } = useAdaptiveUI()
 
@@ -50,6 +67,7 @@ export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissP
       {/* Morning Briefing */}
       <div className="card-enter" style={{ animationDelay: '0ms' }}><Briefing /></div>
       <WeeklyNewsletter />
+      <RecentReports />
 
       {/* Adaptive Suggestions */}
       {suggestions.length > 0 && (

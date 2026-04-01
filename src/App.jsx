@@ -37,6 +37,7 @@ import CommandLine from './components/CommandLine.jsx'
 import useComeback from './hooks/useComeback.js'
 import useVizEngine from './hooks/useVizEngine.js'
 import useWeaknessDetector from './hooks/useWeaknessDetector.js'
+import useReportGenerator from './hooks/useReportGenerator.js'
 import DashboardOverlay from './components/viz/DashboardOverlay.jsx'
 import VizDependencyTree from './components/viz/VizDependencyTree.jsx'
 import { getDayNumber, getWeekNumber } from './utils/dateUtils.js'
@@ -125,6 +126,7 @@ function App() {
   const comebackState = useComeback()
   const { dashboard, showDashboard, closeDashboard } = useVizEngine(eventBus)
   const { weakness, dismissWeakness } = useWeaknessDetector(eventBus)
+  const reportGen = useReportGenerator()
   const [showDepTree, setShowDepTree] = useState(false)
   useStreak(eventBus)
   useAchievements()

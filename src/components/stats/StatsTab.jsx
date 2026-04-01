@@ -1,7 +1,8 @@
 // StatsTab.jsx — Analytics Bay (Tab 5) with report triggers
 
 import { useState } from 'react'
-import { FileText, Shield, Star } from 'lucide-react'
+import { FileText, Shield, Star, TrendingUp, Newspaper } from 'lucide-react'
+import useReportGenerator from '../../hooks/useReportGenerator.js'
 import ReadinessScore from './ReadinessScore.jsx'
 import NikhilScore from './NikhilScore.jsx'
 import PowerRanking from './PowerRanking.jsx'
@@ -17,6 +18,7 @@ export default function StatsTab() {
   const [showReport, setShowReport] = useState(false)
   const [showBrief, setShowBrief] = useState(false)
   const [showReplay, setShowReplay] = useState(false)
+  const reportGen = useReportGenerator()
 
   return (
     <div className="space-y-4 max-w-2xl mx-auto">
@@ -53,6 +55,25 @@ export default function StatsTab() {
       </div>
 
       {/* Overlays */}
+      {/* AI Report Generation */}
+      <div className="flex gap-2 mt-3">
+        <button onClick={() => reportGen.generate3DayTrend()} disabled={!!reportGen.generating}
+          className="flex-1 glass-card py-2 text-center hover:border-cyan/30 transition-all disabled:opacity-30">
+          <TrendingUp size={14} className="text-cyan mx-auto mb-1" />
+          <p className="font-mono text-[8px] text-cyan tracking-wider">{reportGen.generating === 'trend-3d' ? 'GENERATING...' : '3-DAY TREND'}</p>
+        </button>
+        <button onClick={() => reportGen.generateWeeklyReview()} disabled={!!reportGen.generating}
+          className="flex-1 glass-card py-2 text-center hover:border-gold/30 transition-all disabled:opacity-30">
+          <FileText size={14} className="text-gold mx-auto mb-1" />
+          <p className="font-mono text-[8px] text-gold tracking-wider">{reportGen.generating === 'weekly' ? 'GENERATING...' : 'WEEKLY REVIEW'}</p>
+        </button>
+        <button onClick={() => reportGen.generateNewsletter()} disabled={!!reportGen.generating}
+          className="flex-1 glass-card py-2 text-center hover:border-gold/30 transition-all disabled:opacity-30">
+          <Newspaper size={14} className="text-gold mx-auto mb-1" />
+          <p className="font-mono text-[8px] text-gold tracking-wider">{reportGen.generating === 'newsletter' ? 'GENERATING...' : 'NEWSLETTER'}</p>
+        </button>
+      </div>
+
       {showReport && <QuarterlyReport onClose={() => setShowReport(false)} />}
       {showBrief && <InterviewBrief onClose={() => setShowBrief(false)} />}
       {showReplay && <ReplayTheater onClose={() => setShowReplay(false)} />}
