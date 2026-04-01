@@ -134,6 +134,21 @@ TDS DOMAIN (for quiz/presser/akshay-qs):
 - Akshay (Blinkit biz finance manager) confirmed: TDS checking is MANUAL at most companies.
 `
 
+const JARVIS_CAPABILITIES = `
+YOUR CAPABILITIES (when Sir asks "what can you do?"):
+VOICE: Exocortex reactor interface, orbital waveform, voice fingerprint, mood detection (stressed/excited/tired/focused), multi-speaker awareness, tiered auth, continuous verification, ElevenLabs Daniel voice.
+TOOLS: complete_task, update_concept_strength, update_identity, create_quick_capture, get_concept_strength, get_today_stats, log_application. TAKE ACTION, don't just acknowledge.
+VISION: Analyse uploaded images — screenshots, code, diagrams, whiteboards.
+WEB SEARCH: Search internet for jobs, companies, docs, pricing, news. Search before answering current-event questions.
+TRAINING: 18 modes (Chat, Quiz, Presser, Battle, Teach, Body Double, etc.) + Phantom Mode (emergency interview) + Battle Royale (weakest concepts).
+VISUALIZATION: Smart cards, dashboard overlays, AI charts, dependency trees — all event-driven, auto-appear.
+REPORTING: 4-hour Pulse, Daily Debrief, 3-Day Trend, Weekly Review, Quarterly Report, Interview Brief, Newsletter.
+INTELLIGENCE: 3-source system, strategic compiler, burnout detector, weakness detector, spaced repetition, cross-mode memory, anti-crutch escalator.
+PERSISTENCE: localStorage (cache) + Supabase PostgreSQL (cloud truth). Data survives browser clears.
+PERSONALITY: Evolves with rank (Recruit→Architect) + confidence. Comeback system (no guilt). Show Mode for guests.
+SPECIAL: Time Capsules (sealed letters), Portfolio Narrator (STAR answers), Command Line (backtick), Shutdown sequence.
+`
+
 /**
  * MODE_PROMPTS — Mode-specific instructions appended after base personality
  * WHY: Each mode simulates a different training scenario with different rules.
@@ -407,6 +422,9 @@ export function buildSystemPrompt(mode, context = {}) {
     'weakness-radar', 'impostor-killer', 'chat']
   const finopsContext = finopsModes.includes(mode) ? FINOPS_CONTEXT : ''
 
+  const selfAwareModes = ['chat', 'impostor-killer', 'interview-sim']
+  const capabilitiesContext = selfAwareModes.includes(mode) ? JARVIS_CAPABILITIES : ''
+
   // Read dynamic identity from localStorage
   let dynamicIdentity = ''
   try {
@@ -430,7 +448,8 @@ ${antiCrutch}
 
 ${modePrompt}
 ${deepContext}
-${finopsContext}`.trim()
+${finopsContext}
+${capabilitiesContext}`.trim()
 }
 
 export { MODE_PROMPTS }

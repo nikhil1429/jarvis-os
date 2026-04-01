@@ -384,6 +384,16 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
   )
 }
 
+function renderMd(text) {
+  if (!text) return ''
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code style="background:rgba(0,180,216,0.1);padding:1px 4px;border-radius:3px;font-family:Share Tech Mono,monospace;font-size:0.9em">$1</code>')
+    .replace(/\n/g, '<br/>')
+}
+
 function MessageBubble({ message }) {
   const isUser = message.role === 'user'
   const isOpus = message.tier >= 2
@@ -391,7 +401,7 @@ function MessageBubble({ message }) {
     return (
       <div className="flex justify-end">
         <div className="max-w-[80%] bg-cyan/10 border border-cyan/20 rounded-lg px-4 py-2.5">
-          <p className="font-body text-sm text-text whitespace-pre-wrap">{message.content}</p>
+          <p className="font-body text-sm text-text" dangerouslySetInnerHTML={{ __html: renderMd(message.content) }} />
         </div>
       </div>
     )
@@ -405,7 +415,7 @@ function MessageBubble({ message }) {
             <span className="font-mono text-[9px] text-gold/70 tracking-wider">OPUS — {message.reason}</span>
           </div>
         )}
-        <p className={`font-body text-sm whitespace-pre-wrap leading-relaxed ${isOpus ? 'text-gold' : 'text-text'}`}>{message.content}</p>
+        <p className={`font-body text-sm leading-relaxed ${isOpus ? 'text-gold' : 'text-text'}`} dangerouslySetInnerHTML={{ __html: renderMd(message.content) }} />
         <span className="font-mono text-[9px] text-text-muted mt-1.5 block">
           {new Date(message.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
         </span>

@@ -4,6 +4,44 @@
 
 ---
 
+### Session 47 — JARVIS Self-Awareness + Final Fixes + Deploy Ready (2026-04-02)
+
+**FINAL SESSION. JARVIS knows what it can do. Deploy-ready.**
+
+**Part 1 — Self-Awareness (`JARVIS_CAPABILITIES` constant):**
+- Comprehensive capabilities list injected for chat/impostor-killer/interview-sim modes
+- Covers: voice system, 7 tools, vision, web search, 18 training modes, special modes, 4-tier reporting, intelligence systems, 6 ADHD systems, 9 alive behaviors, persistence, personality
+- "When Sir asks 'what can you do?' — reference this list."
+
+**Part 2 — Final Fixes:**
+- `.env.example`: template for required/optional env vars
+- `public/manifest.json`: PWA manifest (standalone, JARVIS theme)
+- `index.html`: manifest link + theme-color meta
+- `ChatView.jsx`: `renderMd()` function renders **bold**, *italic*, `code` in messages (dangerouslySetInnerHTML with HTML entity escaping)
+
+**JARVIS OS Final Stats:**
+- **109 source files** across src/ directory
+- **~47 sessions** of development (Sessions 1-47)
+- **6 tabs**: CMD, TRAIN, LOG, DNA, STATS, WINS
+- **18 training modes** + Phantom Mode + Battle Royale
+- **Full voice system**: ElevenLabs streaming, Web Audio analyser, voice fingerprint, mood detection
+- **7 Claude tools**: complete_task, update_concept, update_identity, quick_capture, get_concept, get_stats, log_application
+- **Vision + Web Search**: image upload + internet access
+- **12-layer Canvas 2D boot reactor** with phase-aware rendering
+- **Exocortex voice interface** with orbital waveform + word-burst particles + thinking fragmentation
+- **4-tier reporting pipeline**: Pulse → Daily → 3-Day → Weekly + Quarterly + Interview Brief + Newsletter
+- **Visualization engine**: smart cards, dashboards, AI charts, dependency trees
+- **Cloud persistence**: Supabase sync (when configured)
+- **Voice biometrics**: fingerprint enrollment, mood detection, multi-speaker, continuous verification
+- **ADHD-PI aware**: micro-actions, anti-crutch, comeback system, body double with ghost mode
+- **Full Nikhil identity**: DTU, Zomato, 3 dev jobs, AI eval, FinOps Copilot, ADHD, Nidhi, mission
+- **God-tier UI**: glassmorphism, particles, neon glow, tilt cards, 3D nebula, holographic scan lines
+- **Deploy ready**: api/claude.js serverless, vercel.json, PWA manifest
+
+**Build: 0 errors, 32.86s, 1670KB bundle**
+
+---
+
 ### Session 46B — God-Tier Voice Biometrics: 5 Enhancements (2026-04-02)
 
 **Full biometric identity system.**
