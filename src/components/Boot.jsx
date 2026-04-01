@@ -599,7 +599,11 @@ export default function Boot({ onComplete }) {
       latenight: 'Rather late',
     }
 
-    const fallbackText = `${greetings[timeOfDay]}, Sir. Day ${dayNumber}, Week ${weekNumber}. Streak: ${core.streak || 0} days. Energy at ${energy}/5. All systems initialized. Shall we begin?`
+    const completed = (core.completedTasks || []).length
+    const pct = Math.round((completed / 82) * 100)
+    const concepts = get('concepts') || []
+    const mastered = concepts.filter(c => (c.strength || 0) >= 60).length
+    const fallbackText = `${greetings[timeOfDay]}, Sir. Day ${dayNumber}, Week ${weekNumber}. Streak: ${core.streak || 0} days. ${completed}/82 tasks complete (${pct}%). ${mastered} concepts mastered. Energy at ${energy}/5. ${energy >= 4 ? 'High energy — schedule the difficult modes.' : energy <= 2 ? 'Low energy detected. Consider Body Double or lighter training.' : 'Nominal conditions. Shall we begin?'}`
     const finalText = aiBriefing || fallbackText
 
     // Reset briefing flag for this boot
@@ -816,30 +820,27 @@ export default function Boot({ onComplete }) {
           {showInputs && (
             <div className="animate-fade-in" style={{ marginTop: '20px' }}>
 
+              {/* Phase 4 inputs — glass-card wrapped, one at a time */}
               {inputStep >= 1 && (
-                <div style={{ marginBottom: '16px' }} className="card-enter">
-                  <p className="font-display text-xs font-semibold tracking-wider" style={{ color: '#00b4d8', marginBottom: '10px', textShadow: '0 0 8px rgba(0,180,216,0.3)' }}>
-                    ENERGY LEVEL
+                <div className="card-enter" style={{ marginBottom: 16, background: 'linear-gradient(135deg, rgba(6,20,34,0.9), rgba(2,10,19,0.95))', border: '1px solid rgba(0,180,216,0.12)', borderRadius: 6, padding: '16px 20px', position: 'relative' }}>
+                  <div style={{ position:'absolute', top:4, left:4, width:12, height:12, borderLeft:'1.5px solid rgba(0,240,255,0.2)', borderTop:'1.5px solid rgba(0,240,255,0.2)' }} />
+                  <div style={{ position:'absolute', bottom:4, right:4, width:12, height:12, borderRight:'1.5px solid rgba(0,240,255,0.2)', borderBottom:'1.5px solid rgba(0,240,255,0.2)' }} />
+                  <p style={{ fontFamily: 'Share Tech Mono', fontSize: 11, letterSpacing: '0.08em', color: '#00b4d8', marginBottom: 12, textShadow: '0 0 8px rgba(0,180,216,0.25)' }}>
+                    <span style={{ color: '#00f0ff', marginRight: 6 }}>▸</span>ENERGY LEVEL
                   </p>
-                  <div style={{ display: 'flex', gap: '14px', justifyContent: 'center' }}>
-                    {[1, 2, 3, 4, 5].map((n) => {
+                  <div style={{ display: 'flex', gap: 16, justifyContent: 'center', padding: '8px 0' }}>
+                    {[1,2,3,4,5].map(n => {
                       const active = energy === n
-                      const colors = { 1: '#ef4444', 2: '#f97316', 3: '#00b4d8', 4: '#00f0ff', 5: '#d4a853' }
-                      const c = colors[n]
+                      const c = { 1:'#ef4444', 2:'#f97316', 3:'#00b4d8', 4:'#00f0ff', 5:'#d4a853' }[n]
                       return (
-                        <button key={n}
-                          onClick={() => { setEnergy(n); if (inputStep === 1) setInputStep(2) }}
-                          className={`font-display font-bold ${active ? 'orb-ignite' : ''}`}
-                          style={{
-                            width: '44px', height: '44px', borderRadius: '50%',
-                            border: `2px solid ${active ? c : '#0d2137'}`,
-                            background: active ? `radial-gradient(circle, ${c}30 0%, transparent 70%)` : 'transparent',
-                            color: active ? c : '#2a4a60',
-                            fontSize: '15px', cursor: 'pointer', transition: 'all 0.3s',
-                            boxShadow: active ? `0 0 16px ${c}50, 0 0 32px ${c}20, inset 0 0 8px ${c}15` : 'none',
-                          }}>
-                          {n}
-                        </button>
+                        <button key={n} onClick={() => { setEnergy(n); if (inputStep === 1) setTimeout(() => setInputStep(2), 400) }}
+                          className={active ? 'orb-ignite' : ''} style={{
+                            width: 52, height: 52, borderRadius: '50%', border: `2px solid ${active ? c : '#0d213780'}`,
+                            background: active ? `radial-gradient(circle at 40% 40%, ${c}40 0%, ${c}15 50%, transparent 70%)` : 'rgba(6,20,34,0.6)',
+                            color: active ? c : '#2a4a60', fontSize: 16, fontFamily: 'Rajdhani', fontWeight: 700, cursor: 'pointer',
+                            transition: 'all 0.3s cubic-bezier(0.34,1.56,0.64,1)', transform: active ? 'scale(1.12)' : 'scale(1)',
+                            boxShadow: active ? `0 0 20px ${c}40, 0 0 40px ${c}15, inset 0 0 12px ${c}20` : 'none',
+                          }}>{n}</button>
                       )
                     })}
                   </div>
@@ -847,102 +848,58 @@ export default function Boot({ onComplete }) {
               )}
 
               {inputStep >= 2 && (
-                <div style={{ marginBottom: '16px' }}>
-                  <p className="font-mono text-xs" style={{ color: '#00b4d8', marginBottom: '6px' }}>
-                    {'>'} Primary focus today?
+                <div className="card-enter" style={{ marginBottom: 16, background: 'linear-gradient(135deg, rgba(6,20,34,0.9), rgba(2,10,19,0.95))', border: '1px solid rgba(0,180,216,0.12)', borderRadius: 6, padding: '16px 20px', position: 'relative', animationDelay: '100ms' }}>
+                  <div style={{ position:'absolute', top:4, left:4, width:12, height:12, borderLeft:'1.5px solid rgba(0,240,255,0.2)', borderTop:'1.5px solid rgba(0,240,255,0.2)' }} />
+                  <div style={{ position:'absolute', bottom:4, right:4, width:12, height:12, borderRight:'1.5px solid rgba(0,240,255,0.2)', borderBottom:'1.5px solid rgba(0,240,255,0.2)' }} />
+                  <p style={{ fontFamily: 'Share Tech Mono', fontSize: 11, letterSpacing: '0.08em', color: '#00b4d8', marginBottom: 8, textShadow: '0 0 8px rgba(0,180,216,0.25)' }}>
+                    <span style={{ color: '#00f0ff', marginRight: 6 }}>▸</span>Primary focus today?
                   </p>
-                  <input
-                    type="text"
-                    value={focus}
-                    onChange={(e) => setFocus(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && inputStep === 2 && setInputStep(3)}
-                    placeholder="What's the main objective..."
-                    autoFocus
-                    className="font-mono text-xs"
-                    style={{
-                      width: '100%',
-                      background: 'transparent',
-                      border: '1px solid #0d2137',
-                      borderRadius: '4px',
-                      padding: '8px 12px',
-                      color: '#d0e8f8',
-                      outline: 'none',
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = '#00b4d8'}
-                    onBlur={(e) => e.target.style.borderColor = '#0d2137'}
+                  <input type="text" value={focus} onChange={e => setFocus(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && focus.trim() && setTimeout(() => setInputStep(3), 200)}
+                    placeholder="What's the main objective..." autoFocus
+                    style={{ width: '100%', background: 'rgba(2,10,19,0.6)', border: '1px solid #0d2137', borderRadius: 4, padding: '10px 14px', color: '#d0e8f8', fontFamily: 'Exo 2', fontSize: 13, outline: 'none', transition: 'border-color 0.3s, box-shadow 0.3s', caretColor: '#00f0ff' }}
+                    onFocus={e => { e.target.style.borderColor = '#00b4d8'; e.target.style.boxShadow = '0 0 12px rgba(0,180,216,0.15), inset 0 0 6px rgba(0,180,216,0.05)' }}
+                    onBlur={e => { e.target.style.borderColor = '#0d2137'; e.target.style.boxShadow = 'none' }}
                   />
                 </div>
               )}
 
               {inputStep >= 3 && (
-                <div style={{ marginBottom: '16px' }}>
-                  <p className="font-mono text-xs" style={{ color: '#00b4d8', marginBottom: '6px' }}>
-                    {'>'} Any blockers?
+                <div className="card-enter" style={{ marginBottom: 16, background: 'linear-gradient(135deg, rgba(6,20,34,0.9), rgba(2,10,19,0.95))', border: '1px solid rgba(0,180,216,0.12)', borderRadius: 6, padding: '16px 20px', position: 'relative', animationDelay: '100ms' }}>
+                  <div style={{ position:'absolute', top:4, left:4, width:12, height:12, borderLeft:'1.5px solid rgba(0,240,255,0.2)', borderTop:'1.5px solid rgba(0,240,255,0.2)' }} />
+                  <div style={{ position:'absolute', bottom:4, right:4, width:12, height:12, borderRight:'1.5px solid rgba(0,240,255,0.2)', borderBottom:'1.5px solid rgba(0,240,255,0.2)' }} />
+                  <p style={{ fontFamily: 'Share Tech Mono', fontSize: 11, letterSpacing: '0.08em', color: '#00b4d8', marginBottom: 8, textShadow: '0 0 8px rgba(0,180,216,0.25)' }}>
+                    <span style={{ color: '#00f0ff', marginRight: 6 }}>▸</span>Any blockers?
                   </p>
-                  <input
-                    type="text"
-                    value={blockers}
-                    onChange={(e) => setBlockers(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && inputStep === 3 && setInputStep(4)}
-                    placeholder="Anything in the way..."
-                    autoFocus
-                    className="font-mono text-xs"
-                    style={{
-                      width: '100%',
-                      background: 'transparent',
-                      border: '1px solid #0d2137',
-                      borderRadius: '4px',
-                      padding: '8px 12px',
-                      color: '#d0e8f8',
-                      outline: 'none',
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = '#00b4d8'}
-                    onBlur={(e) => e.target.style.borderColor = '#0d2137'}
+                  <input type="text" value={blockers} onChange={e => setBlockers(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && setTimeout(() => setInputStep(4), 200)}
+                    placeholder="Anything in the way..." autoFocus
+                    style={{ width: '100%', background: 'rgba(2,10,19,0.6)', border: '1px solid #0d2137', borderRadius: 4, padding: '10px 14px', color: '#d0e8f8', fontFamily: 'Exo 2', fontSize: 13, outline: 'none', transition: 'border-color 0.3s, box-shadow 0.3s', caretColor: '#00f0ff' }}
+                    onFocus={e => { e.target.style.borderColor = '#00b4d8'; e.target.style.boxShadow = '0 0 12px rgba(0,180,216,0.15), inset 0 0 6px rgba(0,180,216,0.05)' }}
+                    onBlur={e => { e.target.style.borderColor = '#0d2137'; e.target.style.boxShadow = 'none' }}
                   />
                 </div>
               )}
 
               {inputStep >= 4 && (
-                <div style={{ marginBottom: '12px' }}>
-                  <p className="font-mono text-xs" style={{ color: '#d4a853', marginBottom: '6px' }}>
-                    {'>'} Morning Bet: What will you accomplish today?
+                <div className="card-enter" style={{ marginBottom: 12, background: 'linear-gradient(135deg, rgba(40,30,5,0.4), rgba(2,10,19,0.95))', border: '1px solid rgba(212,168,83,0.15)', borderRadius: 6, padding: '16px 20px', position: 'relative', animationDelay: '100ms' }}>
+                  <div style={{ position:'absolute', top:4, left:4, width:12, height:12, borderLeft:'1.5px solid rgba(212,168,83,0.2)', borderTop:'1.5px solid rgba(212,168,83,0.2)' }} />
+                  <div style={{ position:'absolute', bottom:4, right:4, width:12, height:12, borderRight:'1.5px solid rgba(212,168,83,0.2)', borderBottom:'1.5px solid rgba(212,168,83,0.2)' }} />
+                  <p style={{ fontFamily: 'Share Tech Mono', fontSize: 11, letterSpacing: '0.08em', color: '#d4a853', marginBottom: 8, textShadow: '0 0 8px rgba(212,168,83,0.25)' }}>
+                    <span style={{ color: '#d4a853', marginRight: 6 }}>▸</span>Morning Bet: What will you accomplish today?
                   </p>
-                  <input
-                    type="text"
-                    value={morningBet}
-                    onChange={(e) => setMorningBet(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleInputsComplete()}
-                    placeholder="I will..."
-                    autoFocus
-                    className="font-mono text-xs"
-                    style={{
-                      width: '100%',
-                      background: 'transparent',
-                      border: '1px solid rgba(212, 168, 83, 0.3)',
-                      borderRadius: '4px',
-                      padding: '8px 12px',
-                      color: '#d0e8f8',
-                      outline: 'none',
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = '#d4a853'}
-                    onBlur={(e) => e.target.style.borderColor = 'rgba(212, 168, 83, 0.3)'}
+                  <input type="text" value={morningBet} onChange={e => setMorningBet(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleInputsComplete()}
+                    placeholder="I will..." autoFocus
+                    style={{ width: '100%', background: 'rgba(2,10,19,0.6)', border: '1px solid rgba(212,168,83,0.2)', borderRadius: 4, padding: '10px 14px', color: '#d0e8f8', fontFamily: 'Exo 2', fontSize: 13, outline: 'none', transition: 'border-color 0.3s, box-shadow 0.3s', caretColor: '#d4a853' }}
+                    onFocus={e => { e.target.style.borderColor = '#d4a853'; e.target.style.boxShadow = '0 0 12px rgba(212,168,83,0.15), inset 0 0 6px rgba(212,168,83,0.05)' }}
+                    onBlur={e => { e.target.style.borderColor = 'rgba(212,168,83,0.2)'; e.target.style.boxShadow = 'none' }}
                   />
-                  <div style={{ textAlign: 'center', marginTop: '10px' }}>
-                    <button
-                      onClick={handleInputsComplete}
-                      className="font-mono text-xs"
-                      style={{
-                        padding: '6px 16px',
-                        color: '#00b4d8',
-                        border: '1px solid rgba(0, 180, 216, 0.3)',
-                        borderRadius: '4px',
-                        background: 'transparent',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                      }}
-                      onMouseEnter={(e) => e.target.style.background = 'rgba(0, 180, 216, 0.08)'}
-                      onMouseLeave={(e) => e.target.style.background = 'transparent'}
-                    >
+                  <div style={{ textAlign: 'center', marginTop: 14 }}>
+                    <button onClick={handleInputsComplete} className="enter-pulse"
+                      style={{ padding: '10px 28px', color: '#00f0ff', border: '1.5px solid rgba(0,240,255,0.4)', borderRadius: 4, background: 'rgba(0,240,255,0.04)', cursor: 'pointer', fontFamily: 'Rajdhani', fontSize: 13, fontWeight: 600, letterSpacing: '0.12em', transition: 'all 0.3s', textShadow: '0 0 8px rgba(0,240,255,0.4)', boxShadow: '0 0 15px rgba(0,240,255,0.08), inset 0 0 8px rgba(0,240,255,0.04)' }}
+                      onMouseEnter={e => { e.target.style.background = 'rgba(0,240,255,0.1)'; e.target.style.boxShadow = '0 0 25px rgba(0,240,255,0.2), inset 0 0 12px rgba(0,240,255,0.08)' }}
+                      onMouseLeave={e => { e.target.style.background = 'rgba(0,240,255,0.04)'; e.target.style.boxShadow = '0 0 15px rgba(0,240,255,0.08), inset 0 0 8px rgba(0,240,255,0.04)' }}>
                       CONFIRM ▸
                     </button>
                   </div>
