@@ -4,6 +4,38 @@
 
 ---
 
+### Session 41 — Exocortex Voice Interface (2026-04-01)
+
+**Replaced QuickVoiceOverlay with full-screen exocortex. ONE voice interface.**
+
+**Deleted:** `QuickVoiceOverlay.jsx` — thin top bar replaced by immersive full-screen.
+
+**Rewritten `VoiceMode.jsx` — Canvas 2D Exocortex:**
+- 6-layer Canvas reactor: guide rings (3 concentric), spinning dashed rings (cyan+gold, different speeds), orbiting particles (3), pulsing core (gold inner + cyan outer), voice waveform, mouse energy pull
+- Web Audio API analyser: mic frequency data drives waveform amplitude in LISTENING state
+- SPEAKING: simulated audio visualization (smooth random)
+- PROCESSING: gold color shift, 1.5x ring speed, flat shimmer waveform
+- IDLE: dimmed to 50%, rings slow, gentle sine wave
+- State labels: "TAP TO SPEAK" / "LISTENING..." / "PROCESSING..." / "SPEAKING..."
+- Corner brackets on all 4 overlay corners
+- Mode pills: Chat/Quiz/Presser/Teach/Battle
+- Transcript: last 10 messages, Opus gold tint + ⚡ badge
+- Retina support: devicePixelRatio scaling
+- Cleanup: mic stream, animation frame, audio context on unmount
+
+**Updated `App.jsx`:**
+- Removed QuickVoiceOverlay import + state + render
+- `handleGlobalMicTap` → always opens VoiceMode (unified behavior)
+- No more special cases for TRAIN tab
+
+**Build: 0 errors**
+
+**Files deleted (1):** QuickVoiceOverlay.jsx
+**Files rewritten (1):** VoiceMode.jsx
+**Files updated (1):** App.jsx
+
+---
+
 ### Session 40 — Soul Injection: Identity + FinOps + Lifelong Companion (2026-04-01)
 
 **JARVIS now knows WHO Nikhil is, WHY he's building, and HOW his brain works.**

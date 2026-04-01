@@ -30,7 +30,7 @@ import QuickCapture from './components/QuickCapture.jsx'
 import BackgroundCanvas from './components/BackgroundCanvas.jsx'
 import GlobalMic from './components/GlobalMic.jsx'
 import VoiceMode from './components/VoiceMode.jsx'
-import QuickVoiceOverlay from './components/QuickVoiceOverlay.jsx'
+// QuickVoiceOverlay deleted — replaced by full-screen VoiceMode
 import Onboarding from './components/Onboarding.jsx'
 import ShutdownSequence from './components/ShutdownSequence.jsx'
 import CommandLine from './components/CommandLine.jsx'
@@ -106,7 +106,7 @@ function App() {
   const [hasPulse, setHasPulse] = useState(false)
   // Voice mode state
   const [voiceModeOpen, setVoiceModeOpen] = useState(false)
-  const [quickVoiceOpen, setQuickVoiceOpen] = useState(false)
+  // quickVoiceOpen removed — VoiceMode is the one voice interface
   const [requestedMode, setRequestedMode] = useState(null)
   const [globalVoiceState, setGlobalVoiceState] = useState('IDLE')
 
@@ -317,19 +317,10 @@ function App() {
     if (tab === 'cmd') setHasPulse(false)
   }, [play])
 
-  // GlobalMic tap: show QuickVoiceOverlay on current tab (no navigation)
-  // WHY: Users shouldn't lose their place when they want to speak to JARVIS.
-  // On TRAIN tab with ChatView open → directly activate mic in ChatView.
-  // On any other tab → slide-down QuickVoiceOverlay.
+  // GlobalMic tap: always open VoiceMode (full-screen exocortex)
   const handleGlobalMicTap = useCallback(() => {
-    if (activeTab === 'train') {
-      // Already on train tab — try to activate mic in ChatView
-      window.dispatchEvent(new CustomEvent('jarvis-activate-mic'))
-    } else {
-      // Show QuickVoiceOverlay on current tab
-      setQuickVoiceOpen(true)
-    }
-  }, [activeTab])
+    setVoiceModeOpen(true)
+  }, [])
 
   // GlobalMic long press: open full-screen VoiceMode
   const handleGlobalMicLongPress = useCallback(() => {
@@ -415,10 +406,7 @@ function App() {
         />
       )}
 
-      {/* QuickVoiceOverlay — slide-down voice panel on any tab */}
-      {quickVoiceOpen && (
-        <QuickVoiceOverlay onClose={() => setQuickVoiceOpen(false)} />
-      )}
+      {/* QuickVoiceOverlay removed — VoiceMode is the voice interface */}
 
       {/* Command Line */}
       {showCommandLine && <CommandLine onClose={() => setShowCommandLine(false)} />}
