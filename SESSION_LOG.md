@@ -4,6 +4,37 @@
 
 ---
 
+### Session 48D — Three.js 3D Arc Reactor (2026-04-02)
+
+**BootReactor.jsx rewritten: Canvas 2D → Three.js 3D with 9 scene elements.**
+
+**Scene elements:**
+1. **Nebula** — 600 cosmic dust particles (300 mobile), cyan/gold/dark-blue, AdditivBlending
+2. **4-layer core** — white(0.3r) → gold(0.5r) → gold(0.9r) → cyan(1.4r), multi-frequency pulse
+3. **6 segmented rings** (4 mobile) — different radii/tilts/speeds, TorusGeometry with gaps
+4. **12 energy dots** (6 mobile) — bright sphere + glow traveling on ring paths
+5. **10 housing arcs** — every 4th gold with glowing node, slow rotation
+6. **Holographic shield** — BackSide sphere + wireframe IcosahedronGeometry, breathing
+7. **300 particles** (150 mobile) — drifting, bouncing at radius bounds, size attenuation
+8. **Shockwave pulses** — every 2.5s, RingGeometry expands + fades (desktop only)
+9. **Lightning bursts** — every 0.8-2.8s, 8-point zigzag from core (desktop only)
+
+**Phase-aware rendering:** `intensityRef` smoothly lerps (0.03/frame):
+void=0 → ignition=1.2 → running=1 → ambient=0.5 → briefing=0.75 → exit=0
+Affects: core scale, ring opacity/speed, particle opacity, dot/housing/shield visibility
+
+**Camera:** auto-orbits at r=13, mouse parallax ±3X ±2Y, lookAt(0,0,0)
+
+**Mobile:** 300 nebula, 4 rings, 6 dots, 150 particles, no shockwaves/lightning, pixelRatio 1.5
+
+**Cleanup:** All geometries + materials tracked in arrays, disposed on unmount.
+
+**Build: 0 errors, 38.58s. Three.js: 503KB (separate chunk). Main: 790KB.**
+
+**Files rewritten (1):** BootReactor.jsx
+
+---
+
 ### Session 48C — Boot Transition Visual Upgrade (2026-04-02)
 
 **Boot Phase 4 inputs upgraded to god-tier glass-card interview.**
