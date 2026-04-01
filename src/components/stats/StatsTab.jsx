@@ -9,6 +9,7 @@ import PowerRanking from './PowerRanking.jsx'
 import SkillHeatMap from './SkillHeatMap.jsx'
 import ConfidenceCalib from './ConfidenceCalib.jsx'
 import IntelligenceDash from './IntelligenceDash.jsx'
+import PortfolioNarrator from './PortfolioNarrator.jsx'
 
 export default function StatsTab() {
   return (
@@ -30,6 +31,9 @@ export default function StatsTab() {
 
       {/* Intelligence System */}
       <IntelligenceDash />
+
+      {/* Portfolio Narrator */}
+      <PortfolioNarrator />
     </div>
   )
 }

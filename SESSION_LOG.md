@@ -4,6 +4,55 @@
 
 ---
 
+### Session 32 — Fixes + BattlePlan + PortfolioNarrator + Voice Evolution (2026-04-01)
+
+**1 fix + 4 new features.**
+
+**Fix: Briefing text decode frontier bug (`Boot.jsx`):**
+- Loop now runs `i <= finalText.length` (was `<`), else branch sets clean `finalText`
+- Frontier chars shrink to 0 as `i` approaches end, final text has no scrambled chars
+
+**Feature 1 — AI Daily Battle Plan (`BattlePlan.jsx` rewrite):**
+- Reads energy, pending tasks, overdue concepts, medication timing from onboarding
+- Sonnet API call generates 4-6 items mapped to energy windows (morning peak, post-lunch, evening)
+- Each item: time + task + why
+- "Accept Plan" button (gold), "Regenerate" button (cyan)
+- Items render as glass-card with staggered card-enter animation
+- Saves to `jos-battle-plan` with date, items, accepted flag
+- Glass-card with shimmer-inner on accepted plan
+
+**Feature 2 — Portfolio Narrator (`PortfolioNarrator.jsx`, STATS tab):**
+- Lists completed tasks with "Generate STAR" button
+- Opus API call generates 3 STAR variants (30s / 2min / 5min)
+- Parses `[30s]`, `[2min]`, `[5min]` sections from response
+- Duration tabs switch between variants
+- Filter pills: All / Technical / Design / Failure / Scale
+- Saves to `jos-interviews` array
+- Glass-card per task with card-enter stagger
+
+**Feature 3 — Voice Personality Evolution (`prompts.js`):**
+- Personality shifts with rank in `buildSystemPrompt`:
+  - Recruit: encouraging, celebrate small wins
+  - Operative: direct, push harder
+  - Commander: peer-level dialogue, debate
+  - Architect: respectful colleague, edge cases
+- Confidence modifier from last 7 check-ins:
+  - avgConfidence < 2.5: warmer, counter impostor syndrome
+  - avgConfidence > 4: challenge more, probe blind spots
+
+**Feature 4 — Weekly Newsletter Card (`CmdTab.jsx`):**
+- WeeklyNewsletter component reads `jos-weekly.newsletter`
+- Gold-bordered expandable card below briefing
+- Shows when newsletter exists (generation wired separately)
+
+**Build: 0 errors, 21.34s**
+
+**Files created (1):** PortfolioNarrator.jsx
+**Files rewritten (1):** BattlePlan.jsx
+**Files updated (5):** Boot.jsx, CmdTab.jsx, StatsTab.jsx, prompts.js
+
+---
+
 ### Session 31D — Quantum Nanotech Reactor + Body Double + Header Reactor (2026-04-01)
 
 **Boot reactor replaced with 12-layer Canvas 2D singularity. Body Double rewritten. Bundle -446KB.**

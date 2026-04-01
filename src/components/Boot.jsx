@@ -599,15 +599,19 @@ export default function Boot({ onComplete }) {
         console.log('BRIEFING: typewriter stopped by _briefingStopped flag')
         return
       }
-      if (i < finalText.length) {
-        // Text decode: settled chars + scrambling frontier
-        const settled = finalText.slice(0, Math.max(0, i - 2))
-        const frontier = Array.from({length: Math.min(3, i + 1)}, () =>
-          'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%'[Math.floor(Math.random() * 40)]
-        ).join('')
+      if (i <= finalText.length) {
+        // Settled chars (real text) + 3 scrambling frontier chars
+        const settled = finalText.slice(0, i)
+        const frontierLen = Math.min(3, finalText.length - i)
+        const frontier = frontierLen > 0
+          ? Array.from({length: frontierLen}, () =>
+              'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&!?'[Math.floor(Math.random() * 70)]
+            ).join('')
+          : ''
         setBriefingText(settled + frontier)
         i++
       } else {
+        setBriefingText(finalText) // Clean final text, no frontier chars
         clearInterval(interval)
         setTimeout(() => { setPhase(6); setShowEnterBtn(true) }, 500)
       }

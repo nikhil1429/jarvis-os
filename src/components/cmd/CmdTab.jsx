@@ -2,13 +2,40 @@
 // WHY: CMD is the daily operations hub — the first thing Nikhil sees.
 // Includes briefing, pulse, adaptive suggestions, tasks, battle plan, build log, second brain.
 
-import { X, Zap } from 'lucide-react'
+import { useState } from 'react'
+import { X, Zap, ChevronDown, ChevronUp, Newspaper } from 'lucide-react'
 import TaskList from './TaskList.jsx'
 import BattlePlan from './BattlePlan.jsx'
 import DailyBuildLog from './DailyBuildLog.jsx'
 import Briefing from './Briefing.jsx'
 import SecondBrain from './SecondBrain.jsx'
 import useAdaptiveUI from '../../hooks/useAdaptiveUI.js'
+import useStorage from '../../hooks/useStorage.js'
+
+function WeeklyNewsletter() {
+  const { get } = useStorage()
+  const [expanded, setExpanded] = useState(false)
+  const weekly = get('weekly') || {}
+  const newsletter = weekly.newsletter
+  if (!newsletter?.text) return null
+  return (
+    <div className="glass-card p-3 border card-enter" style={{ borderColor: '#d4a853', borderTopWidth: 3, animationDelay: '40ms' }}>
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          <Newspaper size={14} className="text-gold" />
+          <span className="font-display text-xs font-bold text-gold tracking-wider gold-heading">WEEKLY NEWSLETTER</span>
+        </div>
+        <button onClick={() => setExpanded(!expanded)} className="text-text-muted hover:text-text">
+          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+      </div>
+      <p className={`font-body text-xs text-text leading-relaxed ${expanded ? '' : 'line-clamp-2'}`}>{newsletter.text}</p>
+      {newsletter.generatedAt && (
+        <p className="font-mono text-[8px] text-text-muted mt-1">{new Date(newsletter.generatedAt).toLocaleDateString()}</p>
+      )}
+    </div>
+  )
+}
 
 export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissPulse }) {
   const { suggestions } = useAdaptiveUI()
@@ -17,6 +44,7 @@ export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissP
     <div className="space-y-4 max-w-2xl mx-auto">
       {/* Morning Briefing */}
       <div className="card-enter" style={{ animationDelay: '0ms' }}><Briefing /></div>
+      <WeeklyNewsletter />
 
       {/* Adaptive Suggestions */}
       {suggestions.length > 0 && (

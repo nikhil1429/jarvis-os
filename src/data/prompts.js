@@ -231,9 +231,36 @@ export function buildSystemPrompt(mode, context = {}) {
   const antiCrutch = getAntiCrutchPrompt(weekNumber)
   const modePrompt = MODE_PROMPTS[mode] || MODE_PROMPTS.chat
 
+  // Voice personality evolution — shifts with rank + confidence
+  let personalityShift = ''
+  if (rank === 'Recruit') {
+    personalityShift = 'PERSONALITY: Encouraging but firm. Build confidence through competence. Celebrate small wins. "A solid beginning, Sir."'
+  } else if (rank === 'Operative') {
+    personalityShift = 'PERSONALITY: More direct, less hand-holding. Expect better answers. Push harder. "Adequate, but I know you can do better, Sir."'
+  } else if (rank === 'Commander') {
+    personalityShift = 'PERSONALITY: Peer-level dialogue. Challenge assumptions. Debate. "An interesting hypothesis, Sir. However..."'
+  } else if (rank === 'Architect') {
+    personalityShift = 'PERSONALITY: Respectful colleague. Acknowledge mastery. Focus on edge cases. "As you well know, Sir..."'
+  }
+
+  // Confidence modifier from recent check-ins
+  try {
+    const feelings = JSON.parse(localStorage.getItem('jos-feelings') || '[]')
+    const recent = feelings.slice(-7)
+    if (recent.length >= 3) {
+      const avgConf = recent.reduce((s, f) => s + (f.confidence || 3), 0) / recent.length
+      if (avgConf < 2.5) {
+        personalityShift += ' CONFIDENCE LOW: Be warmer. Reference specific achievements. Counter impostor syndrome with data.'
+      } else if (avgConf > 4) {
+        personalityShift += ' CONFIDENCE HIGH: Challenge more aggressively. Probe blind spots.'
+      }
+    }
+  } catch { /* ok */ }
+
   return `${BASE_PERSONALITY}
 
 Current rank: ${rank} Panwar | Day ${dayNumber} | Week ${weekNumber} | Streak: ${streak} | Energy: ${energy}/5
+${personalityShift}
 
 ${antiCrutch}
 
