@@ -4,6 +4,36 @@
 
 ---
 
+### Session 48G — Complete Bible Audit Fixes (2026-04-02)
+
+**Every gap from forensic audit filled. Bible spec now 100% implemented.**
+
+**Part 1 — Show Mode:** Actually filters content now. LOG tab hides check-ins/mood/journal. CMD hides SecondBrain/TimeCapsule. STATS hides ConfidenceCalib. Header shows "SHOW MODE" badge.
+
+**Part 2 — Mentor Simulation:** 3 personas added to interview-sim prompt (Akshay/Senior Dev/Hiring Manager). User says persona name to switch.
+
+**Part 3 — Personality Traits:** Running Jokes, Code Taste, Comfort Zone Tracker, Easter Eggs added to BASE_PERSONALITY.
+
+**Part 4 — ADHD Systems:** Decision Fatigue Eliminator, Emotion-Task Matching, Hyperfocus Guard added to prompts.
+
+**Part 5 — Intelligence References:** Energy Map, Motivation Genome, Communication Style, Body Correlations, Relationship Map now referenced in Opus strategic context.
+
+**Part 6 — Pattern Storyteller:** "Story of the Week" section added to weekly review generation.
+
+**Part 7 — Why Not Hired:** Diagnostic prompt + StatsTab button (appears after 10+ applications).
+
+**Part 8 — Decision Log:** Auto-captures decisions from chat keywords, saves to jos-decisions.
+
+**Part 9 — PDF Export:** jsPDF export in PortfolioNarrator + QuarterlyReport. jsPDF in separate chunk (391KB).
+
+**Part 10 — Auto-Question Pipeline:** Task completion queues interview question generation in jos-interviews.
+
+**Build: 0 errors. 51/51 tests pass. Main bundle: 792KB.**
+
+**Files updated:** prompts.js, LogTab.jsx, CmdTab.jsx, StatsTab.jsx, Header.jsx, ChatView.jsx, PortfolioNarrator.jsx, QuarterlyReport.jsx, useReportGenerator.js, modes.js, vite.config.js
+
+---
+
 ### Session 48F-Boost — God-Tier Audit Tests (2026-03-31)
 
 **22 audit tests across 9 suites — all passing.**

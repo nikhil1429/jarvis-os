@@ -12,24 +12,29 @@ import SessionStats from './SessionStats.jsx'
 import MoodOracle from './MoodOracle.jsx'
 
 export default function LogTab({ elapsed }) {
+  let isShowMode = false
+  try { isShowMode = JSON.parse(localStorage.getItem('jos-settings') || '{}').showMode || false } catch { /* ok */ }
+
   return (
     <div className="space-y-4 max-w-2xl mx-auto">
-      <CheckInForm />
+      {!isShowMode && <CheckInForm />}
 
-      {/* Charts row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ConfidenceChart />
-        <WeeklyChart />
-      </div>
+      {/* Charts row — hidden in Show Mode (contains mood/confidence data) */}
+      {!isShowMode && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <ConfidenceChart />
+          <WeeklyChart />
+        </div>
+      )}
 
       {/* Stat cards row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <ImpostorKiller />
-        <NikhilVsNikhil />
+      <div className={`grid grid-cols-1 ${isShowMode ? '' : 'md:grid-cols-3'} gap-4`}>
+        {!isShowMode && <ImpostorKiller />}
+        {!isShowMode && <NikhilVsNikhil />}
         <SessionStats elapsed={elapsed} />
       </div>
 
-      <MoodOracle />
+      {!isShowMode && <MoodOracle />}
     </div>
   )
 }

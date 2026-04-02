@@ -3,7 +3,8 @@
 // in 3 lengths (30s/2min/5min). Practice → Interview Sim. Export → PDF.
 
 import { useState, useMemo } from 'react'
-import { FileText, Zap, ExternalLink } from 'lucide-react'
+import { FileText, Zap, ExternalLink, Download } from 'lucide-react'
+import jsPDF from 'jspdf'
 import useAI from '../../hooks/useAI.js'
 import useStorage from '../../hooks/useStorage.js'
 import TASKS from '../../data/tasks.js'
@@ -71,6 +72,29 @@ Each should cover Situation, Task, Action, Result. First person. Specific techni
 
   const getExisting = (taskId) => interviews.find(i => i.taskId === taskId)
 
+  const exportPDF = () => {
+    const doc = new jsPDF()
+    doc.setFontSize(16)
+    doc.text('JARVIS OS — Interview Answers', 20, 20)
+    doc.setFontSize(9)
+    doc.setTextColor(120)
+    doc.text(`Generated ${new Date().toLocaleDateString('en-IN')} · ${interviews.length} answers`, 20, 28)
+    doc.setTextColor(0)
+    let y = 38
+    interviews.forEach((item, i) => {
+      if (y > 270) { doc.addPage(); y = 20 }
+      doc.setFontSize(11)
+      doc.text(`${i + 1}. ${item.taskName || 'Task'}`, 20, y)
+      y += 7
+      doc.setFontSize(9)
+      const answer = item.variants?.[0]?.answer || ''
+      const lines = doc.splitTextToSize(answer, 170)
+      doc.text(lines, 20, y)
+      y += lines.length * 5 + 10
+    })
+    doc.save('jarvis-interview-answers.pdf')
+  }
+
   if (completedTasks.length === 0) {
     return (
       <div className="glass-card p-4 mt-6">
@@ -90,7 +114,15 @@ Each should cover Situation, Task, Action, Result. First person. Specific techni
           <FileText size={16} className="text-gold" />
           <h3 className="font-display text-sm font-bold text-gold tracking-wider uppercase gold-heading">Portfolio Narrator</h3>
         </div>
-        <span className="font-mono text-[10px] text-text-muted">{completedTasks.length} tasks · {interviews.length} generated</span>
+        <div className="flex items-center gap-2">
+          {interviews.length > 0 && (
+            <button onClick={exportPDF}
+              className="font-mono text-[9px] px-2 py-1 rounded border border-gold/30 text-gold hover:bg-gold/10 transition-all flex items-center gap-1">
+              <Download size={10} /> PDF
+            </button>
+          )}
+          <span className="font-mono text-[10px] text-text-muted">{completedTasks.length} tasks · {interviews.length} generated</span>
+        </div>
       </div>
 
       {/* Filter pills */}

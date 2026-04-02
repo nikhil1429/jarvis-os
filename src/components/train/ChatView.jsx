@@ -10,6 +10,7 @@ import useEventBus from '../../hooks/useEventBus.js'
 import useVoiceCheckIn from '../../hooks/useVoiceCheckIn.js'
 import useJarvisVoice from '../../hooks/useJarvisVoice.js'
 import { processVoiceCommand } from '../../utils/voiceCommands.js'
+import TASKS from '../../data/tasks.js'
 import { extractQuizScores, stripQuizTags, updateConceptStrength } from '../../utils/quizScoring.js'
 import VizSmartCards from '../viz/VizSmartCards.jsx'
 
@@ -82,6 +83,17 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
         setMessages(prev => [...prev, { role: 'assistant', content: cmd.response, timestamp: new Date().toISOString() }])
         voice.speak(cmd.response, { isVoiceCommand: true })
         eventBus.emit('task:complete', { taskId: cmd.taskId })
+        // Auto-question pipeline: queue interview question for completed task
+        try {
+          const task = TASKS.find(t => t.id === cmd.taskId)
+          if (task) {
+            const existing = JSON.parse(localStorage.getItem('jos-interviews') || '[]')
+            if (!existing.some(e => e.taskId === cmd.taskId)) {
+              existing.push({ taskId: cmd.taskId, taskName: task.name, week: task.week, status: 'pending' })
+              localStorage.setItem('jos-interviews', JSON.stringify(existing))
+            }
+          }
+        } catch { /* ok */ }
         return
       }
       if (cmd.type === 'mode' && onModeSwitch) {
@@ -115,6 +127,9 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
         play('receive')
         voice.speak(cleanText)
 
+        // Decision log — auto-capture decisions
+        checkDecisionLog(trimmed, cleanText)
+
         // Parse quiz scores and update concepts
         if (['quiz', 'presser', 'battle', 'forensics', 'code-autopsy', 'scenario-bomb'].includes(mode.id)) {
           const scores = extractQuizScores(result.text)
@@ -132,6 +147,24 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
       stopTick(); stopThinking()
     }
   }, [sendMessage, mode.id, weekNumber, play, voice, checkIn, onModeSwitch, stopThinking, startThinking])
+
+  // Decision log — auto-capture decisions from conversation
+  const checkDecisionLog = useCallback((userMsg, jarvisMsg) => {
+    const decisionKeywords = ['decided', 'decision', 'going with', 'choosing', 'picked', 'committed to', 'approved', 'finalized']
+    const combined = (userMsg + ' ' + jarvisMsg).toLowerCase()
+    if (decisionKeywords.some(k => combined.includes(k))) {
+      try {
+        const decisions = JSON.parse(localStorage.getItem('jos-decisions') || '[]')
+        decisions.push({
+          date: new Date().toISOString(),
+          userContext: userMsg.substring(0, 200),
+          jarvisResponse: jarvisMsg.substring(0, 200),
+          mode: mode?.id || 'chat',
+        })
+        localStorage.setItem('jos-decisions', JSON.stringify(decisions.slice(-100)))
+      } catch { /* ok */ }
+    }
+  }, [mode?.id])
 
   // Identity update detection
   const checkIdentityUpdate = (msg) => {

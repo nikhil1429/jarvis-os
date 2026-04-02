@@ -30,6 +30,7 @@ export default defineConfig(({ mode }) => {
             three: ['three'],
             recharts: ['recharts'],
             supabase: ['@supabase/supabase-js'],
+            jspdf: ['jspdf'],
           },
         },
       },

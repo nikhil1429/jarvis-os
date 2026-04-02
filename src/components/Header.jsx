@@ -82,6 +82,9 @@ function formatTime(totalSeconds) {
 const ENERGY_COLORS = { 1: '#ef4444', 2: '#ef4444', 3: '#eab308', 4: '#22c55e', 5: '#22c55e' }
 
 export default function Header({ dayNumber, weekNumber, streak, elapsed, rank, energy, onEnergyChange, onSettingsClick }) {
+  let isShowMode = false
+  try { isShowMode = JSON.parse(localStorage.getItem('jos-settings') || '{}').showMode || false } catch { /* ok */ }
+
   return (
     <header className="flex items-center justify-between px-4 py-2"
       style={{
@@ -99,6 +102,7 @@ export default function Header({ dayNumber, weekNumber, streak, elapsed, rank, e
             style={{ color: '#d4a853' }}>
             {rank || 'RECRUIT'}
           </span>
+          {isShowMode && <span style={{ fontSize: 8, color: '#d4a853', fontFamily: 'Share Tech Mono', letterSpacing: '0.15em', marginLeft: 8 }}>SHOW MODE</span>}
           <div className="flex items-center gap-1.5 mt-0.5">
             <span className="w-[5px] h-[5px] rounded-full live-blink" style={{ backgroundColor: '#22c55e', color: '#22c55e' }} />
             <span className="font-mono text-[8px] tracking-widest" style={{ color: '#5a7a94' }}>NEURAL LINK ACTIVE</span>

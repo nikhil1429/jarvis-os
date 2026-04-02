@@ -20,7 +20,7 @@ const MODES = [
   { id: 'time-machine',   emoji: '⏳', name: 'Time Machine',     tier: 3, model: 'sonnet', description: 'Letters to future you — capsules sealed and revealed later' },
   { id: 'code-autopsy',   emoji: '🩻', name: 'Code Autopsy',     tier: 3, model: 'opus',   description: 'Dissect code — explain every line, track ghost rate %' },
   { id: 'scenario-bomb',  emoji: '💣', name: 'Scenario Bomb',    tier: 3, model: 'opus',   description: 'Production disasters on YOUR features — escalating severity' },
-  { id: 'interview-sim',  emoji: '🔗', name: 'Interview Sim',    tier: 2, model: 'opus',   description: 'Full interview simulation with 3 mentor personas' },
+  { id: 'interview-sim',  emoji: '🔗', name: 'Interview Sim',    tier: 2, model: 'opus',   description: 'Full interview simulation. Say "akshay mode", "senior dev", or "hiring manager" to switch personas.' },
   { id: 'impostor-killer',emoji: '🛡️', name: 'Impostor Killer',  tier: 1, model: 'sonnet', description: 'Combat impostor syndrome with data-driven proof of progress' },
   { id: 'weakness-radar', emoji: '📡', name: 'Weakness Radar',   tier: 3, model: 'opus',   description: 'Opus finds ROOT CAUSE of knowledge gaps — strategic operations' },
 ]

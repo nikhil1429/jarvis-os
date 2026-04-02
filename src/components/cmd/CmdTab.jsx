@@ -58,6 +58,8 @@ function RecentReports() {
 
 export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissPulse, weakness, onWeaknessTap, onWeaknessDismiss }) {
   const { suggestions } = useAdaptiveUI()
+  let isShowMode = false
+  try { isShowMode = JSON.parse(localStorage.getItem('jos-settings') || '{}').showMode || false } catch { /* ok */ }
 
   return (
     <div className="space-y-4 max-w-2xl mx-auto">
@@ -112,8 +114,8 @@ export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissP
       <div className="card-enter" style={{ animationDelay: '80ms' }}><TaskList completedTasks={completedTasks} onToggleTask={onToggleTask} /></div>
       <div className="card-enter" style={{ animationDelay: '160ms' }}><BattlePlan /></div>
       <div className="card-enter" style={{ animationDelay: '240ms' }}><DailyBuildLog /></div>
-      <div className="card-enter" style={{ animationDelay: '320ms' }}><SecondBrain /></div>
-      <div className="card-enter" style={{ animationDelay: '400ms' }}><TimeCapsule /></div>
+      {!isShowMode && <div className="card-enter" style={{ animationDelay: '320ms' }}><SecondBrain /></div>}
+      {!isShowMode && <div className="card-enter" style={{ animationDelay: '400ms' }}><TimeCapsule /></div>}
     </div>
   )
 }

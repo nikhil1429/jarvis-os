@@ -117,7 +117,18 @@ Generate exactly:
 
 Under 250 words. Data-driven.`
 
-      const text = await callAPI(prompt, 'weakness-radar')
+      let text = await callAPI(prompt, 'weakness-radar')
+
+      // Part 6: Pattern Storyteller — append a STAR story of the week
+      try {
+        const storyPrompt = `Based on this week's data for Nikhil Panwar (AI Product Engineer candidate):
+Tasks completed: ${(core.completedTasks||[]).length}, Streak: ${core.streak||0}, Weak: ${weak.join(', ')||'none'}, Strong: ${strong.join(', ')||'none'}
+
+Identify ONE moment from this week that would make a compelling interview story. Frame it as a STAR answer (Situation, Task, Action, Result). Look for: a consistency achievement, a concept breakthrough, a creative solution, or overcoming a struggle. Keep under 100 words. First person.`
+        const story = await callAPI(storyPrompt)
+        if (story) text += '\n\nSTORY OF THE WEEK:\n' + story
+      } catch { /* story generation is optional */ }
+
       const report = { type: 'weekly', text, generatedAt: new Date().toISOString(), weekNumber: wk }
       saveWeekly('lastWeeklyReview', new Date().toISOString())
       saveWeekly('lastWeeklyReport', report)

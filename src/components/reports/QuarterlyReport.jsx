@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { X, Download } from 'lucide-react'
+import jsPDF from 'jspdf'
 import useAI from '../../hooks/useAI.js'
 import { compileSummary } from '../../utils/strategicCompiler.js'
 import { speakElevenLabs } from '../../utils/elevenLabsSpeak.js'
@@ -80,7 +81,31 @@ JARVIS voice. Formal, data-driven. Under 600 words. Section headers in CAPS. No 
             </h1>
             <p className="font-mono text-[10px] text-text-muted mt-1">{new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
           </div>
-          <button onClick={onClose} className="text-text-muted hover:text-text p-2"><X size={20} /></button>
+          <div className="flex items-center gap-2">
+            {rawText && (
+              <button onClick={() => {
+                const doc = new jsPDF()
+                doc.setFontSize(14)
+                doc.text('THE NIKHIL PANWAR REPORT', 20, 20)
+                doc.setFontSize(9)
+                doc.setTextColor(120)
+                doc.text(new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }), 20, 28)
+                doc.setTextColor(0)
+                doc.setFontSize(10)
+                const lines = doc.splitTextToSize(rawText, 170)
+                let y = 38
+                lines.forEach(line => {
+                  if (y > 280) { doc.addPage(); y = 20 }
+                  doc.text(line, 20, y)
+                  y += 5
+                })
+                doc.save('jarvis-quarterly-report.pdf')
+              }} className="text-gold hover:text-gold/80 p-2 transition-colors" title="Save as PDF">
+                <Download size={18} />
+              </button>
+            )}
+            <button onClick={onClose} className="text-text-muted hover:text-text p-2"><X size={20} /></button>
+          </div>
         </div>
 
         {generating ? (
