@@ -127,7 +127,7 @@ test.describe('Training Modes Flow', () => {
     await page.waitForTimeout(300)
     await page.locator('text=Chat').first().click()
     await page.waitForTimeout(300)
-    await page.locator('text=BACK').click()
+    await page.locator('button:has-text("BACK")').first().click()
     await page.waitForTimeout(300)
     await expect(page.locator('text=Quiz').first()).toBeVisible({ timeout: 3000 })
   })
