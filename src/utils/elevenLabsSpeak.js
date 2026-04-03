@@ -162,3 +162,31 @@ export async function speakElevenLabs(text) {
     return false
   }
 }
+
+/**
+ * Speak with ElevenLabs, falling back to browser TTS if unavailable
+ * Use this for any speech that should ALWAYS produce audio (onboarding, reports, shutdown, etc.)
+ */
+export async function speakWithFallback(text) {
+  const ok = await speakElevenLabs(text)
+  if (!ok) {
+    const synth = window.speechSynthesis
+    if (!synth) return
+    return new Promise(resolve => {
+      const clean = text.replace(/[*_~`#]/g, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+        .replace(/\n{2,}/g, '. ').replace(/\n/g, ', ').replace(/[-]{3,}/g, '').trim()
+      if (!clean) { resolve(); return }
+      synth.cancel()
+      const u = new SpeechSynthesisUtterance(clean)
+      u.lang = 'en-GB'
+      const voices = synth.getVoices()
+      const v = voices.find(x => x.lang === 'en-GB') || voices.find(x => x.lang.startsWith('en')) || voices[0]
+      if (v) u.voice = v
+      u.rate = 1.0; u.pitch = 0.95
+      u.onend = resolve
+      u.onerror = resolve
+      setTimeout(resolve, Math.max(8000, clean.length * 80))
+      synth.speak(u)
+    })
+  }
+}

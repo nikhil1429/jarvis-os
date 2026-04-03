@@ -30,9 +30,10 @@ function detectControl(transcript) {
 }
 
 function getSilenceDelay(wordCount) {
-  if (wordCount < 5) return 2000
-  if (wordCount <= 15) return 1500
-  return 1200
+  if (wordCount < 3) return 3000
+  if (wordCount < 8) return 2500
+  if (wordCount <= 20) return 2000
+  return 1800
 }
 
 // Global stop — kills ALL audio
@@ -70,9 +71,10 @@ function speakBrowserAck(text) {
   synth.speak(u)
 }
 
-// Browser TTS fallback for full responses
+// Browser TTS fallback for full responses — speaks sentences ONE AT A TIME
+// V4 fix: sequential playback so cancel() reliably stops between sentences
 function speakBrowserFallback(text) {
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
     const synth = window.speechSynthesis
     if (!synth) { resolve(); return }
     const clean = text.replace(/[*_~`#]/g, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
@@ -87,25 +89,23 @@ function speakBrowserFallback(text) {
         || voices.find(x => x.lang === 'en-GB') || voices.find(x => x.lang.startsWith('en')) || voices[0]
       window._jarvisVoice = v
     }
-    let resolved = false
-    const safeResolve = () => { if (!resolved) { resolved = true; resolve() } }
 
-    // Safety timeout — if speech takes too long or gets cancelled, resolve anyway
-    const safetyTimer = setTimeout(safeResolve, Math.max(10000, sentences.length * 5000))
-
-    sentences.forEach((s, i) => {
-      const u = new SpeechSynthesisUtterance(s.trim())
-      if (v) u.voice = v
-      u.rate = 1.0; u.pitch = 0.95
-      if (i === sentences.length - 1) {
-        u.onend = () => { clearTimeout(safetyTimer); safeResolve() }
-        u.onerror = () => { clearTimeout(safetyTimer); safeResolve() }
-      } else {
-        // Non-last sentences also need error handling for cancellation
-        u.onerror = () => { clearTimeout(safetyTimer); safeResolve() }
-      }
-      synth.speak(u)
-    })
+    for (const sentence of sentences) {
+      if (window._jarvisStopped) break
+      await new Promise(sentenceResolve => {
+        const u = new SpeechSynthesisUtterance(sentence.trim())
+        if (v) u.voice = v
+        u.rate = 1.0; u.pitch = 0.95
+        u.onend = sentenceResolve
+        u.onerror = sentenceResolve
+        // Safety timeout per sentence
+        const timer = setTimeout(sentenceResolve, Math.max(8000, sentence.length * 80))
+        u.onend = () => { clearTimeout(timer); sentenceResolve() }
+        u.onerror = () => { clearTimeout(timer); sentenceResolve() }
+        synth.speak(u)
+      })
+    }
+    resolve()
   })
 }
 
@@ -146,12 +146,12 @@ export default function useJarvisVoice() {
       if (timeoutTimerRef.current) clearTimeout(timeoutTimerRef.current)
       timeoutTimerRef.current = setTimeout(() => {
         if (jarvisSpeakingRef.current) return
-        console.log('TIMEOUT: 15s after stop-speaking, going IDLE')
+        console.log('TIMEOUT: 30s after stop-speaking, going IDLE')
         if (recognitionRef.current) try { recognitionRef.current.stop() } catch { /* ok */ }
         recognitionRef.current = null
         stateRef.current = VS.IDLE
         setVoiceState(VS.IDLE)
-      }, 15000)
+      }, 30000)
     } else {
       updateState(VS.IDLE)
     }
@@ -183,11 +183,12 @@ export default function useJarvisVoice() {
     const shouldSpeak = (() => {
       if (options.isMilestone || options.isBriefing || options.isRankUp) return true
       if (settings.voice === false) return false
-      if (userStopTimestampRef.current > 0 && now - userStopTimestampRef.current < 60000) return false
-      if (!text || text.length < 20) return false
-      if (recentMsgTimestamps.current.length >= 3) return false
       if (options.isVoiceCommand) return true
+      // If user is in a voice conversation, ALWAYS speak (skip suppression checks)
       if (lastInputMethodRef.current === 'voice') return true
+      if (userStopTimestampRef.current > 0 && now - userStopTimestampRef.current < 60000) return false
+      if (!text || text.length < 5) return false
+      if (recentMsgTimestamps.current.length >= 8) return false
       if (lastInputMethodRef.current === 'typed') return false
       return false
     })()
@@ -280,6 +281,7 @@ export default function useJarvisVoice() {
     setSilenceCountdown(null)
     waitModeRef.current = false
     setIsWaitMode(false)
+    userStopTimestampRef.current = 0 // V2 fix: clear stop suppression on new voice session
 
     navigator.mediaDevices.getUserMedia({ audio: true })
       .then((stream) => {
@@ -311,8 +313,8 @@ export default function useJarvisVoice() {
             }
           }
 
-          // Interruption during SPEAKING — any speech with 2+ words = real user (interim or final)
-          if (stateRef.current === VS.SPEAKING && (isFinal || transcript.trim().split(/\s+/).length >= 2)) {
+          // Interruption during SPEAKING — any speech with 1+ words = real user (interim or final)
+          if (stateRef.current === VS.SPEAKING && (isFinal || transcript.trim().split(/\s+/).length >= 1)) {
             console.log('INTERRUPT: user spoke during JARVIS speech')
             jarvisStopAll()
             jarvisSpeakingRef.current = false
@@ -336,9 +338,9 @@ export default function useJarvisVoice() {
             if (timeoutTimerRef.current) clearTimeout(timeoutTimerRef.current)
             timeoutTimerRef.current = setTimeout(() => {
               if (jarvisSpeakingRef.current) { console.log('TIMEOUT: skipped, JARVIS speaking'); return }
-              console.log('TIMEOUT: 15s silence, going IDLE')
+              console.log('TIMEOUT: 30s silence, going IDLE')
               stopListening()
-            }, 15000)
+            }, 30000)
           }
 
           if (isFinal) {
@@ -354,10 +356,24 @@ export default function useJarvisVoice() {
         }
 
         // Keep mic alive through LISTENING, PROCESSING, SPEAKING
+        // V9 fix: backoff on rapid restarts to prevent deaf-mic loop
+        let restartCount = 0
         recognition.onend = () => {
           const s = stateRef.current
           if ((s === VS.LISTENING || s === VS.SPEAKING || s === VS.PROCESSING) && recognitionRef.current === recognition) {
-            try { recognition.start() } catch { /* ok */ }
+            if (restartCount > 5) {
+              console.warn('MIC: too many restarts, going IDLE')
+              updateState(VS.IDLE)
+              recognitionRef.current = null
+              return
+            }
+            restartCount++
+            const delay = Math.min(500 * restartCount, 3000)
+            setTimeout(() => {
+              if (recognitionRef.current === recognition) {
+                try { recognition.start(); restartCount = 0 } catch { updateState(VS.IDLE); recognitionRef.current = null }
+              }
+            }, delay)
           }
         }
 
@@ -372,9 +388,9 @@ export default function useJarvisVoice() {
         if (stateRef.current === VS.LISTENING) {
           timeoutTimerRef.current = setTimeout(() => {
             if (jarvisSpeakingRef.current) return
-            console.log('TIMEOUT: 15s silence, going IDLE')
+            console.log('TIMEOUT: 30s silence, going IDLE')
             stopListening()
-          }, 15000)
+          }, 30000)
         }
       })
       .catch(() => updateState(VS.IDLE))
@@ -426,12 +442,12 @@ export default function useJarvisVoice() {
             if (timeoutTimerRef.current) clearTimeout(timeoutTimerRef.current)
             timeoutTimerRef.current = setTimeout(() => {
               if (jarvisSpeakingRef.current) return
-              console.log('TIMEOUT: 15s silence after speech, going IDLE')
+              console.log('TIMEOUT: 30s silence after speech, going IDLE')
               if (recognitionRef.current) try { recognitionRef.current.stop() } catch { /* ok */ }
               recognitionRef.current = null
               stateRef.current = VS.IDLE
               setVoiceState(VS.IDLE)
-            }, 15000)
+            }, 30000)
           } else if (startListeningRef.current) {
             startListeningRef.current()
           }

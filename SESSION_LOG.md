@@ -4,6 +4,27 @@
 
 ---
 
+### Session 57 — Voice Forensic Audit: 9 Bugs Fixed (2026-04-03)
+**Complete voice system overhaul from forensic audit.**
+
+9 bugs fixed across 12 files:
+- **V1 CRITICAL** — Premature voice send: silence delays increased (3s/2.5s/2s/1.8s vs old 2s/1.5s/1.2s)
+- **V2 CRITICAL** — 60s speech suppression after "stop": cleared on new voice session, voice conversations bypass all suppression checks
+- **V3 HIGH** — VoiceMode interrupt double-fire: interrupt handler now updates transcript only, silence timer handles sending
+- **V4 HIGH** — Browser TTS interrupt unreliable: sentences now speak sequentially (not queued), interrupt threshold lowered to 1 word
+- **V5 MEDIUM** — 15s timeout kills mic: all timeouts increased to 30s
+- **V6 MEDIUM** — Rate limiter blocks quiz: increased from 3→8 messages per 30s, text length threshold 20→5 chars
+- **V7 HIGH** — Onboarding completely silent: speakWithFallback() replaces direct speakElevenLabs() calls (3 locations)
+- **V8 MEDIUM** — Reports/Briefing/Shutdown/CheckIn silent: speakWithFallback() added (6 locations)
+- **V9 LOW** — Recognition restart loop: exponential backoff (500ms increments), stops after 5 failed restarts
+
+New utility: `speakWithFallback()` in elevenLabsSpeak.js — ElevenLabs first, browser TTS fallback, used by all 9 callsites that previously had no fallback.
+
+**Files modified:** useJarvisVoice.js, VoiceMode.jsx, elevenLabsSpeak.js, Onboarding.jsx, ShutdownSequence.jsx, Briefing.jsx, QuarterlyReport.jsx, TimeCapsule.jsx, InterviewBrief.jsx, CheckInForm.jsx
+**Tests:** 270 pass, build 0 errors
+
+---
+
 ### Session 56 — Final Gap: Manual Protocol + Mock Tests (2026-04-03)
 **Complete test coverage achieved.**
 

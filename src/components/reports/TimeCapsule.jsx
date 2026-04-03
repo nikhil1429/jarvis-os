@@ -6,7 +6,7 @@ import { Lock, Unlock, Plus } from 'lucide-react'
 import useAI from '../../hooks/useAI.js'
 import useStorage from '../../hooks/useStorage.js'
 import { compileSummary } from '../../utils/strategicCompiler.js'
-import { speakElevenLabs } from '../../utils/elevenLabsSpeak.js'
+import { speakWithFallback } from '../../utils/elevenLabsSpeak.js'
 import { getDayNumber } from '../../utils/dateUtils.js'
 
 export default function TimeCapsule() {
@@ -65,7 +65,7 @@ Warm JARVIS voice, like a mentor. Under 150 words. No markdown.`
     })
     // Speak the letter
     const capsule = capsules[idx]
-    if (capsule?.content) speakElevenLabs(capsule.content)
+    if (capsule?.content) speakWithFallback(capsule.content)
   }
 
   return (

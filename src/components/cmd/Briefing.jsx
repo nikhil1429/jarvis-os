@@ -4,7 +4,7 @@
 
 import { Mic, Volume2 } from 'lucide-react'
 import useStorage from '../../hooks/useStorage.js'
-import { speakElevenLabs } from '../../utils/elevenLabsSpeak.js'
+import { speakWithFallback } from '../../utils/elevenLabsSpeak.js'
 
 export default function Briefing() {
   const { get } = useStorage()
@@ -18,7 +18,7 @@ export default function Briefing() {
     if (briefing?.text) {
       const settings = JSON.parse(localStorage.getItem('jos-settings') || '{}')
       if (settings.voice !== false) {
-        await speakElevenLabs(briefing.text)
+        await speakWithFallback(briefing.text)
       }
     }
   }

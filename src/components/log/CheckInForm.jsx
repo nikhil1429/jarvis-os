@@ -9,7 +9,7 @@ import { Check, ClipboardCheck, Target } from 'lucide-react'
 import useStorage from '../../hooks/useStorage.js'
 import useSound from '../../hooks/useSound.js'
 import useEventBus from '../../hooks/useEventBus.js'
-import { speakElevenLabs } from '../../utils/elevenLabsSpeak.js'
+import { speakWithFallback } from '../../utils/elevenLabsSpeak.js'
 import { compileSummary } from '../../utils/strategicCompiler.js'
 
 // WHY: Reusable tap selector — renders N buttons in a row, highlights selected
@@ -174,7 +174,7 @@ Tone: JARVIS formal British, call him Sir. Keep under 150 words. No markdown.`
 
       // Speak the debrief if voice enabled
       const settings = JSON.parse(localStorage.getItem('jos-settings') || '{}')
-      if (settings.voice !== false) speakElevenLabs(text)
+      if (settings.voice !== false) speakWithFallback(text)
     } catch (err) {
       console.error('[CheckInForm] Debrief generation failed:', err)
     } finally {

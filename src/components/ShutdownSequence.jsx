@@ -2,7 +2,7 @@
 // WHY: Graceful close, not just closing the tab. JARVIS says goodbye.
 
 import { useState, useEffect } from 'react'
-import { speakElevenLabs } from '../utils/elevenLabsSpeak.js'
+import { speakWithFallback } from '../utils/elevenLabsSpeak.js'
 
 const BOOT_LINES_REVERSE = [
   'Neural interface',
@@ -29,7 +29,7 @@ export default function ShutdownSequence({ onComplete }) {
 
     // Phase 1: JARVIS speaks + "SYSTEMS ENTERING STANDBY" types (500-2000ms)
     setTimeout(() => {
-      speakElevenLabs('Shutting down, Sir. Rest well. I will be here when you return.')
+      speakWithFallback('Shutting down, Sir. Rest well. I will be here when you return.')
       let i = 0
       const text = 'SYSTEMS ENTERING STANDBY'
       const interval = setInterval(() => {

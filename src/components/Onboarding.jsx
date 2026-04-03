@@ -6,7 +6,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Mic, SkipForward } from 'lucide-react'
 import useJarvisVoice from '../hooks/useJarvisVoice.js'
-import { speakElevenLabs } from '../utils/elevenLabsSpeak.js'
+import { speakWithFallback } from '../utils/elevenLabsSpeak.js'
 
 const SECTIONS = [
   {
@@ -112,7 +112,7 @@ export default function Onboarding({ onComplete }) {
     typeText(intro, () => {
       setTimeout(() => showSectionTransition(0), 1000)
     })
-    await speakElevenLabs(intro)
+    await speakWithFallback(intro)
   }, [typeText])
 
   const showSectionTransition = useCallback((idx) => {
@@ -144,7 +144,7 @@ export default function Onboarding({ onComplete }) {
       }, 20000)
     })
 
-    await speakElevenLabs(question)
+    await speakWithFallback(question)
   }, [typeText, voice])
 
   const handleAnswer = useCallback((answerText) => {
@@ -295,7 +295,7 @@ Structure:
     setPhase('complete')
     const msg = 'Initial calibration complete, Sir. I now have a foundational understanding of your patterns, preferences, and objectives. Shall we begin?'
     typeText(msg)
-    await speakElevenLabs(msg)
+    await speakWithFallback(msg)
     setTimeout(() => onComplete(), 3000)
   }, [onComplete, typeText])
 

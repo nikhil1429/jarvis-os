@@ -151,9 +151,19 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
 
   useEffect(() => {
     const onSend = (e) => handleSend(e.detail.text)
+    // V3 fix: interrupt just updates transcript, silence timer in useJarvisVoice handles sending
+    const onInterrupt = (e) => {
+      setMessages(prev => {
+        const last = prev[prev.length - 1]
+        if (last?.role === 'user') {
+          return [...prev.slice(0, -1), { ...last, content: e.detail.text }]
+        }
+        return [...prev, { role: 'user', content: e.detail.text, timestamp: new Date().toISOString() }]
+      })
+    }
     window.addEventListener('jarvis-voice-send', onSend)
-    window.addEventListener('jarvis-voice-interrupt', onSend)
-    return () => { window.removeEventListener('jarvis-voice-send', onSend); window.removeEventListener('jarvis-voice-interrupt', onSend) }
+    window.addEventListener('jarvis-voice-interrupt', onInterrupt)
+    return () => { window.removeEventListener('jarvis-voice-send', onSend); window.removeEventListener('jarvis-voice-interrupt', onInterrupt) }
   }, [handleSend])
 
   // Canvas animation + audio analyser
