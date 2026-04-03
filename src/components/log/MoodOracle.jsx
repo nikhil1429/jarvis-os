@@ -6,6 +6,7 @@ import { useState, useMemo } from 'react'
 import { Brain, ChevronDown, ChevronUp } from 'lucide-react'
 import useAI from '../../hooks/useAI.js'
 import useStorage from '../../hooks/useStorage.js'
+import renderMd from '../../utils/renderMd.js'
 
 export default function MoodOracle() {
   const { sendMessage, isStreaming } = useAI()
@@ -95,9 +96,8 @@ export default function MoodOracle() {
 
         {analysis ? (
           <>
-            <p className={`font-body text-xs text-text leading-relaxed ${expanded ? '' : 'line-clamp-2'}`}>
-              {analysis.text}
-            </p>
+            <div className={`font-body text-xs text-text leading-relaxed ${expanded ? '' : 'line-clamp-2'}`}
+              dangerouslySetInnerHTML={{ __html: renderMd(analysis.text) }} />
             <p className="font-mono text-[9px] text-text-muted mt-2">
               Generated {new Date(analysis.generatedAt).toLocaleDateString()} · {analysis.checkinCount} check-ins analyzed
             </p>

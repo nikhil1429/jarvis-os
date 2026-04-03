@@ -113,6 +113,17 @@ export default function MemoryPalace() {
     el.addEventListener('pointerdown', onDown); el.addEventListener('pointerup', onUp)
     el.addEventListener('pointermove', onMove); el.addEventListener('wheel', onWheel, { passive: false })
 
+    // Zoom button handlers
+    const zoomIn = document.getElementById('palace-zoom-in')
+    const zoomOut = document.getElementById('palace-zoom-out')
+    const resetBtn = document.getElementById('palace-reset')
+    const handleZoomIn = () => { dist = Math.max(20, dist - 5) }
+    const handleZoomOut = () => { dist = Math.min(80, dist + 5) }
+    const handleReset = () => { dist = 40; rotX = 0; rotY = 0 }
+    if (zoomIn) zoomIn.addEventListener('click', handleZoomIn)
+    if (zoomOut) zoomOut.addEventListener('click', handleZoomOut)
+    if (resetBtn) resetBtn.addEventListener('click', handleReset)
+
     let animId
     const clock = new THREE.Clock()
     const animate = () => {
@@ -133,6 +144,9 @@ export default function MemoryPalace() {
       cancelAnimationFrame(animId); window.removeEventListener('resize', onResize)
       el.removeEventListener('pointerdown', onDown); el.removeEventListener('pointerup', onUp)
       el.removeEventListener('pointermove', onMove); el.removeEventListener('wheel', onWheel)
+      if (zoomIn) zoomIn.removeEventListener('click', handleZoomIn)
+      if (zoomOut) zoomOut.removeEventListener('click', handleZoomOut)
+      if (resetBtn) resetBtn.removeEventListener('click', handleReset)
       renderer.dispose()
       scene.traverse(o => { if(o.geometry)o.geometry.dispose(); if(o.material){if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material.dispose()} })
       if (container.contains(el)) container.removeChild(el)
@@ -141,6 +155,15 @@ export default function MemoryPalace() {
 
   return (
     <div ref={containerRef} className="relative rounded overflow-hidden" style={{ minHeight: 350, background: '#010810' }}>
+      {/* Zoom controls */}
+      <div className="absolute top-3 right-3 flex flex-col gap-1 z-10">
+        <button id="palace-zoom-in"
+          className="w-7 h-7 rounded bg-card/80 border border-border text-cyan hover:bg-cyan/10 font-mono text-sm flex items-center justify-center">+</button>
+        <button id="palace-zoom-out"
+          className="w-7 h-7 rounded bg-card/80 border border-border text-cyan hover:bg-cyan/10 font-mono text-sm flex items-center justify-center">&minus;</button>
+        <button id="palace-reset"
+          className="w-7 h-7 rounded bg-card/80 border border-border text-text-dim hover:bg-cyan/10 font-mono text-[8px] flex items-center justify-center">R</button>
+      </div>
       {tooltip && (
         <div className="glass-card px-3 py-2 pointer-events-none" style={{ position: 'absolute', left: tooltip.x+12, top: tooltip.y-40, zIndex: 10, whiteSpace: 'nowrap' }}>
           <p className="font-display text-xs font-bold text-text">{tooltip.name}</p>

@@ -137,8 +137,15 @@ export default function Header({ dayNumber, weekNumber, streak, elapsed, rank, e
         <span className="font-mono text-xs neon-pulse" style={{ color: '#00b4d8' }}>
           {formatTime(elapsed || 0)}
         </span>
-        <span title={isSupabaseConfigured() ? 'Cloud sync active' : 'Local only'}>
-          {isSupabaseConfigured() ? <Cloud size={12} style={{ color: '#10b981', opacity: 0.6 }} /> : <CloudOff size={12} style={{ color: '#5a7a94', opacity: 0.4 }} />}
+        <span className="flex items-center gap-1" title={isSupabaseConfigured() ? 'Cloud sync active' : 'Local only'}>
+          {isSupabaseConfigured() ? (
+            <>
+              <Cloud size={12} style={{ color: '#10b981', opacity: 0.6 }} />
+              <span className="font-mono text-[7px] tracking-wider" style={{ color: '#10b981', opacity: 0.6 }}>SYNC</span>
+            </>
+          ) : (
+            <CloudOff size={12} style={{ color: '#5a7a94', opacity: 0.4 }} />
+          )}
         </span>
         <button onClick={onSettingsClick}
           className="text-text-dim hover:text-cyan transition-colors duration-300 hover:rotate-90"

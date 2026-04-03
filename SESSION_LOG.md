@@ -4,6 +4,26 @@
 
 ---
 
+### Session 58 — Manual Testing Bug Fixes (12 Bugs) (2026-04-03)
+**Bugs fixed:**
+1. Briefing mic now works from CMD tab (global event listener in App.jsx)
+2. Tasks rewritten — 82 FinOps + career tasks (was JARVIS build tasks), with one-time migration
+3. renderMd extracted to shared utility (src/utils/renderMd.js) with headings, lists, HR support
+4. Mood Oracle renders markdown properly (dangerouslySetInnerHTML)
+5. Tilt effect removed from IntelligenceDash + SkillHeatMap (cleaner hover)
+6. 3-Day Trend / Weekly Review / Newsletter now display results via TrendReport component
+7. Portfolio Narrator: category filter works, PDF variant selector (30s/2min/5min), delete STAR button
+8. Header cloud icon labeled "SYNC"
+9. Time Capsule: user controls duration (7/14/30/60d) + topic input
+10. Bottom spacing increased (pb-16 → pb-28) for BottomNav clearance
+11. Memory Palace zoom buttons added (+/−/Reset)
+12. Intelligence cards expandable on click (shows confidence %, source, data detail)
+
+**Files created:** src/utils/renderMd.js
+**Files updated:** App.jsx, tasks.js, Briefing.jsx, MoodOracle.jsx, IntelligenceDash.jsx, SkillHeatMap.jsx, StatsTab.jsx, TrendReport.jsx, PortfolioNarrator.jsx, Header.jsx, TimeCapsule.jsx, MemoryPalace.jsx, ChatView.jsx
+
+---
+
 ### Session 57 — Voice Forensic Audit: 9 Bugs Fixed (2026-04-03)
 **Complete voice system overhaul from forensic audit.**
 

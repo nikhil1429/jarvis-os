@@ -12,6 +12,7 @@ import useJarvisVoice from '../../hooks/useJarvisVoice.js'
 import { processVoiceCommand } from '../../utils/voiceCommands.js'
 import TASKS from '../../data/tasks.js'
 import { extractQuizScores, stripQuizTags, updateConceptStrength } from '../../utils/quizScoring.js'
+import renderMd from '../../utils/renderMd.js'
 import VizSmartCards from '../viz/VizSmartCards.jsx'
 
 const SpeechRecognition = typeof window !== 'undefined'
@@ -421,18 +422,7 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
   )
 }
 
-function renderMd(text) {
-  if (!text) return ''
-  return text
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    // Triple backtick code blocks (before inline backticks)
-    .replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) =>
-      `<pre style="background:rgba(0,180,216,0.08);padding:12px;border-radius:4px;overflow-x:auto;margin:8px 0;border:1px solid rgba(0,180,216,0.15)"><code style="font-family:Share Tech Mono,monospace;font-size:0.85em;color:#48cae4">${code.trim()}</code></pre>`)
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`(.+?)`/g, '<code style="background:rgba(0,180,216,0.1);padding:1px 4px;border-radius:3px;font-family:Share Tech Mono,monospace;font-size:0.9em">$1</code>')
-    .replace(/\n/g, '<br/>')
-}
+// renderMd imported from src/utils/renderMd.js
 
 function MessageBubble({ message }) {
   const isUser = message.role === 'user'

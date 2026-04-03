@@ -126,6 +126,22 @@ function App() {
   const [requestedMode, setRequestedMode] = useState(null)
   const [globalVoiceState, setGlobalVoiceState] = useState('IDLE')
 
+  // One-time task migration for Session 58 — old JARVIS-build tasks → FinOps tasks
+  useEffect(() => {
+    try {
+      const migrated = localStorage.getItem('jos-tasks-v2-migrated')
+      if (!migrated) {
+        const core = JSON.parse(localStorage.getItem('jos-core') || '{}')
+        if (core.completedTasks && core.completedTasks.length > 0) {
+          localStorage.setItem('jos-old-completed-tasks', JSON.stringify(core.completedTasks))
+          core.completedTasks = []
+          localStorage.setItem('jos-core', JSON.stringify(core))
+        }
+        localStorage.setItem('jos-tasks-v2-migrated', 'true')
+      }
+    } catch { /* ok */ }
+  }, [])
+
   // Force re-render when voice commands change localStorage externally
   const [, forceUpdate] = useState(0)
   useEffect(() => {
@@ -364,6 +380,13 @@ function App() {
     if (tab === 'cmd') setHasPulse(false)
   }, [play])
 
+  // Global listener for jarvis-activate-mic — works from ANY tab (Bug 1 fix)
+  useEffect(() => {
+    const handler = () => setVoiceModeOpen(true)
+    window.addEventListener('jarvis-activate-mic', handler)
+    return () => window.removeEventListener('jarvis-activate-mic', handler)
+  }, [])
+
   // GlobalMic tap: always open VoiceMode (full-screen exocortex)
   const handleGlobalMicTap = useCallback(() => {
     setVoiceModeOpen(true)
@@ -423,7 +446,7 @@ function App() {
       />
 
       {showScanSweep && <div className="scan-sweep-full" />}
-      <main ref={contentRef} className="flex-1 pb-16 px-4 pt-4">
+      <main ref={contentRef} className="flex-1 pb-28 px-4 pt-4">
         {renderTab()}
       </main>
 

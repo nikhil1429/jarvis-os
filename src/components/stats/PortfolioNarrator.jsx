@@ -3,7 +3,7 @@
 // in 3 lengths (30s/2min/5min). Practice → Interview Sim. Export → PDF.
 
 import { useState, useMemo } from 'react'
-import { FileText, Zap, ExternalLink, Download } from 'lucide-react'
+import { FileText, Zap, ExternalLink, Download, Trash2 } from 'lucide-react'
 import jsPDF from 'jspdf'
 import useAI from '../../hooks/useAI.js'
 import useStorage from '../../hooks/useStorage.js'
@@ -16,8 +16,9 @@ export default function PortfolioNarrator() {
   const { sendMessage, isStreaming } = useAI()
   const { get, update } = useStorage()
   const [filter, setFilter] = useState('All')
-  const [generating, setGenerating] = useState(null) // taskId being generated
-  const [activeDuration, setActiveDuration] = useState({}) // taskId → duration tab
+  const [generating, setGenerating] = useState(null)
+  const [activeDuration, setActiveDuration] = useState({})
+  const [pdfVariant, setPdfVariant] = useState('30s')
 
   const core = get('core') || {}
   const completed = core.completedTasks || []
@@ -33,12 +34,15 @@ export default function PortfolioNarrator() {
       const prompt = `Generate 3 STAR (Situation-Task-Action-Result) interview answers for this task:
 Task: "${task.name}" (from a FinOps AI compliance tool project)
 
+First, classify this task into exactly ONE category: Technical, Design, Failure, or Scale.
+
 Generate answers in 3 lengths:
 1. BRIEF (30 seconds, 3-4 sentences)
 2. STANDARD (2 minutes, 8-10 sentences)
 3. DETAILED (5 minutes, full story with technical depth)
 
 Format as:
+[CATEGORY] category name here
 [30s] answer text here
 [2min] answer text here
 [5min] answer text here
@@ -47,9 +51,10 @@ Each should cover Situation, Task, Action, Result. First person. Specific techni
 
       const result = await sendMessage(prompt, 'weakness-radar', {})
       if (result?.text) {
-        // Parse the 3 variants
         const variants = []
         const text = result.text
+        const catMatch = text.match(/\[CATEGORY\]\s*(\w+)/i)
+        const category = catMatch ? catMatch[1].trim() : 'Technical'
         const m30 = text.match(/\[30s\]\s*([\s\S]*?)(?=\[2min\]|$)/i)
         const m2 = text.match(/\[2min\]\s*([\s\S]*?)(?=\[5min\]|$)/i)
         const m5 = text.match(/\[5min\]\s*([\s\S]*?)$/i)
@@ -58,10 +63,9 @@ Each should cover Situation, Task, Action, Result. First person. Specific techni
         if (m2) variants.push({ duration: '2min', answer: m2[1].trim() })
         if (m5) variants.push({ duration: '5min', answer: m5[1].trim() })
 
-        // If parsing failed, save the full text as one variant
         if (variants.length === 0) variants.push({ duration: 'full', answer: text })
 
-        const entry = { taskId: task.id, taskName: task.name, variants, generatedAt: new Date().toISOString() }
+        const entry = { taskId: task.id, taskName: task.name, category, variants, generatedAt: new Date().toISOString() }
         update('interviews', prev => [...(prev || []).filter(i => i.taskId !== task.id), entry])
       }
     } catch (err) {
@@ -72,27 +76,32 @@ Each should cover Situation, Task, Action, Result. First person. Specific techni
 
   const getExisting = (taskId) => interviews.find(i => i.taskId === taskId)
 
+  const handleDelete = (taskId) => {
+    update('interviews', prev => (prev || []).filter(i => i.taskId !== taskId))
+  }
+
   const exportPDF = () => {
     const doc = new jsPDF()
     doc.setFontSize(16)
     doc.text('JARVIS OS — Interview Answers', 20, 20)
     doc.setFontSize(9)
     doc.setTextColor(120)
-    doc.text(`Generated ${new Date().toLocaleDateString('en-IN')} · ${interviews.length} answers`, 20, 28)
+    doc.text(`Generated ${new Date().toLocaleDateString('en-IN')} · ${interviews.length} answers · ${pdfVariant} format`, 20, 28)
     doc.setTextColor(0)
     let y = 38
     interviews.forEach((item, i) => {
-      if (y > 270) { doc.addPage(); y = 20 }
+      if (y > 260) { doc.addPage(); y = 20 }
       doc.setFontSize(11)
       doc.text(`${i + 1}. ${item.taskName || 'Task'}`, 20, y)
       y += 7
       doc.setFontSize(9)
-      const answer = item.variants?.[0]?.answer || ''
+      const variant = item.variants?.find(v => v.duration === pdfVariant) || item.variants?.[0]
+      const answer = variant?.answer || ''
       const lines = doc.splitTextToSize(answer, 170)
       doc.text(lines, 20, y)
       y += lines.length * 5 + 10
     })
-    doc.save('jarvis-interview-answers.pdf')
+    doc.save(`jarvis-interview-answers-${pdfVariant}.pdf`)
   }
 
   if (completedTasks.length === 0) {
@@ -114,12 +123,20 @@ Each should cover Situation, Task, Action, Result. First person. Specific techni
           <FileText size={16} className="text-gold" />
           <h3 className="font-display text-sm font-bold text-gold tracking-wider uppercase gold-heading">Portfolio Narrator</h3>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           {interviews.length > 0 && (
-            <button onClick={exportPDF}
-              className="font-mono text-[9px] px-2 py-1 rounded border border-gold/30 text-gold hover:bg-gold/10 transition-all flex items-center gap-1">
-              <Download size={10} /> PDF
-            </button>
+            <>
+              <select value={pdfVariant} onChange={e => setPdfVariant(e.target.value)}
+                className="font-mono text-[9px] px-1 py-0.5 rounded border border-gold/30 bg-transparent text-gold">
+                <option value="30s">30s</option>
+                <option value="2min">2min</option>
+                <option value="5min">5min</option>
+              </select>
+              <button onClick={exportPDF}
+                className="font-mono text-[9px] px-2 py-1 rounded border border-gold/30 text-gold hover:bg-gold/10 transition-all flex items-center gap-1">
+                <Download size={10} /> PDF
+              </button>
+            </>
           )}
           <span className="font-mono text-[10px] text-text-muted">{completedTasks.length} tasks · {interviews.length} generated</span>
         </div>
@@ -136,7 +153,13 @@ Each should cover Situation, Task, Action, Result. First person. Specific techni
       </div>
 
       <div className="space-y-3 max-h-96 overflow-y-auto">
-        {completedTasks.slice(0, 15).map((task, idx) => {
+        {completedTasks
+          .filter(task => {
+            if (filter === 'All') return true
+            const existing = getExisting(task.id)
+            return existing?.category?.toLowerCase() === filter.toLowerCase()
+          })
+          .slice(0, 15).map((task, idx) => {
           const existing = getExisting(task.id)
           const dur = activeDuration[task.id] || '30s'
 
@@ -144,6 +167,13 @@ Each should cover Situation, Task, Action, Result. First person. Specific techni
             <div key={task.id} className="glass-card p-3 card-enter" style={{ animationDelay: `${idx * 40}ms` }}>
               <div className="flex items-center justify-between mb-2">
                 <p className="font-display text-xs font-bold text-text truncate flex-1">{task.name}</p>
+                {existing && (
+                  <button onClick={() => handleDelete(task.id)}
+                    className="text-text-muted hover:text-red-400 transition-colors ml-2"
+                    title="Delete generated STAR">
+                    <Trash2 size={12} />
+                  </button>
+                )}
                 {!existing && (
                   <button onClick={() => handleGenerate(task)}
                     disabled={generating === task.id || isStreaming}
@@ -167,6 +197,9 @@ Each should cover Situation, Task, Action, Result. First person. Specific techni
                           } disabled:opacity-20`}>{d}</button>
                       )
                     })}
+                    {existing.category && (
+                      <span className="font-mono text-[8px] text-text-muted ml-auto self-center">{existing.category}</span>
+                    )}
                   </div>
                   {/* Answer text */}
                   {existing.variants.find(v => v.duration === dur)?.answer && (

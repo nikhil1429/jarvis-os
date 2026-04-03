@@ -1,5 +1,6 @@
 // TrendReport.jsx — Displays 3-Day Trend or Weekly Review AI report
 import { X } from 'lucide-react'
+import renderMd from '../../utils/renderMd.js'
 
 export default function TrendReport({ report, onClose }) {
   if (!report?.text) return null
@@ -15,7 +16,7 @@ export default function TrendReport({ report, onClose }) {
         </div>
         {onClose && <button onClick={onClose} className="text-text-muted hover:text-text"><X size={14} /></button>}
       </div>
-      <p className="font-body text-xs text-text leading-relaxed whitespace-pre-wrap">{report.text}</p>
+      <div className="font-body text-xs text-text leading-relaxed" dangerouslySetInnerHTML={{ __html: renderMd(report.text) }} />
       {report.generatedAt && (
         <p className="font-mono text-[8px] text-text-muted mt-2">
           Generated {new Date(report.generatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} {new Date(report.generatedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}

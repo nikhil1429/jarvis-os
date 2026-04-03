@@ -1,4 +1,4 @@
-// TimeCapsule.jsx — Letters to future-you, sealed for 14 days
+// TimeCapsule.jsx — Letters to future-you, sealed for N days
 // WHY: Bible Section 10.8. JARVIS writes based on current data, sealed until reveal day.
 
 import { useState, useMemo } from 'react'
@@ -13,13 +13,15 @@ export default function TimeCapsule() {
   const { sendMessage } = useAI()
   const { get, update } = useStorage()
   const [creating, setCreating] = useState(false)
+  const [showCreate, setShowCreate] = useState(false)
+  const [capsuleDays, setCapsuleDays] = useState(14)
+  const [capsuleTopic, setCapsuleTopic] = useState('')
 
   const core = get('core') || {}
   const capsules = get('time-capsules') || []
   const dayNum = getDayNumber(core.startDate)
   const now = Date.now()
 
-  // Check for capsules that should be opened
   const processedCapsules = useMemo(() => {
     return capsules.map(c => ({
       ...c,
@@ -32,13 +34,14 @@ export default function TimeCapsule() {
     setCreating(true)
     try {
       const summary = compileSummary()
-      const prompt = `Write a letter from JARVIS to Nikhil's future self (14 days from now).
+      const topicContext = capsuleTopic ? `\nSpecific topic/milestone to address: "${capsuleTopic}"` : ''
+      const prompt = `Write a letter from JARVIS to Nikhil's future self (${capsuleDays} days from now).
 Current data: ${summary}
-Current day: Day ${dayNum}
+Current day: Day ${dayNum}${topicContext}
 
 The letter should:
 - Reference specific current stats (streak, concepts, confidence)
-- Make 2-3 predictions about what will change
+- Make 2-3 predictions about what will change in ${capsuleDays} days
 - Include one challenge for future-Nikhil
 - End with encouragement
 
@@ -47,14 +50,16 @@ Warm JARVIS voice, like a mentor. Under 150 words. No markdown.`
       const result = await sendMessage(prompt, 'chat', {})
       if (result?.text) {
         const opensAt = new Date()
-        opensAt.setDate(opensAt.getDate() + 14)
+        opensAt.setDate(opensAt.getDate() + capsuleDays)
         update('time-capsules', prev => [
           ...(prev || []),
-          { createdAt: new Date().toISOString(), opensAt: opensAt.toISOString(), content: result.text, opened: false, createdDay: dayNum }
+          { createdAt: new Date().toISOString(), opensAt: opensAt.toISOString(), content: result.text, opened: false, createdDay: dayNum, topic: capsuleTopic || 'General', days: capsuleDays }
         ])
       }
     } catch (err) { console.error('[TimeCapsule]', err) }
     setCreating(false)
+    setShowCreate(false)
+    setCapsuleTopic('')
   }
 
   const handleOpen = (idx) => {
@@ -63,7 +68,6 @@ Warm JARVIS voice, like a mentor. Under 150 words. No markdown.`
       updated[idx] = { ...updated[idx], opened: true, openedAt: new Date().toISOString() }
       return updated
     })
-    // Speak the letter
     const capsule = capsules[idx]
     if (capsule?.content) speakWithFallback(capsule.content)
   }
@@ -72,11 +76,35 @@ Warm JARVIS voice, like a mentor. Under 150 words. No markdown.`
     <div className="mt-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-display text-sm font-bold text-gold tracking-wider uppercase gold-heading">Time Capsule</h3>
-        <button onClick={handleCreate} disabled={creating}
+        <button onClick={() => setShowCreate(!showCreate)} disabled={creating}
           className="font-mono text-[10px] text-gold border border-gold/30 px-2 py-1 rounded hover:bg-gold/10 transition-all disabled:opacity-30">
           <Plus size={10} className="inline mr-1" />{creating ? 'CREATING...' : 'CREATE'}
         </button>
       </div>
+
+      {showCreate && (
+        <div className="glass-card p-3 mb-3 border border-gold/20 space-y-2">
+          <input
+            value={capsuleTopic}
+            onChange={e => setCapsuleTopic(e.target.value)}
+            placeholder="Topic or milestone (optional)..."
+            className="w-full bg-transparent border border-border rounded px-2 py-1.5 font-body text-xs text-text placeholder:text-text-muted focus:border-gold/40 outline-none"
+          />
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[9px] text-text-muted">Open in:</span>
+            {[7, 14, 30, 60].map(d => (
+              <button key={d} onClick={() => setCapsuleDays(d)}
+                className={`font-mono text-[9px] px-2 py-0.5 rounded border transition-all ${
+                  capsuleDays === d ? 'border-gold/60 bg-gold/15 text-gold' : 'border-border text-text-muted hover:border-gold/30'
+                }`}>{d}d</button>
+            ))}
+          </div>
+          <button onClick={handleCreate} disabled={creating}
+            className="w-full font-mono text-[10px] text-gold border border-gold/40 rounded py-1.5 hover:bg-gold/10 transition-all disabled:opacity-30">
+            {creating ? 'JARVIS IS WRITING...' : `SEAL CAPSULE (${capsuleDays} DAYS)`}
+          </button>
+        </div>
+      )}
 
       {processedCapsules.length === 0 ? (
         <div className="glass-card p-4 text-center">
@@ -91,7 +119,7 @@ Warm JARVIS voice, like a mentor. Under 150 words. No markdown.`
                 <>
                   <div className="flex items-center gap-1.5 mb-1">
                     <Unlock size={12} className="text-cyan" />
-                    <span className="font-mono text-[9px] text-cyan">Day {c.createdDay} → Opened</span>
+                    <span className="font-mono text-[9px] text-cyan">Day {c.createdDay} → Opened{c.topic ? ` · ${c.topic}` : ''}</span>
                   </div>
                   <p className="font-body text-xs text-text leading-relaxed">{c.content}</p>
                 </>
@@ -100,7 +128,7 @@ Warm JARVIS voice, like a mentor. Under 150 words. No markdown.`
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <Lock size={12} className="text-gold animate-pulse" />
-                      <span className="font-mono text-[9px] text-gold">Day {c.createdDay} — READY TO OPEN</span>
+                      <span className="font-mono text-[9px] text-gold">Day {c.createdDay} — READY TO OPEN{c.topic ? ` · ${c.topic}` : ''}</span>
                     </div>
                     <span className="font-mono text-[9px] text-gold">TAP TO REVEAL</span>
                   </div>
@@ -109,7 +137,7 @@ Warm JARVIS voice, like a mentor. Under 150 words. No markdown.`
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <Lock size={12} className="text-text-muted" />
-                    <span className="font-mono text-[9px] text-text-muted">Day {c.createdDay} — SEALED</span>
+                    <span className="font-mono text-[9px] text-text-muted">Day {c.createdDay} — SEALED{c.topic ? ` · ${c.topic}` : ''}</span>
                   </div>
                   <span className="font-mono text-[9px] text-text-muted">Opens in {c.daysUntil}d</span>
                 </div>
