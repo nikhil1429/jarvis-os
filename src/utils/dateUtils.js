@@ -9,7 +9,9 @@
  * WHY: Used in briefings ("Day 47 of your JARVIS journey") and streak tracking.
  */
 export function getDayNumber(startDate) {
+  if (!startDate) return 1
   const start = new Date(startDate)
+  if (isNaN(start.getTime())) return 1
   const now = new Date()
   const diffMs = now - start
   return Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1

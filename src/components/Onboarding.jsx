@@ -280,6 +280,21 @@ Structure:
       localStorage.setItem('jos-onboarding', JSON.stringify(structured))
       console.log('ONBOARDING: saved to jos-onboarding')
 
+      // Initialize jos-core with correct startDate so Day 1 is today
+      try {
+        const existing = JSON.parse(localStorage.getItem('jos-core') || '{}')
+        if (!existing.startDate) {
+          existing.startDate = new Date().toISOString()
+          existing.totalCheckIns = 0
+          existing.streak = 0
+          existing.rank = 'Recruit'
+          existing.completedTasks = []
+          existing.energy = 3
+          localStorage.setItem('jos-core', JSON.stringify(existing))
+          console.log('ONBOARDING: initialized jos-core with startDate')
+        }
+      } catch { /* ok */ }
+
       // Completion cinematic
       showCompletion()
     } catch (err) {
@@ -287,6 +302,19 @@ Structure:
       // Save raw answers as fallback
       const fallback = { rawAnswers: answers, completedAt: new Date().toISOString(), extractionFailed: true }
       localStorage.setItem('jos-onboarding', JSON.stringify(fallback))
+      // Initialize jos-core in fallback path too
+      try {
+        const existing = JSON.parse(localStorage.getItem('jos-core') || '{}')
+        if (!existing.startDate) {
+          existing.startDate = new Date().toISOString()
+          existing.totalCheckIns = 0
+          existing.streak = 0
+          existing.rank = 'Recruit'
+          existing.completedTasks = []
+          existing.energy = 3
+          localStorage.setItem('jos-core', JSON.stringify(existing))
+        }
+      } catch { /* ok */ }
       showCompletion()
     }
   }, [answers])

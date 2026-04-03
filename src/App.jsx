@@ -97,7 +97,14 @@ function App() {
   // tts removed
 
   const [appState, setAppState] = useState(() => {
-    return localStorage.getItem('jos-onboarding') ? 'boot' : 'onboarding'
+    if (!localStorage.getItem('jos-onboarding')) return 'onboarding'
+    // Boot only once per day — skip to main on refresh
+    try {
+      const core = JSON.parse(localStorage.getItem('jos-core') || '{}')
+      const today = new Date().toISOString().split('T')[0]
+      if (core.lastBootDate === today) return 'main'
+    } catch { /* boot normally */ }
+    return 'boot'
   })
   const [activeTab, setActiveTab] = useState('cmd')
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -297,6 +304,12 @@ function App() {
   }, [completedTasks.length, appState, get, update, play])
 
   const handleBootComplete = useCallback(() => {
+    // Save boot date — prevents re-boot on same-day refresh
+    try {
+      const core = JSON.parse(localStorage.getItem('jos-core') || '{}')
+      core.lastBootDate = new Date().toISOString().split('T')[0]
+      localStorage.setItem('jos-core', JSON.stringify(core))
+    } catch { /* ok */ }
     setAppState('main')
     window._briefingStopped = false
     console.log('BRIEFING FLAG: reset after boot complete, ElevenLabs enabled')
