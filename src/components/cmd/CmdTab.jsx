@@ -14,7 +14,9 @@ import WeaknessNotification from '../viz/WeaknessNotification.jsx'
 import TrendReport from '../reports/TrendReport.jsx'
 import useAdaptiveUI from '../../hooks/useAdaptiveUI.js'
 import useStorage from '../../hooks/useStorage.js'
-import { generateObservations } from '../../utils/jarvisObservations.js'
+import { generateObservations, detectCrisis } from '../../utils/jarvisObservations.js'
+import { generateBootReflection } from '../../utils/jarvisInnerLife.js'
+import { checkRelationshipMilestone } from '../../utils/relationshipEngine.js'
 
 function WeeklyNewsletter() {
   const { get } = useStorage()
@@ -60,18 +62,52 @@ function RecentReports() {
 export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissPulse, weakness, onWeaknessTap, onWeaknessDismiss }) {
   const { suggestions } = useAdaptiveUI()
   const [dismissedObs, setDismissedObs] = useState(new Set())
+  const [dismissedMilestone, setDismissedMilestone] = useState(false)
   const observations = useMemo(() => generateObservations(), [])
   const topObservation = observations.find(o => !dismissedObs.has(o.type))
+  const crisis = useMemo(() => detectCrisis(), [])
+  const reflection = useMemo(() => generateBootReflection(), [])
+  const milestone = useMemo(() => checkRelationshipMilestone(), [])
   let isShowMode = false
   try { isShowMode = JSON.parse(localStorage.getItem('jos-settings') || '{}').showMode || false } catch { /* ok */ }
 
+  // Crisis mode — everything stops
+  if (crisis) {
+    return (
+      <div className="space-y-4 max-w-2xl mx-auto">
+        <div className="glass-card p-6 border-l-4 card-enter" style={{ borderLeftColor: '#d4a853' }}>
+          <p className="font-body text-sm text-text leading-relaxed">{crisis.message}</p>
+          <p className="font-mono text-[8px] text-text-muted mt-3 tracking-wider">JARVIS is in quiet mode. Your pace, Sir.</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-4 max-w-2xl mx-auto">
+    <div className="space-y-4 max-w-2xl mx-auto stagger-enter">
       {/* Weakness notification */}
       {weakness && <WeaknessNotification weakness={weakness} onTap={onWeaknessTap} onDismiss={onWeaknessDismiss} />}
 
+      {/* Relationship milestone */}
+      {milestone && !dismissedMilestone && (
+        <div className="glass-card p-4 border card-enter" style={{ borderColor: '#d4a853', borderWidth: 2 }}>
+          <p className="font-body text-sm text-text leading-relaxed">{milestone.message}</p>
+          <button onClick={() => setDismissedMilestone(true)}
+            className="font-mono text-[8px] text-gold mt-2 tracking-wider hover:opacity-80 transition-opacity">ACKNOWLEDGED</button>
+        </div>
+      )}
+
+      {/* JARVIS internal reflection */}
+      {reflection && (
+        <div className="px-2">
+          <p className="font-mono text-[9px] text-text-muted italic leading-relaxed" style={{ opacity: 0.5 }}>
+            // {reflection}
+          </p>
+        </div>
+      )}
+
       {/* Morning Briefing */}
-      <div className="card-enter" style={{ animationDelay: '0ms' }}><Briefing /></div>
+      <div><Briefing /></div>
 
       {/* Proactive JARVIS observation */}
       {topObservation && (

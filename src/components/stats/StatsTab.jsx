@@ -42,7 +42,7 @@ export default function StatsTab() {
   try { isShowMode = JSON.parse(localStorage.getItem('jos-settings') || '{}').showMode || false } catch { /* ok */ }
 
   return (
-    <div className="space-y-4 max-w-2xl mx-auto">
+    <div className="space-y-4 max-w-2xl mx-auto stagger-enter">
       <ReadinessScore />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <NikhilScore />

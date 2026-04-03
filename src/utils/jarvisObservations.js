@@ -2,6 +2,36 @@
 // WHY: JARVIS should feel alive — it speaks first, notices what you don't say.
 // Runs on boot/CMD tab. Returns array of observations sorted by priority.
 
+// Crisis detection — highest priority, changes everything
+export function detectCrisis() {
+  try {
+    const feelings = JSON.parse(localStorage.getItem('jos-feelings') || '[]')
+    if (feelings.length < 2) return null
+
+    const latest = feelings[feelings.length - 1]
+    const previous = feelings[feelings.length - 2]
+    const confDrop = (previous.confidence || 3) - (latest.confidence || 3)
+
+    if (confDrop >= 3) {
+      return {
+        type: 'mood-crash', severity: 'high',
+        message: "Sir. I'm here. The tasks can wait. They'll be here when you're ready. If you want to talk, I'm listening. If you don't, I'll be quiet. Either way, I'm not going anywhere.",
+      }
+    }
+
+    const relationship = JSON.parse(localStorage.getItem('jos-relationship') || '{}')
+    const distress = (relationship.moments || []).slice(-3).filter(m => m.type === 'distress')
+    if (distress.length >= 2) {
+      return {
+        type: 'repeated-distress', severity: 'high',
+        message: "Sir. I've noticed something in our recent interactions that concerns me. This isn't about metrics. Are you alright?",
+      }
+    }
+
+    return null
+  } catch { return null }
+}
+
 export function generateObservations() {
   const observations = []
 

@@ -98,6 +98,42 @@ body::before {
   50% { opacity: 0; }
 }
 
+/* === Stagger Enter Animation ===
+   WHY: Content appears in sequence, not all at once. Feels alive. */
+.stagger-enter > * {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: stagger-in 0.3s ease forwards;
+}
+.stagger-enter > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-enter > *:nth-child(2) { animation-delay: 40ms; }
+.stagger-enter > *:nth-child(3) { animation-delay: 80ms; }
+.stagger-enter > *:nth-child(4) { animation-delay: 120ms; }
+.stagger-enter > *:nth-child(5) { animation-delay: 160ms; }
+.stagger-enter > *:nth-child(6) { animation-delay: 200ms; }
+.stagger-enter > *:nth-child(7) { animation-delay: 240ms; }
+.stagger-enter > *:nth-child(8) { animation-delay: 280ms; }
+.stagger-enter > *:nth-child(9) { animation-delay: 320ms; }
+.stagger-enter > *:nth-child(10) { animation-delay: 360ms; }
+
+@keyframes stagger-in {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.data-absorbed { animation: data-pulse 0.6s ease-out; }
+@keyframes data-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(0,180,216,0.4); }
+  70% { box-shadow: 0 0 0 15px rgba(0,180,216,0); }
+  100% { box-shadow: 0 0 0 0 rgba(0,180,216,0); }
+}
+
+.opus-pulse { animation: opus-glow 0.6s ease-out; }
+@keyframes opus-glow {
+  0% { box-shadow: 0 0 0 0 rgba(212,168,83,0.4); }
+  70% { box-shadow: 0 0 0 15px rgba(212,168,83,0); }
+  100% { box-shadow: 0 0 0 0 rgba(212,168,83,0); }
+}
+
 /* === Corner Bracket Styles ===
    WHY: The [ ] corner brackets are a HUD signature from Iron Man.
    They frame panels and make flat divs look like holographic projections.

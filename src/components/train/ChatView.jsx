@@ -14,6 +14,8 @@ import TASKS from '../../data/tasks.js'
 import { extractQuizScores, stripQuizTags, updateConceptStrength } from '../../utils/quizScoring.js'
 import renderMd from '../../utils/renderMd.js'
 import { shouldCompress, getCompressionPrompt, applyCompression } from '../../utils/conversationMemory.js'
+import { analyzeSubtext, shouldAnalyze } from '../../utils/subtextAnalyzer.js'
+import { getTemporalContext } from '../../utils/temporalAwareness.js'
 import VizSmartCards from '../viz/VizSmartCards.jsx'
 
 const SpeechRecognition = typeof window !== 'undefined'
@@ -112,6 +114,17 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
     // Normal API call
     setMessages(prev => [...prev, { role: 'user', content: trimmed, timestamp: new Date().toISOString() }])
     play('send')
+
+    // Fire-and-forget subtext analysis for meaningful messages
+    if (shouldAnalyze(trimmed, mode.id)) {
+      const temporal = getTemporalContext()
+      const feelings = (() => { try { return JSON.parse(localStorage.getItem('jos-feelings') || '[]') } catch { return [] } })()
+      const lastFew = feelings.slice(-3)
+      const moodTrend = lastFew.length >= 2
+        ? (lastFew[lastFew.length - 1]?.confidence || 3) > (lastFew[0]?.confidence || 3) ? 'improving' : 'declining'
+        : 'unknown'
+      analyzeSubtext(trimmed, { timeOfDay: temporal.timeLabel, inputMode: voice.lastInputMethodRef?.current || 'typed', moodTrend }, sendMessage).catch(() => {})
+    }
 
     const stopTick = await startThinking()
     try {

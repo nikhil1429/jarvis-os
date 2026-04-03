@@ -24,7 +24,7 @@ export default function LogTab({ elapsed }) {
   const hasToday = (get('feelings') || []).some(f => f.date === today)
 
   return (
-    <div className="space-y-4 max-w-2xl mx-auto">
+    <div className="space-y-4 max-w-2xl mx-auto stagger-enter">
       {!isShowMode && (
         <>
           {useForm ? <CheckInForm /> : <VoiceDebrief onComplete={() => {}} />}

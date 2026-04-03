@@ -551,4 +551,29 @@ export function getPersonalityModifiers() {
   return modifiers
 }
 
+/**
+ * getMediaAdaptation — Adapt communication style to current state
+ */
+export function getMediaAdaptation() {
+  const lines = []
+  try {
+    const core = JSON.parse(localStorage.getItem('jos-core') || '{}')
+    const energy = core.energy || 3
+    const hour = new Date().getHours()
+
+    if (energy <= 2) lines.push('LOW ENERGY MODE: Max 2-3 sentences. No long explanations. No questions unless critical.')
+    if (hour >= 23 || hour < 5) lines.push('LATE NIGHT: Do not initiate new tasks. Gently suggest sleep. "That analysis will be sharper after sleep, Sir."')
+
+    const onboarding = JSON.parse(localStorage.getItem('jos-onboarding') || '{}')
+    const medOnset = parseInt(onboarding.adhd?.medicationTime) || 10
+    const medDuration = parseInt(onboarding.adhd?.medicationDuration) || 8
+    if (hour >= medOnset + medDuration) lines.push('POST-MEDICATION: Minimal cognitive demands. Suggest Body Double or rest. No hard modes.')
+  } catch { /* ok */ }
+
+  // Nidhi recognition
+  lines.push('When Nikhil mentions Nidhi (his wife): Refer to her as "Mrs. Panwar." Acknowledge her contributions. Never give relationship advice. Redirect to action.')
+
+  return lines.join('\n')
+}
+
 export { MODE_PROMPTS }

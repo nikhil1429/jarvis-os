@@ -10,9 +10,11 @@
 import { useState, useCallback, useRef } from 'react'
 import useStorage from './useStorage.js'
 import { getModel } from '../utils/modelRouter.js'
-import { buildSystemPrompt, getPersonalityModifiers } from '../data/prompts.js'
+import { buildSystemPrompt, getPersonalityModifiers, getMediaAdaptation } from '../data/prompts.js'
 import { getTemporalContext } from '../utils/temporalAwareness.js'
 import { getConversationContext } from '../utils/conversationMemory.js'
+import { getRelationshipPrompt } from '../utils/relationshipEngine.js'
+import { getSelfAwarenessPrompt } from '../utils/jarvisInnerLife.js'
 import { logAPICall } from '../utils/apiLogger.js'
 import { getDayNumber, getWeekNumber } from '../utils/dateUtils.js'
 import { compileSummary } from '../utils/strategicCompiler.js'
@@ -178,6 +180,11 @@ export default function useAI() {
       if (modifiers.length > 0) {
         systemPrompt += '\n\nPersonality adjustments:\n' + modifiers.map(m => '- ' + m).join('\n')
       }
+
+      // Inject relationship state + self-awareness + communication adaptation
+      systemPrompt += '\n\n--- RELATIONSHIP ---\n' + getRelationshipPrompt()
+      systemPrompt += '\n\n--- SELF-AWARENESS ---\n' + getSelfAwarenessPrompt()
+      systemPrompt += '\n\n--- COMMUNICATION ---\n' + getMediaAdaptation()
 
       // Inject cross-mode memory (last 3 messages from related modes)
       const relatedModes = CROSS_MODE_MAP[mode]
