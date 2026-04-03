@@ -2,7 +2,7 @@
 // WHY: CMD is the daily operations hub — the first thing Nikhil sees.
 // Includes briefing, pulse, adaptive suggestions, tasks, battle plan, build log, second brain.
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { X, Zap, ChevronDown, ChevronUp, Newspaper } from 'lucide-react'
 import TaskList from './TaskList.jsx'
 import BattlePlan from './BattlePlan.jsx'
@@ -14,6 +14,7 @@ import WeaknessNotification from '../viz/WeaknessNotification.jsx'
 import TrendReport from '../reports/TrendReport.jsx'
 import useAdaptiveUI from '../../hooks/useAdaptiveUI.js'
 import useStorage from '../../hooks/useStorage.js'
+import { generateObservations } from '../../utils/jarvisObservations.js'
 
 function WeeklyNewsletter() {
   const { get } = useStorage()
@@ -58,6 +59,9 @@ function RecentReports() {
 
 export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissPulse, weakness, onWeaknessTap, onWeaknessDismiss }) {
   const { suggestions } = useAdaptiveUI()
+  const [dismissedObs, setDismissedObs] = useState(new Set())
+  const observations = useMemo(() => generateObservations(), [])
+  const topObservation = observations.find(o => !dismissedObs.has(o.type))
   let isShowMode = false
   try { isShowMode = JSON.parse(localStorage.getItem('jos-settings') || '{}').showMode || false } catch { /* ok */ }
 
@@ -68,6 +72,18 @@ export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissP
 
       {/* Morning Briefing */}
       <div className="card-enter" style={{ animationDelay: '0ms' }}><Briefing /></div>
+
+      {/* Proactive JARVIS observation */}
+      {topObservation && (
+        <div className="glass-card p-3 card-enter" style={{ borderLeftWidth: 3, borderLeftColor: topObservation.priority === 1 ? '#d4a853' : '#00b4d8' }}>
+          <p className="font-body text-xs text-text leading-relaxed">{topObservation.text}</p>
+          <button onClick={() => setDismissedObs(prev => new Set([...prev, topObservation.type]))}
+            className="font-mono text-[8px] text-text-muted hover:text-cyan mt-1 tracking-wider transition-colors">
+            ACKNOWLEDGED
+          </button>
+        </div>
+      )}
+
       <WeeklyNewsletter />
       <RecentReports />
 

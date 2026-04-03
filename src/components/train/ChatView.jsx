@@ -13,6 +13,7 @@ import { processVoiceCommand } from '../../utils/voiceCommands.js'
 import TASKS from '../../data/tasks.js'
 import { extractQuizScores, stripQuizTags, updateConceptStrength } from '../../utils/quizScoring.js'
 import renderMd from '../../utils/renderMd.js'
+import { shouldCompress, getCompressionPrompt, applyCompression } from '../../utils/conversationMemory.js'
 import VizSmartCards from '../viz/VizSmartCards.jsx'
 
 const SpeechRecognition = typeof window !== 'undefined'
@@ -141,6 +142,16 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
               console.log(`QUIZ: ${concept} ${change.oldStrength}% → ${change.newStrength}% (score: ${score}/10)`)
             }
           })
+        }
+
+        // Trigger conversation compression if needed (fire-and-forget)
+        if (shouldCompress(mode.id)) {
+          const compPrompt = getCompressionPrompt(mode.id)
+          if (compPrompt) {
+            sendMessage(compPrompt, 'chat', {}).then(r => {
+              if (r?.text) applyCompression(mode.id, r.text)
+            }).catch(() => {})
+          }
         }
       }
     } catch (err) {

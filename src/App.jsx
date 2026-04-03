@@ -37,6 +37,8 @@ import Onboarding from './components/Onboarding.jsx'
 import ShutdownSequence from './components/ShutdownSequence.jsx'
 import CommandLine from './components/CommandLine.jsx'
 import useComeback from './hooks/useComeback.js'
+import useAutoCapture from './hooks/useAutoCapture.js'
+import { initGadgetSchemas } from './utils/gadgetSchemas.js'
 import { syncOnBoot } from './utils/supabaseSync.js'
 import { isSupabaseConfigured } from './utils/supabase.js'
 import useVizEngine from './hooks/useVizEngine.js'
@@ -94,6 +96,7 @@ function App() {
   const { get, set, update } = useStorage()
   const { play } = useSound()
   const eventBus = useEventBus()
+  const { captureTab } = useAutoCapture()
   // tts removed
 
   const [appState, setAppState] = useState(() => {
@@ -125,6 +128,9 @@ function App() {
   // quickVoiceOpen removed — VoiceMode is the one voice interface
   const [requestedMode, setRequestedMode] = useState(null)
   const [globalVoiceState, setGlobalVoiceState] = useState('IDLE')
+
+  // Initialize gadget schemas (future-proof data architecture)
+  useEffect(() => { initGadgetSchemas() }, [])
 
   // One-time task migration for Session 58 — old JARVIS-build tasks → FinOps tasks
   useEffect(() => {
@@ -355,6 +361,10 @@ function App() {
       update('core', prev => ({
         ...prev,
         completedTasks: [...(prev.completedTasks || []), taskId],
+        taskCompletionTimestamps: [
+          ...(prev.taskCompletionTimestamps || []).slice(-20),
+          new Date().toISOString(),
+        ],
       }))
       play('check')
       eventBus.emit('task:complete', { taskId })
@@ -376,9 +386,10 @@ function App() {
     setShowScanSweep(true)
     setTimeout(() => setShowScanSweep(false), 400)
     setActiveTab(tab)
+    captureTab(tab)
     play('tab')
     if (tab === 'cmd') setHasPulse(false)
-  }, [play])
+  }, [play, captureTab])
 
   // Global listener for jarvis-activate-mic — works from ANY tab (Bug 1 fix)
   useEffect(() => {

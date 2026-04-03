@@ -4,6 +4,42 @@
 
 ---
 
+### Session 59A — JARVIS Consciousness Layer (2026-04-03)
+**Major changes:**
+1. **VoiceDebrief** — voice-first check-in replaces form as primary input
+   - AI extracts structured data from natural speech (Hinglish supported)
+   - Quick Tap fallback (emoji + energy slider, 5 seconds)
+   - Visual confirmation cards with tap-to-adjust
+2. **Auto-Capture system** — passive activity tracking (useAutoCapture hook)
+   - Task completions, mode sessions, tab visits, captures all logged silently
+   - Day summary powers the voice debrief opener + DailyBuildLog feed
+3. **Proactive Observations** — JARVIS speaks first (7 observation types)
+   - Avoidance, streak risk, concept decay, session gap, gaming detection,
+     batch marking, engagement decline
+   - Shown on CMD tab, highest priority first, dismissible
+4. **What I Built Today** — auto-populated chronological activity feed
+5. **Temporal Consciousness** — medication clock, time-of-day context, calendar awareness
+   - Injected into every API call's system prompt
+6. **Emotional Continuity** — concern threads + promise tracking across sessions
+7. **Adaptive Personality** — energy-responsive tone, week-based evolution
+   - Personality modifiers injected into every system prompt
+8. **Gadget-Ready Schemas** — biometrics, environment, device status (empty but ready)
+   - Check-in data bridged to biometrics format
+9. **Conversation Memory Compression** — summarize old messages at 50 msg threshold
+   - Compressed context prepended to API calls, raw messages trimmed
+10. **Pattern Database** — auto-discover correlations (coffee→focus, sleep→performance)
+11. **Settings** — voice speed slider 0.8x-1.5x, actually applies to browser TTS
+12. **Task timestamps** — recorded for batch completion detection
+
+**Files created:** VoiceDebrief.jsx, useAutoCapture.js, jarvisObservations.js,
+  temporalAwareness.js, emotionalMemory.js, gadgetSchemas.js,
+  conversationMemory.js, patternEngine.js
+**Files updated:** LogTab.jsx, CmdTab.jsx, DailyBuildLog.jsx, App.jsx,
+  Settings.jsx, prompts.js, useAI.js, ChatView.jsx, elevenLabsSpeak.js,
+  useJarvisVoice.js, CheckInForm.jsx
+
+---
+
 ### Session 58B — Additional Bug Fixes (7 Bugs) (2026-04-03)
 **Bugs fixed:**
 13. Intelligence Dashboard: 9 unique feature keys with correct data sources (was 4 duplicates)

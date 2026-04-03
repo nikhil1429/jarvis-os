@@ -11,6 +11,7 @@ import useSound from '../../hooks/useSound.js'
 import useEventBus from '../../hooks/useEventBus.js'
 import { speakWithFallback } from '../../utils/elevenLabsSpeak.js'
 import { compileSummary } from '../../utils/strategicCompiler.js'
+import { bridgeCheckinToBiometrics } from '../../utils/gadgetSchemas.js'
 
 // WHY: Reusable tap selector — renders N buttons in a row, highlights selected
 function TapSelector({ label, value, onChange, max = 5, colors }) {
@@ -222,6 +223,7 @@ Tone: JARVIS formal British, call him Sir. Keep under 150 words. No markdown.`
     setForm(prev => ({ ...prev, _counted: true }))
 
     eventBus.emit('checkin:submit', entry)
+    bridgeCheckinToBiometrics(entry)
     import('../../utils/supabaseSync.js').then(m => m.logCheckinToCloud(entry)).catch(() => {})
     play('check')
     setSaved(true)

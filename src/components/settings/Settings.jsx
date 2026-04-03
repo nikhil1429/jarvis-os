@@ -165,7 +165,7 @@ export default function Settings({ isOpen, onClose }) {
               <input
                 type="range"
                 min="0.8"
-                max="1.2"
+                max="1.5"
                 step="0.1"
                 value={settings.voiceSpeed || 1.0}
                 onChange={e => updateSetting('voiceSpeed', parseFloat(e.target.value))}
@@ -173,7 +173,7 @@ export default function Settings({ isOpen, onClose }) {
               />
               <div className="flex justify-between mt-0.5">
                 <span className="font-mono text-[9px] text-text-muted">0.8x</span>
-                <span className="font-mono text-[9px] text-text-muted">1.2x</span>
+                <span className="font-mono text-[9px] text-text-muted">1.5x</span>
               </div>
             </div>
 

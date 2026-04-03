@@ -518,4 +518,37 @@ ${capabilitiesContext}
 ${intelligenceContext}`.trim()
 }
 
+/**
+ * getPersonalityModifiers — Adaptive personality based on current state
+ * WHY: JARVIS shifts tone based on energy, week, mood, relationship depth.
+ */
+export function getPersonalityModifiers() {
+  const modifiers = []
+  try {
+    const core = JSON.parse(localStorage.getItem('jos-core') || '{}')
+    const feelings = JSON.parse(localStorage.getItem('jos-feelings') || '[]')
+    const lastCheckin = feelings[feelings.length - 1]
+    const energy = core.energy || 3
+    const weekNumber = core.weekNumber || 1
+    const totalMessages = Object.keys(localStorage)
+      .filter(k => k.startsWith('jos-msgs-'))
+      .reduce((sum, k) => { try { return sum + JSON.parse(localStorage.getItem(k) || '[]').length } catch { return sum } }, 0)
+
+    if (energy <= 2) modifiers.push('Nikhil is LOW ENERGY. Be warm, gentle, patient. Suggest lighter activities. Short sentences. No pressure.')
+    else if (energy >= 5) modifiers.push('Nikhil is HIGH ENERGY. Push harder. Challenge him. Suggest difficult modes. Be direct.')
+
+    if (weekNumber <= 2) modifiers.push('Early days — be patient, explain thoroughly, encourage every small win.')
+    else if (weekNumber <= 4) modifiers.push('Growing phase — ask before telling. Push him to think before providing answers.')
+    else modifiers.push('Advanced phase — push back on easy questions. Treat him as a peer.')
+
+    if (totalMessages > 500) modifiers.push('Deep relationship — you can use gentle humor and be more direct.')
+    else if (totalMessages > 100) modifiers.push('Developing relationship — be warmer and more opinionated.')
+
+    if (lastCheckin && (lastCheckin.confidence || 3) <= 2) {
+      modifiers.push('Last check-in showed low confidence. Show specific data proving progress.')
+    }
+  } catch { /* ok */ }
+  return modifiers
+}
+
 export { MODE_PROMPTS }

@@ -10,7 +10,9 @@
 import { useState, useCallback, useRef } from 'react'
 import useStorage from './useStorage.js'
 import { getModel } from '../utils/modelRouter.js'
-import { buildSystemPrompt } from '../data/prompts.js'
+import { buildSystemPrompt, getPersonalityModifiers } from '../data/prompts.js'
+import { getTemporalContext } from '../utils/temporalAwareness.js'
+import { getConversationContext } from '../utils/conversationMemory.js'
 import { logAPICall } from '../utils/apiLogger.js'
 import { getDayNumber, getWeekNumber } from '../utils/dateUtils.js'
 import { compileSummary } from '../utils/strategicCompiler.js'
@@ -167,6 +169,16 @@ export default function useAI() {
         energy: core.energy || 3,
       })
 
+      // Inject temporal consciousness + adaptive personality
+      const temporal = getTemporalContext()
+      const temporalSection = `\nTime: ${temporal.timeLabel}, medication: ${temporal.medState}.${temporal.warnings.length ? ' Warnings: ' + temporal.warnings.join('. ') : ''}${temporal.suggestions.length ? ' Suggestions: ' + temporal.suggestions.join('. ') : ''}`
+      systemPrompt += temporalSection
+
+      const modifiers = getPersonalityModifiers()
+      if (modifiers.length > 0) {
+        systemPrompt += '\n\nPersonality adjustments:\n' + modifiers.map(m => '- ' + m).join('\n')
+      }
+
       // Inject cross-mode memory (last 3 messages from related modes)
       const relatedModes = CROSS_MODE_MAP[mode]
       if (relatedModes) {
@@ -235,11 +247,15 @@ export default function useAI() {
         ? [{ type: 'image', source: { type: 'base64', media_type: image.mediaType, data: image.base64 } }, { type: 'text', text: userMessage || 'Analyse this image.' }]
         : userMessage
 
-      // Build messages array for the API
-      const messages = [
-        ...recentHistory.map(m => ({ role: m.role, content: m.content })),
-        { role: 'user', content: userContent },
-      ]
+      // Build messages array for the API (with conversation memory compression)
+      const { context: compressedContext } = getConversationContext(mode)
+      const messages = []
+      if (compressedContext) {
+        messages.push({ role: 'user', content: compressedContext })
+        messages.push({ role: 'assistant', content: 'Understood, I have the previous context.' })
+      }
+      messages.push(...recentHistory.map(m => ({ role: m.role, content: m.content })))
+      messages.push({ role: 'user', content: userContent })
 
       // Save user message to history
       update(msgKey, prev => {

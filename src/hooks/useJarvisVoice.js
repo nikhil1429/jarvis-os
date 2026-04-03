@@ -95,7 +95,8 @@ function speakBrowserFallback(text) {
       await new Promise(sentenceResolve => {
         const u = new SpeechSynthesisUtterance(sentence.trim())
         if (v) u.voice = v
-        u.rate = 1.0; u.pitch = 0.95
+        const _s = (() => { try { return JSON.parse(localStorage.getItem('jos-settings') || '{}') } catch { return {} } })()
+        u.rate = _s.voiceSpeed || 1.0; u.pitch = 0.95
         u.onend = sentenceResolve
         u.onerror = sentenceResolve
         // Safety timeout per sentence

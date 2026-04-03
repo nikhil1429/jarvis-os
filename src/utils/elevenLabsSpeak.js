@@ -182,7 +182,8 @@ export async function speakWithFallback(text) {
       const voices = synth.getVoices()
       const v = voices.find(x => x.lang === 'en-GB') || voices.find(x => x.lang.startsWith('en')) || voices[0]
       if (v) u.voice = v
-      u.rate = 1.0; u.pitch = 0.95
+      const _s = (() => { try { return JSON.parse(localStorage.getItem('jos-settings') || '{}') } catch { return {} } })()
+      u.rate = _s.voiceSpeed || 1.0; u.pitch = 0.95
       u.onend = resolve
       u.onerror = resolve
       setTimeout(resolve, Math.max(8000, clean.length * 80))
