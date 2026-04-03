@@ -47,6 +47,22 @@ export function processVoiceCommand(transcript) {
     return { type: 'checkin', response: 'Commencing daily debrief, Sir. Confidence level, 1 to 5?' }
   }
 
+  // Working Thread
+  if (lower.startsWith('thread') || lower.startsWith('note for today')) {
+    const text = transcript.replace(/^(thread|note for today)\s*/i, '').trim()
+    if (text) {
+      try {
+        const today = new Date().toISOString().split('T')[0]
+        const data = JSON.parse(localStorage.getItem('jos-thread') || '{}')
+        const items = data.date === today ? (data.items || []) : []
+        items.push({ text, addedAt: new Date().toISOString() })
+        localStorage.setItem('jos-thread', JSON.stringify({ date: today, items: items.slice(-10) }))
+        window.dispatchEvent(new Event('jarvis-thread-updated'))
+      } catch { /* ok */ }
+      return { type: 'speak', response: `Thread noted, Sir. "${text.substring(0, 40)}"` }
+    }
+  }
+
   // Quick Capture
   if (lower.startsWith('capture') || lower.startsWith('remember') || lower.startsWith('note')) {
     const text = transcript.replace(/^(capture|remember|note)\s*/i, '').trim()

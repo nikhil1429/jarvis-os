@@ -2,7 +2,7 @@
 // WHY: CMD is the daily operations hub — the first thing Nikhil sees.
 // Includes briefing, pulse, adaptive suggestions, tasks, battle plan, build log, second brain.
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { X, Zap, ChevronDown, ChevronUp, Newspaper } from 'lucide-react'
 import TaskList from './TaskList.jsx'
 import BattlePlan from './BattlePlan.jsx'
@@ -20,6 +20,10 @@ import { checkRelationshipMilestone } from '../../utils/relationshipEngine.js'
 import { generateGhostCards } from '../../utils/ghostCardEngine.js'
 import { generateInvestigations } from '../../utils/jarvisAgenda.js'
 import GhostCard from '../viz/GhostCard.jsx'
+import ContextRecoveryCard from './ContextRecoveryCard.jsx'
+import DecisionEliminator from './DecisionEliminator.jsx'
+import InitiationCard from './InitiationCard.jsx'
+import WorkingThread from './WorkingThread.jsx'
 
 function WeeklyNewsletter() {
   const { get } = useStorage()
@@ -64,6 +68,8 @@ function RecentReports() {
 
 export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissPulse, weakness, onWeaknessTap, onWeaknessDismiss }) {
   const { suggestions } = useAdaptiveUI()
+  const [showContextRecovery, setShowContextRecovery] = useState(true)
+  const [showInitiation, setShowInitiation] = useState(false)
   const [dismissedObs, setDismissedObs] = useState(new Set())
   const [dismissedMilestone, setDismissedMilestone] = useState(false)
   const [ghostCards, setGhostCards] = useState(() => generateGhostCards({ tab: 'cmd' }))
@@ -77,6 +83,15 @@ export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissP
   const milestone = useMemo(() => checkRelationshipMilestone(), [])
   let isShowMode = false
   try { isShowMode = JSON.parse(localStorage.getItem('jos-settings') || '{}').showMode || false } catch { /* ok */ }
+  const energy = (() => { try { return JSON.parse(localStorage.getItem('jos-core') || '{}').energy || 3 } catch { return 3 } })()
+
+  // Stalling detection — 3+ min on CMD with no activity
+  useEffect(() => {
+    const timer = setTimeout(() => setShowInitiation(true), 3 * 60 * 1000)
+    const reset = () => { clearTimeout(timer); setShowInitiation(false) }
+    window.addEventListener('jarvis-data-updated', reset)
+    return () => { clearTimeout(timer); window.removeEventListener('jarvis-data-updated', reset) }
+  }, [])
 
   // Crisis mode — everything stops
   if (crisis) {
@@ -90,8 +105,26 @@ export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissP
     )
   }
 
+  // Decision Eliminator — energy ≤ 2, single card replaces everything
+  if (energy <= 2) {
+    return (
+      <div className="space-y-4 max-w-2xl mx-auto">
+        <DecisionEliminator onAction={(action) => {
+          if (action?.type === 'mode') window.dispatchEvent(new CustomEvent('jarvis-open-mode', { detail: { mode: action.mode } }))
+        }} />
+        <WorkingThread />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4 max-w-2xl mx-auto stagger-enter">
+      {/* Context Recovery Card — after 10+ min absence */}
+      {showContextRecovery && <ContextRecoveryCard onResume={() => {}} onDismiss={() => setShowContextRecovery(false)} />}
+
+      {/* Initiation Card — after 3 min stalling */}
+      {showInitiation && <InitiationCard onDismiss={() => setShowInitiation(false)} />}
+
       {/* Weakness notification */}
       {weakness && <WeaknessNotification weakness={weakness} onTap={onWeaknessTap} onDismiss={onWeaknessDismiss} />}
 
@@ -228,6 +261,9 @@ export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissP
       )}
 
       {!isShowMode && <div><TimeCapsule /></div>}
+
+      {/* Working Thread — today's running memory */}
+      <WorkingThread />
     </div>
   )
 }

@@ -17,6 +17,7 @@ import { shouldCompress, getCompressionPrompt, applyCompression } from '../../ut
 import { analyzeSubtext, shouldAnalyze } from '../../utils/subtextAnalyzer.js'
 import { getTemporalContext } from '../../utils/temporalAwareness.js'
 import { detectPeopleMentions } from '../../utils/peopleMap.js'
+import { detectInSessionCrash } from '../../utils/emotionalMemory.js'
 import VizSmartCards from '../viz/VizSmartCards.jsx'
 
 const SpeechRecognition = typeof window !== 'undefined'
@@ -158,6 +159,13 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
               console.log(`QUIZ: ${concept} ${change.oldStrength}% → ${change.newStrength}% (score: ${score}/10)`)
             }
           })
+        }
+
+        // RSD Shield — detect in-session emotional crash
+        const crash = detectInSessionCrash(messages)
+        if (crash) {
+          setMessages(prev => [...prev, { role: 'assistant', content: crash.text, timestamp: new Date().toISOString(), isSupport: true }])
+          voice.speak(crash.text, { isVoiceCommand: true })
         }
 
         // Trigger conversation compression if needed (fire-and-forget)

@@ -17,6 +17,7 @@ import PhantomMode from './PhantomMode.jsx'
 import BattleRoyale from './BattleRoyale.jsx'
 import { checkConviction } from '../../utils/jarvisConvictions.js'
 import { getTemporalContext } from '../../utils/temporalAwareness.js'
+import TransitionRitual from './TransitionRitual.jsx'
 // tilt effect removed — clean hover instead
 
 const TIER_STYLES = {
@@ -30,6 +31,8 @@ export default function TrainTab({ weekNumber, requestedMode, onModeOpened }) {
   const [showPhantom, setShowPhantom] = useState(false)
   const [showBattle, setShowBattle] = useState(false)
   const [conviction, setConviction] = useState(null)
+  const [transition, setTransition] = useState(null) // { mode, duration, messageCount }
+  const [lastDebrief, setLastDebrief] = useState(null)
 
   const handleModeOpen = (modeId) => {
     const temporal = getTemporalContext()
@@ -126,7 +129,11 @@ export default function TrainTab({ weekNumber, requestedMode, onModeOpened }) {
       <ChatView
         mode={mode}
         weekNumber={weekNumber}
-        onBack={() => { setActiveMode(null); setAutoMic(false) }}
+        onBack={() => {
+          const msgs = (() => { try { return JSON.parse(localStorage.getItem(`jos-msgs-${activeMode}`) || '[]') } catch { return [] } })()
+          setTransition({ mode: activeMode, duration: 0, messageCount: msgs.filter(m => m.role === 'user').length })
+          setAutoMic(false)
+        }}
         onModeSwitch={handleModeSwitch}
         autoMic={autoMic}
       />
@@ -239,6 +246,26 @@ export default function TrainTab({ weekNumber, requestedMode, onModeOpened }) {
           )
         })}
       </div>
+
+      {/* Transition Ritual — mental breath between modes */}
+      {transition && (
+        <TransitionRitual
+          mode={transition.mode}
+          duration={transition.duration}
+          messageCount={transition.messageCount}
+          onComplete={() => { setTransition(null); setActiveMode(null) }}
+        />
+      )}
+
+      {/* Session Debrief — shows briefly after mode exit */}
+      {lastDebrief && (
+        <div className="mb-3 py-2 px-3 rounded border border-cyan/20 bg-cyan/5 flex items-center justify-between card-enter">
+          <span className="font-mono text-[10px] text-cyan">
+            SESSION — {lastDebrief.mode} · {lastDebrief.messageCount} msgs
+          </span>
+          <button onClick={() => setLastDebrief(null)} className="text-text-muted text-xs">✕</button>
+        </div>
+      )}
 
       {/* Conviction overlay */}
       {conviction && (

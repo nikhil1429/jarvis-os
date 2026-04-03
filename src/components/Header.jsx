@@ -25,10 +25,45 @@ function MiniReactor({ energy = 3 }) {
       isGold: i < 2,
     }))
 
-    let t = 0
+    // Time blindness anchoring — pulse every 30 min
+    let sessionStartStr = null
+    try {
+      const capture = JSON.parse(localStorage.getItem('jos-auto-capture') || '{}')
+      const today = new Date().toISOString().split('T')[0]
+      const todayTabs = capture[today]?.tabs || []
+      if (todayTabs.length > 0) sessionStartStr = todayTabs[0].enteredAt
+    } catch { /* ok */ }
+    const sessionStart = sessionStartStr ? new Date(sessionStartStr).getTime() : Date.now()
+
+    let t = 0, lastPulseTime = 0
     const draw = () => {
       t += 0.033 * speed
       ctx.clearRect(0, 0, S, S)
+
+      // 30-min pulse check
+      const sessionMinutes = (Date.now() - sessionStart) / 60000
+      const pulseCount = Math.min(3, Math.floor(sessionMinutes / 30))
+      const now = Date.now()
+      if (pulseCount > 0 && now - lastPulseTime > 35000) { // Check every ~35s to avoid duplicate
+        const minutesSinceLast30 = sessionMinutes % 30
+        if (minutesSinceLast30 < 1 && now - lastPulseTime > 60000) {
+          lastPulseTime = now
+          // Trigger visual pulse via scale animation on canvas parent
+          const parent = canvas.parentElement
+          if (parent) {
+            parent.style.transition = 'transform 0.3s ease'
+            parent.style.transform = 'scale(1.3)'
+            setTimeout(() => { parent.style.transform = 'scale(1)' }, 300)
+            if (pulseCount >= 3) {
+              // Amber tint on 3rd pulse — add brief gold overlay
+              setTimeout(() => {
+                parent.style.transform = 'scale(1.2)'
+                setTimeout(() => { parent.style.transform = 'scale(1)' }, 300)
+              }, 500)
+            }
+          }
+        }
+      }
 
       // Ring arcs
       ;[{ r: 18, s: t * 1.2, c: `rgba(0,180,216,${0.4 * intensity})` },

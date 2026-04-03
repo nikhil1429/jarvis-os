@@ -56,6 +56,12 @@ Create a 4-6 item plan mapped to energy windows:
 - Post-lunch: lighter work, body double sessions
 - Evening: review, check-in, journal
 
+DOPAMINE SEQUENCING RULE (CRITICAL FOR ADHD):
+- Classify each item as EXCITING (new features, creative, AI work) or BORING (docs, reviews, cleanup)
+- NEVER put two boring items adjacent. Sandwich: exciting → boring (SHORT, 15 min cap) → exciting
+- Start with an exciting task (momentum builder)
+- Mark boring items with a time cap: "(15 min)"
+
 Format EACH item as: [TIME] — [TASK] — [WHY]
 Keep it under 150 words. No markdown. JARVIS voice.`
 

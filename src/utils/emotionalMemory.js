@@ -80,3 +80,33 @@ export function getMoodTrajectory() {
     return trajectory
   } catch { return null }
 }
+
+// Feature 6: In-session crash detection (RSD shield)
+export function detectInSessionCrash(messages) {
+  if (!messages || messages.length < 4) return null
+  const userMsgs = messages.filter(m => m.role === 'user')
+  if (userMsgs.length < 4) return null
+
+  const recent = userMsgs.slice(-4)
+  const earlier = userMsgs.slice(-8, -4)
+
+  // Check message length collapse (80%+ drop)
+  if (earlier.length >= 2) {
+    const avgEarlier = earlier.reduce((s, m) => s + (m.content?.length || 0), 0) / earlier.length
+    const avgRecent = recent.reduce((s, m) => s + (m.content?.length || 0), 0) / recent.length
+    if (avgEarlier > 30 && avgRecent < avgEarlier * 0.2) {
+      return { type: 'length-collapse', text: "Sir, your responses got much shorter. That's often a signal. Want to switch to something that reminds you what you DO know?" }
+    }
+  }
+
+  // Check for repeated "idk" / "I don't know"
+  const idkCount = recent.filter(m => {
+    const l = (m.content || '').toLowerCase()
+    return l.includes('idk') || l.includes("i don't know") || l.includes('no idea') || l.includes('pata nahi')
+  }).length
+  if (idkCount >= 3) {
+    return { type: 'repeated-idk', text: "Three unknowns in a row. That doesn't define your trajectory. Your average across sessions is much stronger than this moment." }
+  }
+
+  return null
+}

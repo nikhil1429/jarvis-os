@@ -4,6 +4,24 @@
 
 ---
 
+### Session 59D — 10 ADHD Cognitive Prosthetic Features (2026-04-03)
+Each feature addresses a specific executive function deficit in ADHD-PI:
+1. **Time Blindness Anchoring** — reactor pulses every 30 min (no numbers to read, physical sensation)
+2. **Context Recovery Card** — "Where Was I?" after 10+ min absence with resume button
+3. **Decision Eliminator** — energy ≤ 2 → entire CMD tab collapses to ONE card: "DO THIS NEXT"
+4. **Task Initiation Bridge** — micro-steps after 3 min stalling ("Open the terminal. Just that.")
+5. **Hyperfocus Wrong-Target Detection** — ghost card when mode doesn't match battle plan for 45+ min
+6. **RSD Shield** — detects in-session emotional crash (message length collapse, repeated "idk") + supportive response
+7. **Transition Micro-Rituals** — 3-5s mental breath between mode exit and TrainTab (tap to skip)
+8. **Working Memory Thread** — today-only scratch pad, voice command "thread [text]", resets at shutdown
+9. **Dopamine-Aware Task Sequencing** — battle plan never puts two boring tasks adjacent, sandwich pattern
+10. **Body State Tracking** — ghost cards for hunger (4h+), standing (2h+), missing check-in (3pm+)
+
+**Files created:** WorkingThread.jsx, ContextRecoveryCard.jsx, DecisionEliminator.jsx, InitiationCard.jsx, TransitionRitual.jsx
+**Files updated:** Header.jsx, useContextSave.js, CmdTab.jsx, ghostCardEngine.js, emotionalMemory.js, ChatView.jsx, TrainTab.jsx, BattlePlan.jsx, voiceCommands.js
+
+---
+
 ### Session 59C — 12 God-Tier Consciousness Features (2026-04-03)
 1. **Dream State** — overnight processing with memo card on boot (pattern discovery, decay check, consistency)
 2. **Ghost Cards** — volunteered information with scan-line entrance, engagement tracking, auto-dismiss
