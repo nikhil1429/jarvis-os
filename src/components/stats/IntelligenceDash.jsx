@@ -8,13 +8,13 @@ import useIntelligence from '../../hooks/useIntelligence.js'
 const FEATURES = [
   { key: 'energy', name: 'Energy Map', desc: 'Peak hours, crash patterns, caffeine effects' },
   { key: 'mood', name: 'Mood Oracle', desc: 'Emotional patterns, triggers, weekly trends' },
-  { key: 'focus', name: 'Motivation Genome', desc: 'Primary/secondary motivation drivers' },
-  { key: 'sleep', name: 'Body Correlations', desc: 'Sleep, caffeine, food → focus patterns' },
-  { key: 'streak', name: 'Anti-Burnout', desc: 'Burnout indicators, avoidance detection' },
-  { key: 'energy', name: 'Communication Style', desc: 'Crutch words, underselling patterns' },
-  { key: 'streak', name: 'Estimation Accuracy', desc: 'Morning bet vs actual completion' },
-  { key: 'mood', name: 'Forgetting Curve', desc: 'Concepts due for review scheduling' },
-  { key: 'streak', name: 'Relationship Map', desc: 'Support network, mentioned people' },
+  { key: 'motivation', name: 'Motivation Genome', desc: 'Primary/secondary motivation drivers' },
+  { key: 'body', name: 'Body Correlations', desc: 'Sleep, caffeine, food → focus patterns' },
+  { key: 'burnout', name: 'Anti-Burnout', desc: 'Burnout indicators, avoidance detection' },
+  { key: 'communication', name: 'Communication Style', desc: 'Crutch words, underselling patterns' },
+  { key: 'estimation', name: 'Estimation Accuracy', desc: 'Morning bet vs actual completion' },
+  { key: 'forgetting', name: 'Forgetting Curve', desc: 'Concepts due for review scheduling' },
+  { key: 'relationships', name: 'Relationship Map', desc: 'Support network, mentioned people' },
 ]
 
 function getConfidenceColor(confidence) {

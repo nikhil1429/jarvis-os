@@ -49,7 +49,7 @@ Format as:
 
 Each should cover Situation, Task, Action, Result. First person. Specific technical details.`
 
-      const result = await sendMessage(prompt, 'weakness-radar', {})
+      const result = await sendMessage(prompt, 'chat', {})
       if (result?.text) {
         const variants = []
         const text = result.text

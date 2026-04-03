@@ -349,6 +349,13 @@ export default function Boot({ onComplete }) {
       } else {
         setBriefingText(finalText) // Clean final text, no frontier chars
         clearInterval(interval)
+        // Save briefing for Briefing.jsx on CMD tab
+        try {
+          const weekly = JSON.parse(localStorage.getItem('jos-weekly') || '{}')
+          weekly.briefing = { text: finalText, generatedAt: new Date().toISOString() }
+          weekly.lastBriefing = weekly.briefing
+          localStorage.setItem('jos-weekly', JSON.stringify(weekly))
+        } catch (e) { console.error('[Boot] Failed to save briefing:', e) }
         setTimeout(() => { setPhase(6); setShowEnterBtn(true) }, 500)
       }
     }, charDelay)

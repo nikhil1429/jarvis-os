@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { Shield, RefreshCw, Check } from 'lucide-react'
 import useAI from '../../hooks/useAI.js'
 import useStorage from '../../hooks/useStorage.js'
+import renderMd from '../../utils/renderMd.js'
 import TASKS from '../../data/tasks.js'
 import CONCEPTS from '../../data/concepts.js'
 import { getReviewSchedule } from '../../utils/spacedRepetition.js'
@@ -128,7 +129,7 @@ Keep it under 150 words. No markdown. JARVIS voice.`
           <div className="space-y-2">
             {todayPlan.items.map((item, i) => (
               <div key={i} className="glass-card px-3 py-2 card-enter" style={{ animationDelay: `${i * 60}ms` }}>
-                <p className="font-body text-xs text-text leading-relaxed">{item}</p>
+                <div className="font-body text-xs text-text leading-relaxed" dangerouslySetInnerHTML={{ __html: renderMd(item) }} />
               </div>
             ))}
             {todayPlan.accepted && (

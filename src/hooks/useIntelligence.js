@@ -24,18 +24,30 @@ export default function useIntelligence() {
   // WHY this mapping: each feature draws from different data sources.
   // The count determines confidence level via intelligenceLevel.js
   const getDataCount = useCallback((featureName) => {
+    const msgs = (() => { try { return Object.keys(localStorage).filter(k => k.startsWith('jos-msgs-')).reduce((sum, k) => { try { return sum + JSON.parse(localStorage.getItem(k) || '[]').length } catch { return sum } }, 0) } catch { return 0 } })()
+    const bets = (() => { try { return JSON.parse(localStorage.getItem('jos-morning-bets') || '[]').length } catch { return 0 } })()
+    const concepts = (() => { try { return JSON.parse(localStorage.getItem('jos-concepts') || '[]') } catch { return [] } })()
+    const journals = (() => { try { return JSON.parse(localStorage.getItem('jos-journal') || '[]').length } catch { return 0 } })()
+
     switch (featureName) {
       case 'energy':
-        // Energy data comes from daily check-ins stored in feelings
         return Array.isArray(feelings) ? feelings.filter(f => f.energy !== undefined).length : 0
       case 'mood':
         return Array.isArray(feelings) ? feelings.filter(f => f.mood !== undefined).length : 0
-      case 'focus':
-        return Array.isArray(feelings) ? feelings.filter(f => f.focus !== undefined).length : 0
-      case 'sleep':
-        return Array.isArray(feelings) ? feelings.filter(f => f.sleep !== undefined).length : 0
-      case 'streak':
-        return core.totalCheckIns || 0
+      case 'motivation':
+        return Array.isArray(feelings) ? feelings.filter(f => f.motivation !== undefined).length : 0
+      case 'body':
+        return Array.isArray(feelings) ? feelings.filter(f => f.sleep !== undefined || f.caffeine !== undefined).length : 0
+      case 'burnout':
+        return Array.isArray(feelings) ? feelings.filter(f => f.confidence !== undefined).length : 0
+      case 'communication':
+        return msgs
+      case 'estimation':
+        return bets
+      case 'forgetting':
+        return concepts.filter(c => c.lastReviewed).length
+      case 'relationships':
+        return journals
       default:
         return 0
     }

@@ -30,7 +30,11 @@ export default function MemoryPalace() {
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
-    const saved = get('concepts') || []
+    // Read directly from localStorage to avoid dependency on `get` (which changes every render)
+    const saved = (() => {
+      try { return JSON.parse(localStorage.getItem('jos-concepts') || '[]') }
+      catch { return [] }
+    })()
     const w = container.clientWidth
     const h = Math.min(400, window.innerHeight * 0.45)
 
@@ -151,7 +155,7 @@ export default function MemoryPalace() {
       scene.traverse(o => { if(o.geometry)o.geometry.dispose(); if(o.material){if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material.dispose()} })
       if (container.contains(el)) container.removeChild(el)
     }
-  }, [get])
+  }, []) // Run once on mount — palace shows snapshot of concept state
 
   return (
     <div ref={containerRef} className="relative rounded overflow-hidden" style={{ minHeight: 350, background: '#010810' }}>

@@ -97,7 +97,7 @@ export default function CheckInForm() {
     sleep: null,
     meds: null,
     mood: '',
-    chai: 0,
+    coffee: 0,
     lunch: null,
     learned: '',
     struggled: '',
@@ -237,7 +237,16 @@ Tone: JARVIS formal British, call him Sir. Keep under 150 words. No markdown.`
   const completedTaskCount = (core.completedTasks || []).length
 
   const hasToday = (get('feelings') || []).some(f => f.date === today)
-  const isMinFilled = form.confidence && (formLevel !== 'full' || (form.focus && form.motivation))
+  const filledCount = [
+    form.confidence,
+    form.focus,
+    form.motivation,
+    form.sleep,
+    form.mood,
+    form.learned,
+    form.struggles,
+  ].filter(v => v !== undefined && v !== null && v !== '' && v !== 0).length
+  const isMinFilled = filledCount >= 3
 
   return (
     <div className="space-y-4">
@@ -316,15 +325,15 @@ Tone: JARVIS formal British, call him Sir. Keep under 150 words. No markdown.`
                 <YNToggle label="LUNCH" value={form.lunch} onChange={v => updateField('lunch', v)} />
 
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs text-text-dim tracking-wider w-24">CHAI</span>
+                  <span className="font-mono text-xs text-text-dim tracking-wider w-24">COFFEE</span>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => updateField('chai', Math.max(0, (form.chai || 0) - 1))}
+                      onClick={() => updateField('coffee', Math.max(0, (form.coffee || 0) - 1))}
                       className="w-8 h-8 rounded border border-border text-text-muted hover:border-cyan/30 font-bold"
                     >−</button>
-                    <span className="font-mono text-sm text-text w-6 text-center">{form.chai || 0}</span>
+                    <span className="font-mono text-sm text-text w-6 text-center">{form.coffee || 0}</span>
                     <button
-                      onClick={() => updateField('chai', (form.chai || 0) + 1)}
+                      onClick={() => updateField('coffee', (form.coffee || 0) + 1)}
                       className="w-8 h-8 rounded border border-border text-text-muted hover:border-cyan/30 font-bold"
                     >+</button>
                   </div>

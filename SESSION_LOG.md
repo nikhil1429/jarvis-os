@@ -4,6 +4,20 @@
 
 ---
 
+### Session 58B — Additional Bug Fixes (7 Bugs) (2026-04-03)
+**Bugs fixed:**
+13. Intelligence Dashboard: 9 unique feature keys with correct data sources (was 4 duplicates)
+14. Boot briefing now saved to jos-weekly for CMD tab Briefing card
+15. PortfolioNarrator switched from Opus to Sonnet (5x cost reduction)
+16. Tilt effect removed from TrainTab mode cards + WinsTab achievements
+17. MemoryPalace useEffect dependency fixed (no more infinite re-render)
+18. BattlePlan + Briefing now render markdown properly via renderMd
+19. Chai → Coffee + minimum 3-field quality gate on check-in
+
+**Files updated:** IntelligenceDash.jsx, useIntelligence.js, Boot.jsx, PortfolioNarrator.jsx, TrainTab.jsx, WinsTab.jsx, MemoryPalace.jsx, BattlePlan.jsx, Briefing.jsx, CheckInForm.jsx
+
+---
+
 ### Session 58 — Manual Testing Bug Fixes (12 Bugs) (2026-04-03)
 **Bugs fixed:**
 1. Briefing mic now works from CMD tab (global event listener in App.jsx)

@@ -5,6 +5,7 @@
 import { Mic, Volume2 } from 'lucide-react'
 import useStorage from '../../hooks/useStorage.js'
 import { speakWithFallback } from '../../utils/elevenLabsSpeak.js'
+import renderMd from '../../utils/renderMd.js'
 
 export default function Briefing() {
   const { get } = useStorage()
@@ -67,7 +68,7 @@ export default function Briefing() {
             </button>
           </div>
         </div>
-        <p className="font-body text-xs text-text leading-relaxed">{briefing.text}</p>
+        <div className="font-body text-xs text-text leading-relaxed" dangerouslySetInnerHTML={{ __html: renderMd(briefing.text) }} />
         {briefing.generatedAt && (
           <p className="font-mono text-[8px] text-text-muted mt-1.5">
             {new Date(briefing.generatedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
