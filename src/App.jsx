@@ -39,6 +39,10 @@ import CommandLine from './components/CommandLine.jsx'
 import useComeback from './hooks/useComeback.js'
 import useAutoCapture from './hooks/useAutoCapture.js'
 import { initGadgetSchemas } from './utils/gadgetSchemas.js'
+import { runOvernightProcessing } from './utils/overnightProcessor.js'
+import AmbientMode from './components/AmbientMode.jsx'
+import FocusMode from './components/FocusMode.jsx'
+import ShutdownCeremony from './components/ShutdownCeremony.jsx'
 import { syncOnBoot } from './utils/supabaseSync.js'
 import { isSupabaseConfigured } from './utils/supabase.js'
 import useVizEngine from './hooks/useVizEngine.js'
@@ -128,9 +132,32 @@ function App() {
   // quickVoiceOpen removed — VoiceMode is the one voice interface
   const [requestedMode, setRequestedMode] = useState(null)
   const [globalVoiceState, setGlobalVoiceState] = useState('IDLE')
+  const [isAmbient, setIsAmbient] = useState(false)
+  const [focusMode, setFocusMode] = useState(null)
+  const [showCeremony, setShowCeremony] = useState(false)
+  const idleTimerRef = useRef(null)
 
-  // Initialize gadget schemas (future-proof data architecture)
-  useEffect(() => { initGadgetSchemas() }, [])
+  // Initialize gadget schemas + run overnight processing
+  useEffect(() => { initGadgetSchemas(); runOvernightProcessing() }, [])
+
+  // Auto-ambient after 10 minutes of no interaction
+  useEffect(() => {
+    const resetIdle = () => {
+      clearTimeout(idleTimerRef.current)
+      if (isAmbient) setIsAmbient(false)
+      idleTimerRef.current = setTimeout(() => setIsAmbient(true), 10 * 60 * 1000)
+    }
+    window.addEventListener('click', resetIdle)
+    window.addEventListener('keydown', resetIdle)
+    window.addEventListener('touchstart', resetIdle)
+    resetIdle()
+    return () => {
+      window.removeEventListener('click', resetIdle)
+      window.removeEventListener('keydown', resetIdle)
+      window.removeEventListener('touchstart', resetIdle)
+      clearTimeout(idleTimerRef.current)
+    }
+  }, [isAmbient])
 
   // One-time task migration for Session 58 — old JARVIS-build tasks → FinOps tasks
   useEffect(() => {
@@ -496,8 +523,19 @@ function App() {
         <VizDependencyTree rootConcept={weakness.concept} onQuizConcept={() => { setShowDepTree(false); setActiveTab('train') }} onClose={() => setShowDepTree(false)} />
       )}
 
-      {/* Shutdown Sequence */}
-      {showShutdown && <ShutdownSequence />}
+      {/* Shutdown Ceremony (upgraded) */}
+      {showShutdown && <ShutdownCeremony onComplete={() => setShowShutdown(false)} />}
+
+      {/* Ambient Standby */}
+      {isAmbient && <AmbientMode onWake={() => setIsAmbient(false)} />}
+
+      {/* Focus Lock */}
+      {focusMode && (
+        <FocusMode target={focusMode.target} duration={focusMode.duration}
+          completedTasks={(get('core') || {}).completedTasks || []}
+          onToggleTask={handleToggleTask}
+          onEnd={() => setFocusMode(null)} />
+      )}
 
       {/* ============================================================ */}
       {/* MILESTONE CINEMATIC OVERLAY */}

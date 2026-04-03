@@ -15,6 +15,8 @@ import ChatView from './ChatView.jsx'
 import BodyDoubleTimer from './BodyDoubleTimer.jsx'
 import PhantomMode from './PhantomMode.jsx'
 import BattleRoyale from './BattleRoyale.jsx'
+import { checkConviction } from '../../utils/jarvisConvictions.js'
+import { getTemporalContext } from '../../utils/temporalAwareness.js'
 // tilt effect removed — clean hover instead
 
 const TIER_STYLES = {
@@ -27,6 +29,15 @@ export default function TrainTab({ weekNumber, requestedMode, onModeOpened }) {
   const [activeMode, setActiveMode] = useState(null)
   const [showPhantom, setShowPhantom] = useState(false)
   const [showBattle, setShowBattle] = useState(false)
+  const [conviction, setConviction] = useState(null)
+
+  const handleModeOpen = (modeId) => {
+    const temporal = getTemporalContext()
+    const core = (() => { try { return JSON.parse(localStorage.getItem('jos-core') || '{}') } catch { return {} } })()
+    const result = checkConviction({ mode: modeId, hour: temporal.hour, energy: core.energy || 3, medState: temporal.medState })
+    if (result) setConviction({ ...result, requestedMode: modeId })
+    else setActiveMode(modeId)
+  }
   const [autoMic, setAutoMic] = useState(false)
   const { get } = useStorage()
   const antiCrutch = getAntiCrutchLevel(weekNumber)
@@ -201,7 +212,7 @@ export default function TrainTab({ weekNumber, requestedMode, onModeOpened }) {
           return (
             <button
               key={mode.id}
-              onClick={() => setActiveMode(mode.id)}
+              onClick={() => handleModeOpen(mode.id)}
               className="glass-card p-3 text-left transition-all duration-200
                 hover:border-cyan/30 hover:translate-y-[-2px] group"
             >
@@ -228,6 +239,30 @@ export default function TrainTab({ weekNumber, requestedMode, onModeOpened }) {
           )
         })}
       </div>
+
+      {/* Conviction overlay */}
+      {conviction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(2,10,19,0.8)' }}>
+          <div className="max-w-md mx-4 p-5 rounded-lg" style={{ background: '#061422', border: '2px solid #d4a853', borderTopWidth: 3 }}>
+            <p className="font-body text-sm text-text leading-relaxed mb-3">{conviction.message}</p>
+            {conviction.suggestion && (
+              <p className="font-mono text-[10px] text-cyan mb-4">SUGGESTED: {conviction.suggestion}</p>
+            )}
+            <div className="flex gap-3">
+              {conviction.allowOverride && (
+                <button onClick={() => { setConviction(null); setActiveMode(conviction.requestedMode) }}
+                  className="font-mono text-[10px] text-text-muted border border-border px-3 py-1.5 rounded hover:border-text-muted transition-all">
+                  OVERRIDE
+                </button>
+              )}
+              <button onClick={() => setConviction(null)}
+                className="flex-1 font-mono text-[10px] text-cyan border border-cyan/40 px-3 py-1.5 rounded hover:bg-cyan/10 transition-all">
+                ACCEPT
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

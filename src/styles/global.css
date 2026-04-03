@@ -127,6 +127,16 @@ body::before {
   100% { box-shadow: 0 0 0 0 rgba(0,180,216,0); }
 }
 
+@keyframes ghost-scan {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(400%); }
+}
+
+@keyframes breathe-dot {
+  0%, 100% { transform: scale(1); opacity: 0.3; }
+  50% { transform: scale(1.3); opacity: 0.5; }
+}
+
 .opus-pulse { animation: opus-glow 0.6s ease-out; }
 @keyframes opus-glow {
   0% { box-shadow: 0 0 0 0 rgba(212,168,83,0.4); }

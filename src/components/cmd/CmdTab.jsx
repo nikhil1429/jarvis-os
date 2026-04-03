@@ -17,6 +17,9 @@ import useStorage from '../../hooks/useStorage.js'
 import { generateObservations, detectCrisis } from '../../utils/jarvisObservations.js'
 import { generateBootReflection } from '../../utils/jarvisInnerLife.js'
 import { checkRelationshipMilestone } from '../../utils/relationshipEngine.js'
+import { generateGhostCards } from '../../utils/ghostCardEngine.js'
+import { generateInvestigations } from '../../utils/jarvisAgenda.js'
+import GhostCard from '../viz/GhostCard.jsx'
 
 function WeeklyNewsletter() {
   const { get } = useStorage()
@@ -63,6 +66,10 @@ export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissP
   const { suggestions } = useAdaptiveUI()
   const [dismissedObs, setDismissedObs] = useState(new Set())
   const [dismissedMilestone, setDismissedMilestone] = useState(false)
+  const [ghostCards, setGhostCards] = useState(() => generateGhostCards({ tab: 'cmd' }))
+  const [memoVisible, setMemoVisible] = useState(() => !!localStorage.getItem('jos-overnight-memo'))
+  const overnightMemo = useMemo(() => { try { return JSON.parse(localStorage.getItem('jos-overnight-memo') || 'null') } catch { return null } }, [])
+  const investigations = useMemo(() => generateInvestigations(), [])
   const observations = useMemo(() => generateObservations(), [])
   const topObservation = observations.find(o => !dismissedObs.has(o.type))
   const crisis = useMemo(() => detectCrisis(), [])
@@ -103,6 +110,31 @@ export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissP
           <p className="font-mono text-[9px] text-text-muted italic leading-relaxed" style={{ opacity: 0.5 }}>
             // {reflection}
           </p>
+        </div>
+      )}
+
+      {/* Overnight Memo */}
+      {memoVisible && overnightMemo && (
+        <div className="p-3 rounded-lg" style={{ border: '1px dashed rgba(212,168,83,0.3)', borderTop: '2px solid #d4a853', background: 'rgba(212,168,83,0.02)' }}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-mono text-[9px] text-gold tracking-widest">OVERNIGHT MEMO</span>
+            <span className="font-mono text-[8px] text-text-muted">
+              {new Date(overnightMemo.processedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+          <p className="font-body text-[11px] text-text-dim mb-2 italic">
+            While you were away, I processed {overnightMemo.dataPointsProcessed} data points. {overnightMemo.findings.length} findings:
+          </p>
+          <div className="space-y-1.5">
+            {overnightMemo.findings.map((f, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <span className="font-display text-[10px] text-gold mt-0.5">{i + 1}.</span>
+                <p className="font-body text-[11px] text-text leading-relaxed">{f.text}</p>
+              </div>
+            ))}
+          </div>
+          <button onClick={() => { setMemoVisible(false); localStorage.removeItem('jos-overnight-memo') }}
+            className="font-mono text-[8px] text-text-muted mt-2 hover:text-gold transition-colors">ACKNOWLEDGED</button>
         </div>
       )}
 
@@ -165,9 +197,37 @@ export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissP
 
       <div className="card-enter" style={{ animationDelay: '80ms' }}><TaskList completedTasks={completedTasks} onToggleTask={onToggleTask} /></div>
       <div className="card-enter" style={{ animationDelay: '160ms' }}><BattlePlan /></div>
-      <div className="card-enter" style={{ animationDelay: '240ms' }}><DailyBuildLog /></div>
-      {!isShowMode && <div className="card-enter" style={{ animationDelay: '320ms' }}><SecondBrain /></div>}
-      {!isShowMode && <div className="card-enter" style={{ animationDelay: '400ms' }}><TimeCapsule /></div>}
+      {/* Ghost cards */}
+      {ghostCards.map(gc => (
+        <GhostCard key={gc.id} id={gc.id} onDismiss={() => setGhostCards(prev => prev.filter(c => c.id !== gc.id))}>
+          <p className="font-body text-[11px] text-text-dim leading-relaxed pr-6">{gc.text}</p>
+        </GhostCard>
+      ))}
+
+      <div><DailyBuildLog /></div>
+      {!isShowMode && <div><SecondBrain /></div>}
+
+      {/* JARVIS Investigations */}
+      {investigations.length > 0 && (
+        <div className="mt-2">
+          <span className="font-display text-sm font-bold tracking-wider uppercase" style={{ color: '#00b4d8' }}>JARVIS INVESTIGATIONS</span>
+          <div className="space-y-2 mt-2">
+            {investigations.map(inv => (
+              <div key={inv.id} className="p-3 rounded-lg" style={{ border: '1px dashed rgba(0,180,216,0.2)', background: 'rgba(0,180,216,0.02)' }}>
+                <p className="font-body text-[11px] text-text-dim italic mb-1">"{inv.opener}"</p>
+                <p className="font-body text-xs text-text leading-relaxed">{inv.text}</p>
+                {inv.action && (
+                  <button className="font-mono text-[9px] text-cyan border border-cyan/30 px-2 py-1 rounded hover:bg-cyan/10 transition-all mt-2">
+                    {inv.action.label}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!isShowMode && <div><TimeCapsule /></div>}
     </div>
   )
 }

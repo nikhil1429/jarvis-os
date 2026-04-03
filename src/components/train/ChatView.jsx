@@ -16,6 +16,7 @@ import renderMd from '../../utils/renderMd.js'
 import { shouldCompress, getCompressionPrompt, applyCompression } from '../../utils/conversationMemory.js'
 import { analyzeSubtext, shouldAnalyze } from '../../utils/subtextAnalyzer.js'
 import { getTemporalContext } from '../../utils/temporalAwareness.js'
+import { detectPeopleMentions } from '../../utils/peopleMap.js'
 import VizSmartCards from '../viz/VizSmartCards.jsx'
 
 const SpeechRecognition = typeof window !== 'undefined'
@@ -125,6 +126,8 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
         : 'unknown'
       analyzeSubtext(trimmed, { timeOfDay: temporal.timeLabel, inputMode: voice.lastInputMethodRef?.current || 'typed', moodTrend }, sendMessage).catch(() => {})
     }
+    // Passive people map building
+    detectPeopleMentions(trimmed)
 
     const stopTick = await startThinking()
     try {
