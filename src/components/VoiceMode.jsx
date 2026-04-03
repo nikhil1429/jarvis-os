@@ -65,6 +65,7 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
   const [showEnrollment, setShowEnrollment] = useState(!isEnrolled())
   const verification = useVoiceVerification()
   const [messages, setMessages] = useState([])
+  const messagesLenRef = useRef(0)
   const canvasRef = useRef(null)
   const animRef = useRef(null)
   const analyserRef = useRef(null)
@@ -89,6 +90,7 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
   voiceStateStrRef.current = vs // keep ref in sync for canvas loop
 
   useEffect(() => { setMessages((get(`msgs-${currentModeId}`) || []).slice(-10)) }, [currentModeId, get])
+  useEffect(() => { messagesLenRef.current = messages.length }, [messages])
   useEffect(() => { transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
   const handleSend = useCallback(async (text) => {
@@ -139,7 +141,12 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
         // E8: tier escalation
         if (result.tier >= 2) tierFlashRef.current = 30
       }
-    } catch (err) { console.error('[VoiceMode]', err) }
+    } catch (err) {
+      console.error('[VoiceMode]', err)
+      // Reset voice state on API error — prevent stuck PROCESSING
+      setMessages(prev => [...prev, { role: 'assistant', content: `I encountered an error, Sir. ${err.message || 'Please try again.'}`, timestamp: new Date().toISOString() }])
+      voice.speak('I encountered an error, Sir. Please try again.', { isVoiceCommand: true })
+    }
   }, [sendMessage, currentModeId, weekNumber, play, voice, checkIn, onClose])
 
   useEffect(() => {
@@ -152,7 +159,7 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
   // Canvas animation + audio analyser
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas) return
+    if (!canvas || showEnrollment) return
     const dpr = Math.min(window.devicePixelRatio, 2)
     const S = 500
     canvas.width = S * dpr; canvas.height = S * dpr
@@ -384,12 +391,12 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
           localStorage.setItem('jos-voice-echo', JSON.stringify({
             levels: voiceSamplesRef.current.slice(-64),
             timestamp: new Date().toISOString(),
-            messageCount: messages.length,
+            messageCount: messagesLenRef.current,
           }))
         } catch { /* ok */ }
       }
     }
-  }, [])
+  }, [showEnrollment])
 
   // Enrollment screen
   if (showEnrollment) {

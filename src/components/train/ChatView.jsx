@@ -145,8 +145,14 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
     } catch (err) {
       console.error('[ChatView] Send failed:', err)
       stopTick(); stopThinking()
+      // Reset voice state on API error — prevent stuck PROCESSING
+      setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${err.message || 'Request failed'}. Try again, Sir.`, timestamp: new Date().toISOString() }])
+      voice.speak('I encountered an error, Sir. Please try again.', { isVoiceCommand: true })
     }
   }, [sendMessage, mode.id, weekNumber, play, voice, checkIn, onModeSwitch, stopThinking, startThinking])
+
+  const handleSendDirectRef = useRef(handleSendDirect)
+  handleSendDirectRef.current = handleSendDirect
 
   // Decision log — auto-capture decisions from conversation
   const checkDecisionLog = useCallback((userMsg, jarvisMsg) => {
@@ -238,13 +244,11 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
   }, [voice.voiceState])
 
   useEffect(() => {
-    const onSend = (e) => handleSendDirect(e.detail.text)
+    const onSend = (e) => handleSendDirectRef.current(e.detail.text)
     const onInterrupt = (e) => {
       setInput(e.detail.text)
-      // Silence timer already started by hook, will fire jarvis-voice-send
     }
     const onInterim = (e) => setInput(e.detail.text)
-
     window.addEventListener('jarvis-voice-send', onSend)
     window.addEventListener('jarvis-voice-interrupt', onInterrupt)
     window.addEventListener('jarvis-voice-interim', onInterim)

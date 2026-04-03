@@ -87,11 +87,23 @@ function speakBrowserFallback(text) {
         || voices.find(x => x.lang === 'en-GB') || voices.find(x => x.lang.startsWith('en')) || voices[0]
       window._jarvisVoice = v
     }
+    let resolved = false
+    const safeResolve = () => { if (!resolved) { resolved = true; resolve() } }
+
+    // Safety timeout — if speech takes too long or gets cancelled, resolve anyway
+    const safetyTimer = setTimeout(safeResolve, Math.max(10000, sentences.length * 5000))
+
     sentences.forEach((s, i) => {
       const u = new SpeechSynthesisUtterance(s.trim())
       if (v) u.voice = v
       u.rate = 1.0; u.pitch = 0.95
-      if (i === sentences.length - 1) { u.onend = resolve; u.onerror = resolve }
+      if (i === sentences.length - 1) {
+        u.onend = () => { clearTimeout(safetyTimer); safeResolve() }
+        u.onerror = () => { clearTimeout(safetyTimer); safeResolve() }
+      } else {
+        // Non-last sentences also need error handling for cancellation
+        u.onerror = () => { clearTimeout(safetyTimer); safeResolve() }
+      }
       synth.speak(u)
     })
   })
@@ -126,7 +138,23 @@ export default function useJarvisVoice() {
   const stopSpeaking = useCallback(() => {
     jarvisStopAll()
     jarvisSpeakingRef.current = false
-    updateState(VS.IDLE)
+    // Go to LISTENING (not IDLE) so mic stays alive for continued conversation
+    // The 15s silence timeout will handle going to IDLE if user doesn't speak
+    if (recognitionRef.current) {
+      stateRef.current = VS.LISTENING
+      setVoiceState(VS.LISTENING)
+      if (timeoutTimerRef.current) clearTimeout(timeoutTimerRef.current)
+      timeoutTimerRef.current = setTimeout(() => {
+        if (jarvisSpeakingRef.current) return
+        console.log('TIMEOUT: 15s after stop-speaking, going IDLE')
+        if (recognitionRef.current) try { recognitionRef.current.stop() } catch { /* ok */ }
+        recognitionRef.current = null
+        stateRef.current = VS.IDLE
+        setVoiceState(VS.IDLE)
+      }, 15000)
+    } else {
+      updateState(VS.IDLE)
+    }
   }, [updateState])
 
   // ============================================================

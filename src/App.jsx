@@ -18,6 +18,7 @@ import useAutoBackup from './hooks/useAutoBackup.js'
 import useContextSave from './hooks/useContextSave.js'
 import Boot from './components/Boot.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
+import { runSystemDiagnostics } from './utils/dataIntegrity.js'
 import Header from './components/Header.jsx'
 import BottomNav from './components/BottomNav.jsx'
 import CmdTab from './components/cmd/CmdTab.jsx'
@@ -274,7 +275,16 @@ function App() {
           }
           speakTheatrical(segments, speakFn)
         } else {
-          speakElevenLabs(ms.speech)
+          speakElevenLabs(ms.speech).then(ok => {
+            if (!ok) {
+              const synth = window.speechSynthesis
+              if (synth) {
+                const u = new SpeechSynthesisUtterance(ms.speech)
+                u.lang = 'en-GB'
+                synth.speak(u)
+              }
+            }
+          })
         }
 
         // Dismiss after longer duration for theatrical
@@ -294,6 +304,11 @@ function App() {
     try { play('boot') } catch { /* ok */ }
     // Show boot briefing dashboard after 1s
     setTimeout(() => showDashboard('boot-briefing'), 1000)
+    // JARVIS self-diagnostics — tests ALL systems on every boot
+    runSystemDiagnostics().then(report => {
+      if (report.status === 'CRITICAL') console.error('[JARVIS] CRITICAL: Multiple systems down')
+      else if (report.status === 'DEGRADED') console.warn('[JARVIS] DEGRADED: Some systems have issues')
+    })
   }, [play, showDashboard])
 
   const handleToggleTask = useCallback((taskId) => {

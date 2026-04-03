@@ -5,6 +5,7 @@
 
 import { useCallback } from 'react'
 import { pushToCloud } from '../utils/supabaseSync.js'
+import { verifyWrite } from '../utils/dataIntegrity.js'
 
 const PREFIX = 'jos-'
 
@@ -25,6 +26,9 @@ export default function useStorage() {
     try {
       const fullKey = PREFIX + key
       localStorage.setItem(fullKey, JSON.stringify(value))
+      if (!verifyWrite(fullKey, value)) {
+        console.error(`[useStorage] WRITE VERIFICATION FAILED for ${key}`)
+      }
       pushToCloud(fullKey) // async cloud sync
     } catch (err) {
       console.error(`[useStorage] Failed to write ${PREFIX}${key}:`, err)
@@ -40,6 +44,9 @@ export default function useStorage() {
       const next = updater(current)
       const fullKey = PREFIX + key
       localStorage.setItem(fullKey, JSON.stringify(next))
+      if (!verifyWrite(fullKey, next)) {
+        console.error(`[useStorage] WRITE VERIFICATION FAILED for ${key}`)
+      }
       pushToCloud(fullKey) // async cloud sync
       return next
     } catch (err) {
@@ -55,6 +62,20 @@ export default function useStorage() {
       console.error(`[useStorage] Failed to remove ${PREFIX}${key}:`, err)
     }
   }, [])
+
+  // Check localStorage usage on mount — warn if approaching 5MB limit
+  try {
+    let total = 0
+    for (const key in localStorage) {
+      if (key.startsWith(PREFIX)) {
+        total += localStorage.getItem(key)?.length || 0
+      }
+    }
+    const totalMB = (total * 2) / (1024 * 1024) // UTF-16 = 2 bytes per char
+    if (totalMB > 4) {
+      console.warn(`[useStorage] WARNING: ${totalMB.toFixed(1)}MB used — approaching 5MB localStorage limit`)
+    }
+  } catch { /* ok */ }
 
   return { get, set, update, remove }
 }

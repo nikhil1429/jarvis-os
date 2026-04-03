@@ -13,9 +13,12 @@ export async function pushToCloud(key) {
   if (!isSupabaseConfigured()) return false
   try {
     const raw = localStorage.getItem(key)
-    if (!raw) return false
+    if (!raw || raw === 'null' || raw === 'undefined') return false
+    // Validate JSON parses to non-null value before pushing
+    const parsed = JSON.parse(raw)
+    if (parsed === null || parsed === undefined) return false
     const { error } = await supabase.from('jarvis_data').upsert(
-      { key, value: JSON.parse(raw), updated_at: new Date().toISOString(), device_id: DEVICE_ID },
+      { key, value: parsed, updated_at: new Date().toISOString(), device_id: DEVICE_ID },
       { onConflict: 'key' }
     )
     if (error) { console.error('CLOUD PUSH:', key, error.message); return false }

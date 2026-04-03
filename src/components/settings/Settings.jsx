@@ -3,8 +3,9 @@
 // Voice Input, Voice Output, Auto-Conversation, and Voice Speed controls.
 
 import { useState } from 'react'
-import { X, Download, Upload, Trash2, Volume2, VolumeX, Eye, EyeOff, Mic, MicOff, MessageCircle, AlertTriangle } from 'lucide-react'
+import { X, Download, Upload, Trash2, Volume2, VolumeX, Eye, EyeOff, Mic, MicOff, MessageCircle, AlertTriangle, Shield } from 'lucide-react'
 import useStorage from '../../hooks/useStorage.js'
+import { getDataHealth, runSystemDiagnostics } from '../../utils/dataIntegrity.js'
 
 export default function Settings({ isOpen, onClose }) {
   const { get, set } = useStorage()
@@ -46,13 +47,31 @@ export default function Settings({ isOpen, onClose }) {
       try {
         const text = await file.text()
         const data = JSON.parse(text)
-        Object.entries(data).forEach(([key, value]) => {
-          if (key.startsWith('jos-')) {
+
+        // Validate: must be an object with jos- keys
+        if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+          setImportStatus('error')
+          setTimeout(() => setImportStatus(null), 3000)
+          return
+        }
+
+        const josKeys = Object.keys(data).filter(k => k.startsWith('jos-'))
+        if (josKeys.length === 0) {
+          setImportStatus('error')
+          setTimeout(() => setImportStatus(null), 3000)
+          return
+        }
+
+        // Only import jos- prefixed keys (safety), individual try-catch per key
+        josKeys.forEach(key => {
+          try {
+            const value = data[key]
             localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value))
-          }
+          } catch { /* skip invalid entries */ }
         })
+
         setImportStatus('success')
-        setTimeout(() => setImportStatus(null), 3000)
+        setTimeout(() => window.location.reload(), 1500)
       } catch {
         setImportStatus('error')
         setTimeout(() => setImportStatus(null), 3000)
@@ -228,6 +247,92 @@ export default function Settings({ isOpen, onClose }) {
               {importStatus === 'error' && (
                 <p className="font-mono text-[10px] text-red-400 text-center">IMPORT FAILED — INVALID FILE</p>
               )}
+            </div>
+
+            {/* Data Health Dashboard */}
+            <div className="border-t border-border pt-5 space-y-3">
+              {(() => {
+                const health = getDataHealth()
+                const statusColor = health.status === 'healthy' ? '#10b981' : health.status === 'warning' ? '#d4a853' : '#ef4444'
+                return (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Shield size={14} style={{ color: statusColor }} />
+                        <span className="font-display text-xs font-bold text-text tracking-wider uppercase">DATA HEALTH</span>
+                      </div>
+                      <span style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: statusColor, letterSpacing: '0.1em' }}>
+                        {health.status.toUpperCase()}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                      <div style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: '#5a7a94' }}>
+                        KEYS: <span style={{ color: '#d0e8f8' }}>{health.keysValid}/{health.keysTotal}</span>
+                      </div>
+                      <div style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: '#5a7a94' }}>
+                        STORAGE: <span style={{ color: parseFloat(health.storagePercent) > 80 ? '#ef4444' : '#d0e8f8' }}>{health.storageMB}MB ({health.storagePercent}%)</span>
+                      </div>
+                      <div style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: '#5a7a94' }}>
+                        REPAIRED: <span style={{ color: health.keysRepaired > 0 ? '#d4a853' : '#10b981' }}>{health.keysRepaired}</span>
+                      </div>
+                      <div style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: '#5a7a94' }}>
+                        LAST SCAN: <span style={{ color: '#d0e8f8' }}>{health.lastScan ? new Date(health.lastScan).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'never'}</span>
+                      </div>
+                    </div>
+
+                    <div style={{ height: 4, borderRadius: 2, background: '#0d2137', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', borderRadius: 2, transition: 'width 0.5s',
+                        width: `${Math.min(100, parseFloat(health.storagePercent))}%`,
+                        background: parseFloat(health.storagePercent) > 80 ? '#ef4444' : parseFloat(health.storagePercent) > 50 ? '#d4a853' : '#00b4d8',
+                      }} />
+                    </div>
+
+                    <button
+                      onClick={async () => {
+                        const report = await runSystemDiagnostics()
+                        const ok = report.checks.filter(c => c.status === 'ok').length
+                        alert(`${report.status}: ${ok}/${report.checks.length} systems OK`)
+                      }}
+                      className="w-full py-2 rounded-lg border border-cyan/30 font-mono text-[10px] text-cyan tracking-wider hover:bg-cyan/10 transition-all"
+                    >
+                      RUN DIAGNOSTICS
+                    </button>
+                  </>
+                )
+              })()}
+
+              {/* System Diagnostics Report */}
+              {(() => {
+                let diag = null
+                try { diag = JSON.parse(localStorage.getItem('jos-diagnostics') || 'null') } catch {}
+                if (!diag) return null
+                const statusColor = { OPERATIONAL: '#10b981', DEGRADED: '#d4a853', CRITICAL: '#ef4444' }[diag.status] || '#5a7a94'
+                return (
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-display text-xs font-bold text-text tracking-wider uppercase">DIAGNOSTICS</span>
+                      <span style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: statusColor, letterSpacing: '0.1em' }}>
+                        {diag.status}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {diag.checks.map((c, i) => (
+                        <div key={i} style={{ fontFamily: 'Share Tech Mono', fontSize: 10, color: '#5a7a94', display: 'flex', justifyContent: 'space-between' }}>
+                          <span>{c.icon} {c.name}</span>
+                          <span style={{ color: c.status === 'ok' ? '#10b981' : c.status === 'warning' ? '#d4a853' : c.status === 'failed' ? '#ef4444' : '#5a7a94' }}>
+                            {c.detail}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <p style={{ fontFamily: 'Share Tech Mono', fontSize: 8, color: '#2a4a60', marginTop: 4 }}>
+                      Last check: {new Date(diag.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                )
+              })()}
             </div>
 
             {/* Reset */}

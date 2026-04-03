@@ -180,7 +180,7 @@ Tone: JARVIS formal British, call him Sir. Keep under 150 words. No markdown.`
     } finally {
       setDebriefing(false)
     }
-  }, [get, update, today, tts])
+  }, [get, update, today])
 
   useEffect(() => {
     const feelings = get('feelings') || []

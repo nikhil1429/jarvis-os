@@ -14,6 +14,7 @@ import { buildSystemPrompt } from '../data/prompts.js'
 import { logAPICall } from '../utils/apiLogger.js'
 import { getDayNumber, getWeekNumber } from '../utils/dateUtils.js'
 import { compileSummary } from '../utils/strategicCompiler.js'
+import CONCEPTS_DATA from '../data/concepts.js'
 
 // WHY: Cross-mode memory maps define which modes feed context to each other.
 // Quiz needs Presser struggles, Presser needs Quiz scores, etc.
@@ -42,45 +43,77 @@ const JARVIS_TOOLS = [
 ]
 
 function executeToolCall(name, input) {
-  try {
-    if (name === 'complete_task') {
+  if (name === 'complete_task') {
+    try {
       const core = JSON.parse(localStorage.getItem('jos-core') || '{}')
       const done = core.completedTasks || []
       if (!done.includes(input.taskId)) { done.push(input.taskId); core.completedTasks = done; localStorage.setItem('jos-core', JSON.stringify(core)); window.dispatchEvent(new CustomEvent('jarvis-task-toggled')) }
       return { success: true, tasksCompleted: done.length }
-    }
-    if (name === 'update_concept_strength') {
-      const concepts = JSON.parse(localStorage.getItem('jos-concepts') || '[]')
-      const c = concepts.find(x => x.name.toLowerCase().includes(input.conceptName.toLowerCase()))
-      if (c) { const old = c.strength; c.strength = Math.min(100, Math.max(0, input.newStrength)); c.lastReviewed = new Date().toISOString(); localStorage.setItem('jos-concepts', JSON.stringify(concepts)); return { success: true, old, new: c.strength } }
+    } catch (err) { return { error: `complete_task failed: ${err.message}` } }
+  }
+  if (name === 'update_concept_strength') {
+    try {
+      let concepts = JSON.parse(localStorage.getItem('jos-concepts') || '[]')
+      let c = concepts.find(x => x.name.toLowerCase().includes(input.conceptName.toLowerCase()))
+      // If not in localStorage, find in static data and create entry
+      if (!c) {
+        const staticConcept = CONCEPTS_DATA.find(x => x.name.toLowerCase().includes(input.conceptName.toLowerCase()))
+        if (staticConcept) {
+          c = { id: staticConcept.id, name: staticConcept.name, strength: 0 }
+          concepts.push(c)
+        }
+      }
+      if (c) {
+        const old = c.strength
+        c.strength = Math.min(100, Math.max(0, input.newStrength))
+        c.lastReviewed = new Date().toISOString()
+        if (!c.reviewHistory) c.reviewHistory = []
+        c.reviewHistory.push({ date: new Date().toISOString(), score: input.newStrength, source: 'tool' })
+        localStorage.setItem('jos-concepts', JSON.stringify(concepts))
+        return { success: true, old, new: c.strength }
+      }
       return { error: 'Concept not found' }
-    }
-    if (name === 'update_identity') {
+    } catch (err) { return { error: `update_concept failed: ${err.message}` } }
+  }
+  if (name === 'update_identity') {
+    try {
       const id = JSON.parse(localStorage.getItem('jos-identity') || '{}')
       id[input.field] = input.value + ` [${new Date().toISOString().split('T')[0]}]`
       localStorage.setItem('jos-identity', JSON.stringify(id)); return { success: true }
-    }
-    if (name === 'create_quick_capture') {
+    } catch (err) { return { error: `update_identity failed: ${err.message}` } }
+  }
+  if (name === 'create_quick_capture') {
+    try {
       const caps = JSON.parse(localStorage.getItem('jos-quick-capture') || '[]')
       caps.push({ timestamp: new Date().toISOString(), text: input.text, category: input.category || 'insight', source: 'jarvis-tool' })
       localStorage.setItem('jos-quick-capture', JSON.stringify(caps)); return { success: true }
-    }
-    if (name === 'get_concept_strength') {
+    } catch (err) { return { error: `quick_capture failed: ${err.message}` } }
+  }
+  if (name === 'get_concept_strength') {
+    try {
       const concepts = JSON.parse(localStorage.getItem('jos-concepts') || '[]')
-      const c = concepts.find(x => x.name.toLowerCase().includes(input.conceptName.toLowerCase()))
-      return c ? { name: c.name, strength: c.strength, lastReviewed: c.lastReviewed } : { error: 'Not found' }
-    }
-    if (name === 'get_today_stats') {
+      let c = concepts.find(x => x.name.toLowerCase().includes(input.conceptName.toLowerCase()))
+      if (!c) {
+        const sc = CONCEPTS_DATA.find(x => x.name.toLowerCase().includes(input.conceptName.toLowerCase()))
+        if (sc) c = { name: sc.name, strength: 0, lastReviewed: null }
+      }
+      return c ? { name: c.name, strength: c.strength || 0, lastReviewed: c.lastReviewed || null } : { error: 'Not found' }
+    } catch (err) { return { error: `get_concept failed: ${err.message}` } }
+  }
+  if (name === 'get_today_stats') {
+    try {
       const core = JSON.parse(localStorage.getItem('jos-core') || '{}')
       return { tasks: (core.completedTasks||[]).length, total: 82, streak: core.streak||0, energy: core.energy||3, rank: core.rank||'Recruit' }
-    }
-    if (name === 'log_application') {
+    } catch (err) { return { error: `get_stats failed: ${err.message}` } }
+  }
+  if (name === 'log_application') {
+    try {
       const apps = JSON.parse(localStorage.getItem('jos-applications') || '[]')
       apps.push({ date: new Date().toISOString(), company: input.company, role: input.role, status: input.status || 'applied' })
       localStorage.setItem('jos-applications', JSON.stringify(apps)); return { success: true }
-    }
-    return { error: 'Unknown tool' }
-  } catch (e) { return { error: e.message } }
+    } catch (err) { return { error: `log_application failed: ${err.message}` } }
+  }
+  return { error: `Unknown tool: ${name}` }
 }
 
 const TOOL_MODES = ['chat', 'body-double', 'quiz', 'impostor-killer', 'alter-ego']

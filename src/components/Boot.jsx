@@ -14,6 +14,75 @@ import TASKS from '../data/tasks.js'
 
 // Dead Three.js code deleted in Session 48E
 
+const BOOT_LINES = [
+  { text: '> JARVIS OS v2050.2', status: null },
+  { text: '> ▸ Neural interface..............', status: '[ ONLINE ]' },
+  { text: '> ▸ Anti-crutch protocols.........', status: '[ CALIBRATED ]' },
+  { text: '> ▸ Concept DNA [35 nodes]........', status: '[ SYNCED ]' },
+  { text: '> ▸ Intelligence systems..........', status: '[ 43% ]' },
+  { text: '> ▸ Build telemetry...............', status: '[ TRACKING ]' },
+  { text: '> ▸ Voice synthesis...............', status: '[ ARMED ]' },
+  { text: '> All systems nominal.', status: null },
+]
+
+function buildBriefingPrompt(core, get) {
+  const startDate = core.startDate || new Date().toISOString()
+  const dayNumber = getDayNumber(startDate)
+  const weekNumber = getWeekNumber(startDate)
+  const streak = core.streak || 0
+  const energy = core.lastEnergy || core.energy || 3
+  const timeOfDay = getTimeOfDay()
+  const hour = new Date().getHours()
+  const dayName = new Date().toLocaleDateString('en-IN', { weekday: 'long' })
+  const completedTasks = core.completedTasks || []
+  const totalTasks = TASKS.length
+  const pendingCount = totalTasks - completedTasks.length
+  const completionPct = Math.round((completedTasks.length / totalTasks) * 100)
+  let overdueCount = 0
+  let overdueConcepts = []
+  try {
+    const concepts = get('concepts') || []
+    concepts.forEach(c => {
+      if (c.strength != null && c.strength < 60) {
+        overdueConcepts.push(`${c.name || c.id} (${c.strength}%)`)
+        overdueCount++
+      }
+    })
+  } catch {}
+  let yesterdayBuild = ''
+  try {
+    const builds = get('daily-build') || []
+    if (builds.length > 0) yesterdayBuild = builds[builds.length - 1].summary || ''
+  } catch {}
+  const avoidedModes = []
+  try {
+    const allModes = ['chat','quiz','presser','timed','speed','battle','teach','body-double','alter-ego','recruiter-ghost','forensics','akshay-qs','time-machine','code-autopsy','scenario-bomb','interview-sim','impostor-killer','weakness-radar']
+    const fiveDaysAgo = Date.now() - (5*24*60*60*1000)
+    allModes.forEach(mode => {
+      const msgs = get(`msgs-${mode}`) || []
+      if (msgs.length === 0) return
+      const lastMsg = msgs[msgs.length - 1]
+      if (lastMsg?.timestamp && new Date(lastMsg.timestamp).getTime() < fiveDaysAgo) avoidedModes.push(mode)
+    })
+  } catch {}
+  let timeContext = ''
+  if (timeOfDay === 'morning') timeContext = 'Morning session. Tackle hardest tasks first.'
+  else if (dayName === 'Friday' && timeOfDay === 'evening') timeContext = 'Friday evening. Weekly wrap-up time.'
+  else if (dayName === 'Sunday') timeContext = 'Sunday. Weekly prep day.'
+  else if (hour >= 23 || hour < 4) timeContext = 'LATE NIGHT WARNING. Recommend sleep, Sir.'
+  else if (timeOfDay === 'afternoon') timeContext = 'Afternoon. Post-lunch dip likely. Consider Body Double.'
+  return `Generate a morning briefing for Nikhil Panwar. Context:
+- Day ${dayNumber}, Week ${weekNumber}, ${dayName}, ${timeOfDay}
+- Streak: ${streak} days, Energy: ${energy}/5
+- Tasks: ${completedTasks.length}/${totalTasks} (${completionPct}%), ${pendingCount} pending
+- Rank: ${core.rank || 'Recruit'}
+${overdueCount > 0 ? `- Overdue concepts: ${overdueConcepts.slice(0,5).join(', ')}` : '- All concepts on track'}
+${yesterdayBuild ? `- Yesterday: ${yesterdayBuild.slice(0,200)}` : ''}
+${avoidedModes.length > 0 ? `- AVOIDANCE: ${avoidedModes.join(', ')} not used in 5+ days` : ''}
+${timeContext ? `- ${timeContext}` : ''}
+Write 3-5 sentence briefing in JARVIS voice (formal British, "Sir"). Under 100 words. No markdown.`
+}
+
 // MAIN BOOT COMPONENT
 // ============================================================
 export default function Boot({ onComplete }) {
@@ -44,6 +113,13 @@ export default function Boot({ onComplete }) {
   const [isListeningBoot, setIsListeningBoot] = useState(false)
 
   const VOICE_QS = ['', 'Energy level, Sir?', 'Primary focus today?', 'Any blockers?', 'Morning bet — what will you accomplish today?']
+
+  // Voice helper: ElevenLabs with browser TTS fallback
+  const speakQ = (text) => {
+    speakElevenLabs(text).then(ok => {
+      if (!ok) { const u = new SpeechSynthesisUtterance(text); u.lang = 'en-GB'; window.speechSynthesis?.speak(u) }
+    }).catch(() => { const u = new SpeechSynthesisUtterance(text); u.lang = 'en-GB'; window.speechSynthesis?.speak(u) })
+  }
 
   // Check if returning user (compressed boot)
   const isReturning = useRef(false)
@@ -183,7 +259,7 @@ export default function Boot({ onComplete }) {
         setVoiceStep(1)
         setVoiceQuestion(VOICE_QS[1])
         const s = JSON.parse(localStorage.getItem('jos-settings') || '{}')
-        if (s.voice !== false) speakElevenLabs('Energy level, Sir?').catch(() => {})
+        if (s.voice !== false) speakQ('Energy level, Sir?')
       }, isReturning.current ? 200 : 400)
     }, delay)
 
@@ -477,7 +553,7 @@ export default function Boot({ onComplete }) {
                     setTimeout(() => {
                       setVoiceStep(2); setVoiceQuestion(VOICE_QS[2])
                       const s = JSON.parse(localStorage.getItem('jos-settings') || '{}')
-                      if (s.voice !== false) speakElevenLabs(VOICE_QS[2]).catch(() => {})
+                      if (s.voice !== false) speakQ(VOICE_QS[2])
                     }, 500)
                   }} className={active ? 'orb-ignite' : ''} style={{
                     width: 56, height: 56, borderRadius: '50%', border: `2px solid ${active ? c : 'rgba(13,33,55,0.5)'}`,
@@ -505,7 +581,7 @@ export default function Boot({ onComplete }) {
                     setTimeout(() => {
                       setVoiceStep(next); setVoiceQuestion(VOICE_QS[next])
                       const s = JSON.parse(localStorage.getItem('jos-settings') || '{}')
-                      if (s.voice !== false) speakElevenLabs(VOICE_QS[next]).catch(() => {})
+                      if (s.voice !== false) speakQ(VOICE_QS[next])
                     }, 300)
                   }}
                   placeholder={voiceStep === 2 ? 'Type or speak your focus...' : voiceStep === 3 ? 'Blockers...' : 'I will...'}
@@ -518,7 +594,7 @@ export default function Boot({ onComplete }) {
                   setTimeout(() => {
                     setVoiceStep(next); setVoiceQuestion(VOICE_QS[next])
                     const s = JSON.parse(localStorage.getItem('jos-settings') || '{}')
-                    if (s.voice !== false) speakElevenLabs(VOICE_QS[next]).catch(() => {})
+                    if (s.voice !== false) speakQ(VOICE_QS[next])
                   }, 300)
                 }} style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(0,240,255,0.08)', border: '1px solid rgba(0,240,255,0.3)', color: '#00f0ff', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>▸</button>
               </div>
