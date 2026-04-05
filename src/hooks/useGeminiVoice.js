@@ -180,15 +180,25 @@ export default function useGeminiVoice() {
   }, [])
 
   const playAudioChunk = useCallback((base64Audio) => {
-    if (!audioCtxRef.current) return
+    if (!audioCtxRef.current) { console.warn('[Gemini] No AudioContext for playback'); return }
     const ctx = audioCtxRef.current
     playQueueRef.current = playQueueRef.current.then(() => new Promise((resolve) => {
       try {
-        const raw = atob(base64Audio); const bytes = new Uint8Array(raw.length); for (let i=0;i<raw.length;i++) bytes[i]=raw.charCodeAt(i)
-        const int16 = new Int16Array(bytes.buffer); const float32 = new Float32Array(int16.length); for (let i=0;i<int16.length;i++) float32[i]=int16[i]/32768
-        const buffer = ctx.createBuffer(1, float32.length, 24000); buffer.getChannelData(0).set(float32)
-        const source = ctx.createBufferSource(); source.buffer = buffer; source.connect(ctx.destination); source.onended = resolve; source.start()
-      } catch { resolve() }
+        const raw = atob(base64Audio)
+        const bytes = new Uint8Array(raw.length)
+        for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
+        const int16 = new Int16Array(bytes.buffer)
+        const float32 = new Float32Array(int16.length)
+        for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768
+        console.log('[Gemini] Playing audio chunk, samples:', float32.length, 'ctx state:', ctx.state)
+        const buffer = ctx.createBuffer(1, float32.length, 24000)
+        buffer.getChannelData(0).set(float32)
+        const source = ctx.createBufferSource()
+        source.buffer = buffer
+        source.connect(ctx.destination)
+        source.onended = resolve
+        source.start()
+      } catch (err) { console.warn('[Gemini] Playback error:', err); resolve() }
     }))
   }, [])
 
@@ -210,36 +220,18 @@ export default function useGeminiVoice() {
       streamRef.current = stream
 
       const ws = new WebSocket(`wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`)
-      ws.binaryType = 'arraybuffer' // Handle binary audio responses from Gemini
       wsRef.current = ws
 
       ws.onopen = async () => {
-        console.log('[Gemini] WebSocket connected')
+        console.log('[Gemini] WebSocket connected, sending setup...')
         const instruction = await buildSystemInstruction()
-        ws.send(JSON.stringify({ setup: { model: 'models/gemini-3.1-flash-live-preview', systemInstruction: { parts: [{ text: instruction }] }, generationConfig: { responseModalities: ['AUDIO'], thinkingConfig: { thinkingBudget: 2048 }, speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: getVoiceName() } } } }, tools: GEMINI_TOOLS } }))
+        const setupMsg = { setup: { model: 'models/gemini-3.1-flash-live-preview', systemInstruction: { parts: [{ text: instruction }] }, generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: getVoiceName() } } } }, tools: GEMINI_TOOLS } }
+        console.log('[Gemini] Setup message size:', JSON.stringify(setupMsg).length)
+        ws.send(JSON.stringify(setupMsg))
       }
 
       ws.onmessage = (event) => {
-        // Binary data = raw audio from Gemini → decode and play directly
-        if (event.data instanceof ArrayBuffer) {
-          try {
-            resetSilenceTimer()
-            const int16 = new Int16Array(event.data)
-            const float32 = new Float32Array(int16.length)
-            for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768
-            if (audioCtxRef.current) {
-              const buffer = audioCtxRef.current.createBuffer(1, float32.length, 24000)
-              buffer.getChannelData(0).set(float32)
-              playQueueRef.current = playQueueRef.current.then(() => new Promise((resolve) => {
-                const source = audioCtxRef.current.createBufferSource()
-                source.buffer = buffer; source.connect(audioCtxRef.current.destination)
-                source.onended = resolve; source.start()
-              }))
-            }
-          } catch (err) { console.warn('[Gemini] Binary audio error:', err) }
-          return
-        }
-        // Text data = JSON messages (setup, transcripts, tool calls)
+        // All Gemini Live responses are JSON text (audio comes as base64 in inlineData)
         try {
           const msg = JSON.parse(event.data)
           if (msg.setupComplete) {
@@ -274,7 +266,7 @@ export default function useGeminiVoice() {
             autoDisconnectRef.current = setTimeout(() => { if (wsRef.current?.readyState === WebSocket.OPEN) disconnectFromJarvis() }, 14.5 * 60 * 1000)
             return
           }
-          if (msg.serverContent?.modelTurn?.parts) { resetSilenceTimer(); for (const part of msg.serverContent.modelTurn.parts) { if (part.inlineData?.data) playAudioChunk(part.inlineData.data); if (part.text) saveTranscript({ role: 'assistant', text: part.text, timestamp: new Date().toISOString() }) } }
+          if (msg.serverContent?.modelTurn?.parts) { resetSilenceTimer(); for (const part of msg.serverContent.modelTurn.parts) { if (part.inlineData?.data) { console.log('[Gemini] Audio chunk received, b64 length:', part.inlineData.data.length); playAudioChunk(part.inlineData.data) } if (part.text) { console.log('[Gemini] Text:', part.text.slice(0, 80)); saveTranscript({ role: 'assistant', text: part.text, timestamp: new Date().toISOString() }) } } }
           if (msg.toolCall?.functionCalls) { for (const fc of msg.toolCall.functionCalls) { console.log('[Gemini] Tool:', fc.name); const result = executeGeminiTool(fc.name, fc.args || {}, wsRef); ws.send(JSON.stringify({ toolResponse: { functionResponses: [{ id: fc.id, response: result }] } })) } }
           if (msg.serverContent?.turnComplete) resetSilenceTimer()
         } catch (err) { console.warn('[Gemini] Parse error:', err) }
@@ -323,9 +315,27 @@ export default function useGeminiVoice() {
   }
 
   function startAudioCapture(ctx, stream, ws) {
-    const source = ctx.createMediaStreamSource(stream); const processor = ctx.createScriptProcessor(4096, 1, 1); processorRef.current = processor
-    processor.onaudioprocess = (e) => { if (ws.readyState!==WebSocket.OPEN) return; const f=e.inputBuffer.getChannelData(0); const i=new Int16Array(f.length); for(let j=0;j<f.length;j++) i[j]=Math.max(-32768,Math.min(32767,Math.round(f[j]*32768))); const b=new Uint8Array(i.buffer); let s=''; for(let j=0;j<b.length;j++) s+=String.fromCharCode(b[j]); ws.send(JSON.stringify({realtimeInput:{mediaChunks:[{mimeType:'audio/pcm;rate=16000',data:btoa(s)}]}})) }
-    source.connect(processor); processor.connect(ctx.destination)
+    const source = ctx.createMediaStreamSource(stream)
+    const processor = ctx.createScriptProcessor(4096, 1, 1)
+    processorRef.current = processor
+    let audioFrameCount = 0
+    processor.onaudioprocess = (e) => {
+      if (ws.readyState !== WebSocket.OPEN) return
+      const float32 = e.inputBuffer.getChannelData(0)
+      const int16 = new Int16Array(float32.length)
+      for (let j = 0; j < float32.length; j++) int16[j] = Math.max(-32768, Math.min(32767, Math.round(float32[j] * 32768)))
+      const bytes = new Uint8Array(int16.buffer)
+      let binary = ''
+      for (let j = 0; j < bytes.length; j++) binary += String.fromCharCode(bytes[j])
+      const b64 = btoa(binary)
+      const msg = JSON.stringify({ realtimeInput: { mediaChunks: [{ mimeType: 'audio/pcm;rate=16000', data: b64 }] } })
+      ws.send(msg)
+      audioFrameCount++
+      if (audioFrameCount <= 3) console.log('[Gemini] Sent audio frame', audioFrameCount, 'size:', msg.length)
+    }
+    source.connect(processor)
+    processor.connect(ctx.destination)
+    console.log('[Gemini] Audio capture started')
   }
 
   function startTranscriptionCapture() {
