@@ -370,9 +370,7 @@ export default function useGeminiVoice() {
       let binary = ''
       for (let j = 0; j < bytes.length; j++) binary += String.fromCharCode(bytes[j])
       const b64 = btoa(binary)
-      // Gemini Live API: snake_case field names per docs
-      const msg = JSON.stringify({ realtime_input: { media_chunks: [{ mime_type: 'audio/pcm;rate=16000', data: b64 }] } })
-      // Alt (camelCase): { realtimeInput: { mediaChunks: [{ mimeType: 'audio/pcm;rate=16000', data: b64 }] } }
+      const msg = JSON.stringify({ realtimeInput: { mediaChunks: [{ mimeType: 'audio/pcm;rate=16000', data: b64 }] } })
       ws.send(msg)
       audioFrameCount++
       if (audioFrameCount <= 3) console.log('[Gemini] Sent audio frame', audioFrameCount, 'size:', msg.length)
