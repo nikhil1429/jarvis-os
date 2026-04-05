@@ -115,17 +115,6 @@ function App() {
     return () => window.removeEventListener('jarvis-sound', h)
   }, [play])
 
-  // Gemini voice navigation listener
-  useEffect(() => {
-    const h = (e) => {
-      const { tab, mode } = e.detail || {}
-      if (tab && ['cmd','train','log','dna','stats','wins'].includes(tab)) handleTabChange(tab)
-      if (tab === 'train' && mode) setTimeout(() => window.dispatchEvent(new CustomEvent('jarvis-open-mode', { detail: { mode } })), 300)
-    }
-    window.addEventListener('jarvis-navigate', h)
-    return () => window.removeEventListener('jarvis-navigate', h)
-  }, [handleTabChange])
-
   // Global toast system
   useEffect(() => {
     const handler = (e) => {
@@ -434,6 +423,17 @@ function App() {
     localStorage.setItem('jos-active-tab-name', tab)
     window.dispatchEvent(new CustomEvent('jarvis-tab-changed', { detail: { tab } }))
   }, [play, captureTab])
+
+  // Gemini voice navigation listener (must be after handleTabChange)
+  useEffect(() => {
+    const h = (e) => {
+      const { tab, mode } = e.detail || {}
+      if (tab && ['cmd','train','log','dna','stats','wins'].includes(tab)) handleTabChange(tab)
+      if (tab === 'train' && mode) setTimeout(() => window.dispatchEvent(new CustomEvent('jarvis-open-mode', { detail: { mode } })), 300)
+    }
+    window.addEventListener('jarvis-navigate', h)
+    return () => window.removeEventListener('jarvis-navigate', h)
+  }, [handleTabChange])
 
   // Global listener for jarvis-activate-mic — works from ANY tab (Bug 1 fix)
   useEffect(() => {
