@@ -195,7 +195,7 @@ export default function useGeminiVoice() {
         const state = buildCompressedState()
         ws.send(JSON.stringify({
           setup: {
-            model: 'models/gemini-2.5-flash',
+            model: 'models/gemini-3.1-flash-live-preview',
             systemInstruction: { parts: [{ text: `${SYSTEM_INSTRUCTION}\n\nCURRENT STATE: ${state}` }] },
             generationConfig: {
               responseModalities: ['AUDIO'],
