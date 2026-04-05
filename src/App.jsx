@@ -104,6 +104,17 @@ function App() {
   const { captureTab } = useAutoCapture()
   useSessionContinuity() // Auto-saves session state for inter-session memory
 
+  // Global toast system
+  useEffect(() => {
+    const handler = (e) => {
+      const { message, type, duration } = e.detail || {}
+      setToast({ message, type })
+      setTimeout(() => setToast(null), duration || 3000)
+    }
+    window.addEventListener('jarvis-toast', handler)
+    return () => window.removeEventListener('jarvis-toast', handler)
+  }, [])
+
   const [appState, setAppState] = useState(() => {
     if (!localStorage.getItem('jos-onboarding')) return 'onboarding'
     // Boot only once per day — skip to main on refresh
@@ -116,6 +127,7 @@ function App() {
   })
   const [activeTab, setActiveTab] = useState('cmd')
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [toast, setToast] = useState(null)
   const [showScanSweep, setShowScanSweep] = useState(false)
   const [showShutdown, setShowShutdown] = useState(false)
   const [showCommandLine, setShowCommandLine] = useState(false)
@@ -452,6 +464,12 @@ function App() {
 
   return (
     <div className="min-h-screen bg-void flex flex-col" style={{ position: 'relative', zIndex: 1 }}>
+      {toast && (
+        <div className={`fixed top-4 right-4 z-[100] px-4 py-2 rounded-lg font-mono text-xs
+          border backdrop-blur-md transition-all duration-300 ${
+          toast.type === 'success' ? 'bg-cyan/10 border-cyan/30 text-cyan' : 'bg-gold/10 border-gold/30 text-gold'
+        }`}>{toast.message}</div>
+      )}
       <BackgroundCanvas />
       <Header
         dayNumber={dayNumber}

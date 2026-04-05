@@ -1,17 +1,18 @@
 // GeminiVoiceButton.jsx — Floating real-time voice button
 // WHY: One-tap access to JARVIS voice conversation from any tab.
-// Gemini 2.5 Flash Live API — real-time bidirectional audio.
+// Phase 2: Triggers transcript processing after session ends.
 
 import { useState, useEffect } from 'react'
-import { Mic, MicOff, Wifi, WifiOff } from 'lucide-react'
+import { Mic } from 'lucide-react'
 import useGeminiVoice from '../hooks/useGeminiVoice.js'
+import useTranscriptProcessor from '../hooks/useTranscriptProcessor.js'
 
 export default function GeminiVoiceButton() {
   const { isConnected, isListening, error, connectToJarvis, disconnectFromJarvis, startTime } = useGeminiVoice()
+  const { processTranscript, isProcessing } = useTranscriptProcessor()
   const [elapsed, setElapsed] = useState(0)
   const [showError, setShowError] = useState(false)
 
-  // Check if Gemini voice is enabled in settings
   const enabled = (() => {
     try { return JSON.parse(localStorage.getItem('jos-settings') || '{}').geminiVoice !== false } catch { return true }
   })()
@@ -30,21 +31,24 @@ export default function GeminiVoiceButton() {
     if (error) { setShowError(true); setTimeout(() => setShowError(false), 4000) }
   }, [error])
 
+  // Process transcript after session ends
+  useEffect(() => {
+    const handler = () => { setTimeout(() => processTranscript(), 500) }
+    window.addEventListener('gemini-session-ended', handler)
+    return () => window.removeEventListener('gemini-session-ended', handler)
+  }, [processTranscript])
+
   if (!enabled) return null
 
   const handleClick = () => {
-    if (isConnected) {
-      disconnectFromJarvis()
-    } else {
-      connectToJarvis()
-    }
+    if (isConnected) disconnectFromJarvis()
+    else connectToJarvis()
   }
 
   const formatTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 
   return (
     <>
-      {/* Error toast */}
       {showError && error && (
         <div className="fixed bottom-24 right-4 z-50 max-w-xs">
           <div className="bg-red-500/15 border border-red-500/30 rounded-lg px-3 py-2">
@@ -53,7 +57,6 @@ export default function GeminiVoiceButton() {
         </div>
       )}
 
-      {/* Floating button */}
       <button
         onClick={handleClick}
         className={`fixed bottom-20 right-4 z-50 w-12 h-12 rounded-full flex items-center justify-center
@@ -69,8 +72,6 @@ export default function GeminiVoiceButton() {
         ) : (
           <Mic size={20} className="text-cyan" />
         )}
-
-        {/* LIVE badge */}
         {isConnected && (
           <span className="absolute -top-1 -right-1 flex items-center gap-0.5 bg-gold/90 text-void
             font-mono text-[7px] font-bold tracking-wider px-1.5 py-0.5 rounded-full">
@@ -80,11 +81,18 @@ export default function GeminiVoiceButton() {
         )}
       </button>
 
-      {/* Timer below button when connected */}
       {isConnected && (
         <div className="fixed bottom-[4.2rem] right-4 z-50 text-center" style={{ width: 48 }}>
           <span className="font-mono text-[9px] text-gold/70 tracking-wider">
             {formatTime(elapsed)}
+          </span>
+        </div>
+      )}
+
+      {isProcessing && (
+        <div className="fixed bottom-14 right-4 z-50 text-center" style={{ width: 48 }}>
+          <span className="font-mono text-[8px] text-cyan/50 animate-pulse tracking-wider">
+            processing
           </span>
         </div>
       )}
