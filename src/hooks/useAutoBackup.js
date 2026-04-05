@@ -30,7 +30,7 @@ export default function useAutoBackup() {
     if (now.getDay() !== 0) return // Not Sunday
 
     try {
-      const existing = JSON.parse(localStorage.getItem('jos-backup') || '{}')
+      const existing = JSON.parse(localStorage.getItem('jos-backup') || '{}') || {}
       const lastDate = existing.lastAutoBackup ? new Date(existing.lastAutoBackup) : null
       const today = now.toISOString().split('T')[0]
 

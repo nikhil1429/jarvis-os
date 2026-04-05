@@ -93,7 +93,7 @@ export default function Settings({ isOpen, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-void/90 backdrop-blur-sm">
-      <div className="glass-card w-full max-w-md max-h-[85vh] overflow-y-auto mx-4">
+      <div className="glass-card w-full max-w-md mx-4" style={{ maxHeight: '85vh', overflowY: 'auto' }}>
         <div className="hud-panel-inner p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">

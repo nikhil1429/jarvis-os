@@ -54,6 +54,7 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
   const messagesContainerRef = useRef(null)
   const inputRef = useRef(null)
   const lastJarvisStyleRef = useRef([])
+  const sessionStartIndexRef = useRef(0)
 
   // Scroll on new messages
 
@@ -214,8 +215,9 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
           })
         }
 
-        // RSD Shield — detect in-session emotional crash
-        const crash = detectInSessionCrash(messages)
+        // RSD Shield — detect in-session emotional crash (current session only)
+        const sessionMessages = messages.slice(sessionStartIndexRef.current)
+        const crash = detectInSessionCrash(sessionMessages)
         if (crash) {
           setMessages(prev => [...prev, { role: 'assistant', content: crash.text, timestamp: new Date().toISOString(), isSupport: true }])
           voice.speak(crash.text, { isVoiceCommand: true })
@@ -311,6 +313,7 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
   useEffect(() => {
     const history = get(`msgs-${mode.id}`) || []
     setMessages(history)
+    sessionStartIndexRef.current = history.length // Mark where current session starts
     modeEnterTime.current = Date.now()
     eventBus.emit('mode:enter', { mode: mode.id })
     return () => {

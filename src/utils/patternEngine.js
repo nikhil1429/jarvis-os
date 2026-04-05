@@ -21,7 +21,8 @@ export function discoverPatterns() {
     if (feelings.length < 7) return patterns
 
     const concepts = safeGet('jos-concepts', [])
-    const timerData = safeGet('jos-session-timer', [])
+    const rawTimer = safeGet('jos-session-timer', [])
+    const timerData = Array.isArray(rawTimer) ? rawTimer : []
     const apiLogs = safeGet('jos-api-logs', [])
 
     // === Pattern 1: Coffee timing vs next-day focus ===

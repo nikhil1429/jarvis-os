@@ -348,15 +348,17 @@ function App() {
     } catch { /* ok */ }
     setAppState('main')
     console.log('BOOT COMPLETE: Gemini Live voice ready')
-    // Start ambient sound
     try { play('boot') } catch { /* ok */ }
-    // Speak briefing via Gemini if connected
+    // Auto-connect Gemini voice, then speak briefing
     try {
       const weekly = JSON.parse(localStorage.getItem('jos-weekly') || '{}')
       const briefingText = weekly.briefing?.text || weekly.lastBriefing?.text
+      // Queue briefing text first (will be spoken once Gemini connects)
       if (briefingText) {
-        setTimeout(() => window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: briefingText } })), 1500)
+        window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: briefingText } }))
       }
+      // Then auto-connect Gemini (queued speech will flush on setupComplete)
+      setTimeout(() => window.dispatchEvent(new CustomEvent('gemini-auto-connect')), 500)
     } catch { /* ok */ }
     // Show boot briefing dashboard after 1s
     setTimeout(() => showDashboard('boot-briefing'), 1000)

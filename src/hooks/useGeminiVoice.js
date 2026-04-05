@@ -168,6 +168,7 @@ export default function useGeminiVoice() {
   const reconnectAttemptRef = useRef(0)
   const isAutoReconnectRef = useRef(false)
   const conversationSummaryRef = useRef(null)
+  const pendingSpeechRef = useRef(null) // Queue text to speak once connected
   const maxReconnects = 10
 
   const saveTranscript = useCallback((entry) => {
@@ -232,6 +233,16 @@ export default function useGeminiVoice() {
               const ctx = conversationSummaryRef.current
               setTimeout(() => { if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: `[SYSTEM: Session auto-renewed. Continuation ${ctx.sessionNumber}. We were discussing: ${ctx.lastTopic}. Recent:\n${ctx.summary}\n\nResume naturally. Do NOT mention reconnection.]` }] }], turnComplete: true } })) }, 500)
               isAutoReconnectRef.current = false
+            }
+            // Flush any queued speech (e.g. boot briefing sent before connection was ready)
+            if (pendingSpeechRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
+              const queued = pendingSpeechRef.current
+              pendingSpeechRef.current = null
+              setTimeout(() => {
+                if (wsRef.current?.readyState === WebSocket.OPEN) {
+                  wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: `[SYSTEM: Speak this aloud to Sir naturally in your JARVIS voice. Do not add commentary, just deliver it:]\n\n${queued}` }] }], turnComplete: true } }))
+                }
+              }, 800)
             }
             // 15-min session handling
             sessionWarningRef.current = false
@@ -307,22 +318,35 @@ export default function useGeminiVoice() {
   function logGeminiCall() { const d=startTimeRef.current?Math.round((Date.now()-startTimeRef.current)/1000):0; logAPICall({model:'gemini-3.1-flash-live',mode:'gemini-voice',inputTokens:0,outputTokens:0,latencyMs:d*1000,estimatedCost:0,reason:`Voice: ${d}s`}) }
 
   // Universal jarvis-speak: any component can request Gemini to speak text
+  // If WebSocket not open, queue for delivery once connected
   useEffect(() => {
     const h = (e) => {
       const text = e.detail?.text
-      if (!text || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+      if (!text) return
       const clean = text.replace(/\[.*?\]\s*/g, '').replace(/[*_~`#]/g, '').trim()
       if (!clean) return
-      wsRef.current.send(JSON.stringify({
-        clientContent: {
-          turns: [{ role: 'user', parts: [{ text: `[SYSTEM: Speak this aloud to Sir naturally in your JARVIS voice. Do not add commentary, just deliver it:]\n\n${clean}` }] }],
-          turnComplete: true
-        }
-      }))
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({
+          clientContent: {
+            turns: [{ role: 'user', parts: [{ text: `[SYSTEM: Speak this aloud to Sir naturally in your JARVIS voice. Do not add commentary, just deliver it:]\n\n${clean}` }] }],
+            turnComplete: true
+          }
+        }))
+      } else {
+        // Queue for delivery once connected
+        pendingSpeechRef.current = clean
+      }
     }
     window.addEventListener('jarvis-speak', h)
     return () => window.removeEventListener('jarvis-speak', h)
   }, [])
+
+  // Auto-connect: triggered by boot completion or other systems
+  useEffect(() => {
+    const h = () => { if (!wsRef.current) connectToJarvis() }
+    window.addEventListener('gemini-auto-connect', h)
+    return () => window.removeEventListener('gemini-auto-connect', h)
+  }, [connectToJarvis])
 
   // Piece 4: Handoff disconnect listener
   useEffect(() => {
