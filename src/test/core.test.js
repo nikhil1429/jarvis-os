@@ -4,11 +4,11 @@ describe('Model Router', () => {
   let getModel
   beforeEach(async () => { getModel = (await import('../utils/modelRouter.js')).getModel })
 
-  it('chat → sonnet tier 1', () => { const r = getModel('chat'); expect(r.tier).toBe(1) })
-  it('quiz → sonnet tier 1', () => { expect(getModel('quiz').tier).toBe(1) })
-  it('battle → tier 2', () => { expect(getModel('battle').tier).toBeGreaterThanOrEqual(2) })
-  it('weakness-radar → opus', () => { expect(getModel('weakness-radar').model).toContain('opus') })
-  it('default → sonnet', () => { expect(getModel('unknown-mode').tier).toBe(1) })
+  it('chat → sonnet tier 1', () => { const r = getModel('chat', { dayOfWeek: 1 }); expect(r.tier).toBe(1) })
+  it('quiz → sonnet tier 1', () => { expect(getModel('quiz', { dayOfWeek: 1 }).tier).toBe(1) })
+  it('battle → tier 2', () => { expect(getModel('battle', { dayOfWeek: 1 }).tier).toBeGreaterThanOrEqual(2) })
+  it('weakness-radar → opus', () => { expect(getModel('weakness-radar', { dayOfWeek: 1 }).model).toContain('opus') })
+  it('default → sonnet', () => { expect(getModel('unknown-mode', { dayOfWeek: 1 }).tier).toBe(1) })
 })
 
 describe('Spaced Repetition', () => {

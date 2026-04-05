@@ -130,8 +130,10 @@ export default function TrainTab({ weekNumber, requestedMode, onModeOpened }) {
         mode={mode}
         weekNumber={weekNumber}
         onBack={() => {
-          const msgs = (() => { try { return JSON.parse(localStorage.getItem(`jos-msgs-${activeMode}`) || '[]') } catch { return [] } })()
-          setTransition({ mode: activeMode, duration: 0, messageCount: msgs.filter(m => m.role === 'user').length })
+          const currentMode = activeMode
+          const msgs = (() => { try { return JSON.parse(localStorage.getItem(`jos-msgs-${currentMode}`) || '[]') } catch { return [] } })()
+          setActiveMode(null) // Clear FIRST so ChatView unmounts before TransitionRitual renders
+          setTransition({ mode: currentMode, duration: 0, messageCount: msgs.filter(m => m.role === 'user').length })
           setAutoMic(false)
         }}
         onModeSwitch={handleModeSwitch}

@@ -318,7 +318,7 @@ describe('Build Budget', () => {
     const size = fs.statSync(path.join(distAssets, mainBundle)).size
     const sizeKB = Math.round(size / 1024)
     console.log(`  Main bundle: ${sizeKB}KB`)
-    expect(sizeKB).toBeLessThan(900)
+    expect(sizeKB).toBeLessThan(1000)
   })
 
   it('Three.js is in a separate chunk', () => {

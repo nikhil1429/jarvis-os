@@ -10,13 +10,13 @@ describe('Model Router — Complete Coverage', () => {
     getModel = mod.getModel
   })
 
-  // Default routing → Sonnet
-  it('chat → Sonnet', () => { expect(getModel('chat').model).toContain('sonnet') })
-  it('quiz → Sonnet', () => { expect(getModel('quiz').model).toContain('sonnet') })
-  it('teach → Sonnet', () => { expect(getModel('teach').model).toContain('sonnet') })
-  it('body-double → Sonnet', () => { expect(getModel('body-double').model).toContain('sonnet') })
-  it('timed → Sonnet', () => { expect(getModel('timed').model).toContain('sonnet') })
-  it('speed → Sonnet', () => { expect(getModel('speed').model).toContain('sonnet') })
+  // Default routing → Sonnet (pass dayOfWeek:1 to avoid Sunday Rule 4 auto-Opus)
+  it('chat → Sonnet', () => { expect(getModel('chat', { dayOfWeek: 1 }).model).toContain('sonnet') })
+  it('quiz → Sonnet', () => { expect(getModel('quiz', { dayOfWeek: 1 }).model).toContain('sonnet') })
+  it('teach → Sonnet', () => { expect(getModel('teach', { dayOfWeek: 1 }).model).toContain('sonnet') })
+  it('body-double → Sonnet', () => { expect(getModel('body-double', { dayOfWeek: 1 }).model).toContain('sonnet') })
+  it('timed → Sonnet', () => { expect(getModel('timed', { dayOfWeek: 1 }).model).toContain('sonnet') })
+  it('speed → Sonnet', () => { expect(getModel('speed', { dayOfWeek: 1 }).model).toContain('sonnet') })
 
   // Hard modes → Opus
   it('presser → Opus', () => { expect(getModel('presser').model).toContain('opus') })
@@ -52,12 +52,12 @@ describe('Model Router — Complete Coverage', () => {
 
   // Context-based routing
   it('weak concept < 40% → Opus', () => {
-    const r = getModel('chat', { activeConcept: { strength: 30, name: 'RAG' } })
+    const r = getModel('chat', { activeConcept: { strength: 30, name: 'RAG' }, dayOfWeek: 1 })
     expect(r.model).toContain('opus')
     expect(r.reason).toMatch(/weak/i)
   })
   it('quiz score < 5 → Opus', () => {
-    const r = getModel('quiz', { lastQuizScore: 3 })
+    const r = getModel('quiz', { lastQuizScore: 3, dayOfWeek: 1 })
     expect(r.model).toContain('opus')
   })
   it('Sunday (dayOfWeek 0) → Opus', () => {
@@ -78,16 +78,16 @@ describe('Model Router — Complete Coverage', () => {
     expect(typeof getModel('presser').autoUpgraded).toBe('boolean')
   })
   it('returns estimatedCost', () => {
-    expect(getModel('chat').estimatedCost).toBeGreaterThan(0)
+    expect(getModel('chat', { dayOfWeek: 1 }).estimatedCost).toBeGreaterThan(0)
   })
   it('Sonnet costs less than Opus', () => {
-    expect(getModel('chat').estimatedCost).toBeLessThan(getModel('presser').estimatedCost)
+    expect(getModel('chat', { dayOfWeek: 1 }).estimatedCost).toBeLessThan(getModel('presser', { dayOfWeek: 1 }).estimatedCost)
   })
   it('unknown mode falls back to Sonnet', () => {
-    expect(getModel('nonexistent-mode').model).toContain('sonnet')
+    expect(getModel('nonexistent-mode', { dayOfWeek: 1 }).model).toContain('sonnet')
   })
   it('default routing is not auto-upgraded', () => {
-    expect(getModel('chat').autoUpgraded).toBe(false)
+    expect(getModel('chat', { dayOfWeek: 1 }).autoUpgraded).toBe(false)
   })
 })
 
