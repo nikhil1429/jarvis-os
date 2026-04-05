@@ -83,10 +83,36 @@ export default function useJarvisVoice() {
     recognitionRef.current = null; setSilenceCountdown(null); updateState(VS.IDLE)
   }, [updateState])
 
-  // speak() is now a no-op — all speech through Gemini Live voice
+  // speak() — browser TTS fallback for Claude training mode responses
+  // Temporary until Claude responses route through Gemini voice
   const speak = useCallback(async (text, options = {}) => {
     lastResponseRef.current = text
-    // No TTS — Gemini handles all speech. Just dispatch done event.
+    if (!text || text.length < 5) { window.dispatchEvent(new CustomEvent('jarvis-done-speaking')); return }
+
+    // Check if voice is enabled
+    try { if (JSON.parse(localStorage.getItem('jos-settings') || '{}').voice === false && !options.isVoiceCommand && !options.isMilestone) { window.dispatchEvent(new CustomEvent('jarvis-done-speaking')); return } } catch {}
+
+    // Only speak for voice-initiated conversations or explicit voice commands
+    if (lastInputMethodRef.current !== 'voice' && !options.isVoiceCommand && !options.isMilestone) {
+      window.dispatchEvent(new CustomEvent('jarvis-done-speaking')); return
+    }
+
+    // Browser TTS fallback
+    if (window.speechSynthesis) {
+      const clean = text.replace(/\[.*?\]\s*/g, '').replace(/[*_~`#]/g, '').trim()
+      if (clean) {
+        window.speechSynthesis.cancel()
+        const u = new SpeechSynthesisUtterance(clean)
+        u.lang = 'en-GB'; u.rate = 1.05; u.pitch = 0.95
+        const voices = window.speechSynthesis.getVoices()
+        const v = voices.find(x => x.lang === 'en-GB') || voices.find(x => x.lang.startsWith('en')) || voices[0]
+        if (v) u.voice = v
+        u.onend = () => window.dispatchEvent(new CustomEvent('jarvis-done-speaking'))
+        u.onerror = () => window.dispatchEvent(new CustomEvent('jarvis-done-speaking'))
+        window.speechSynthesis.speak(u)
+        return
+      }
+    }
     window.dispatchEvent(new CustomEvent('jarvis-done-speaking'))
   }, [])
 

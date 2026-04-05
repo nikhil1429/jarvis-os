@@ -578,7 +578,7 @@ function MessageBubble({ message }) {
   const isOpus = message.tier >= 2
   const isMilestone = message.isMilestone
   // Safety strip: remove any emotion tags that leaked into stored content
-  const displayContent = (message.content || '').replace(/\[\s*(?:warm|clinical|cold|hot|proud|witty|concerned|gentle|urgent|whisper|neutral|serious|dramatic|commanding)\s*\]\s*/gi, '')
+  const displayContent = stripEmotionTags(message.content || '')
   if (isUser) {
     return (
       <div className="flex justify-end">
