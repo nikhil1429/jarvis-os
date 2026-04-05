@@ -210,6 +210,7 @@ export default function useGeminiVoice() {
       streamRef.current = stream
 
       const ws = new WebSocket(`wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`)
+      ws.binaryType = 'arraybuffer' // Handle binary audio responses from Gemini
       wsRef.current = ws
 
       ws.onopen = async () => {
@@ -219,6 +220,26 @@ export default function useGeminiVoice() {
       }
 
       ws.onmessage = (event) => {
+        // Binary data = raw audio from Gemini → decode and play directly
+        if (event.data instanceof ArrayBuffer) {
+          try {
+            resetSilenceTimer()
+            const int16 = new Int16Array(event.data)
+            const float32 = new Float32Array(int16.length)
+            for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768
+            if (audioCtxRef.current) {
+              const buffer = audioCtxRef.current.createBuffer(1, float32.length, 24000)
+              buffer.getChannelData(0).set(float32)
+              playQueueRef.current = playQueueRef.current.then(() => new Promise((resolve) => {
+                const source = audioCtxRef.current.createBufferSource()
+                source.buffer = buffer; source.connect(audioCtxRef.current.destination)
+                source.onended = resolve; source.start()
+              }))
+            }
+          } catch (err) { console.warn('[Gemini] Binary audio error:', err) }
+          return
+        }
+        // Text data = JSON messages (setup, transcripts, tool calls)
         try {
           const msg = JSON.parse(event.data)
           if (msg.setupComplete) {
