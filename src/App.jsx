@@ -53,7 +53,7 @@ import VizDependencyTree from './components/viz/VizDependencyTree.jsx'
 import { getDayNumber, getWeekNumber } from './utils/dateUtils.js'
 // TTS removed — all speech through Gemini Live voice
 import useSessionContinuity from './hooks/useSessionContinuity.js'
-import { speakTheatrical, SPEECHES, getSpeechText } from './utils/theatricalSpeech.js'
+import { speakTheatrical, SPEECHES } from './utils/theatricalSpeech.js'
 import TASKS from './data/tasks.js'
 import GeminiVoiceButton from './components/GeminiVoiceButton.jsx'
 import { startInitiator, stopInitiator } from './utils/jarvisInitiator.js'

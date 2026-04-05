@@ -3,7 +3,7 @@
 // Voice Input, Voice Output, Auto-Conversation, and Voice Speed controls.
 
 import { useState, useEffect } from 'react'
-import { X, Download, Upload, Trash2, Volume2, VolumeX, Eye, EyeOff, Mic, MicOff, MessageCircle, AlertTriangle, Shield } from 'lucide-react'
+import { X, Download, Upload, Trash2, Volume2, VolumeX, Eye, EyeOff, Mic, AlertTriangle, Shield } from 'lucide-react'
 import useStorage from '../../hooks/useStorage.js'
 import { getDataHealth, runSystemDiagnostics } from '../../utils/dataIntegrity.js'
 
@@ -109,76 +109,8 @@ export default function Settings({ isOpen, onClose }) {
           </div>
 
           <div className="space-y-5">
-            {/* ElevenLabs API Key */}
+            {/* Gemini Voice section — primary voice system */}
             <div>
-              <label className="font-mono text-[10px] text-text-dim tracking-wider block mb-1.5">
-                ELEVENLABS API KEY
-              </label>
-              <input
-                type="password"
-                value={settings.elevenLabsKey || ''}
-                onChange={e => updateSetting('elevenLabsKey', e.target.value)}
-                placeholder="sk-..."
-                className="w-full bg-void border border-border rounded px-3 py-2 font-mono text-xs
-                  text-text placeholder:text-text-muted focus:outline-none focus:border-cyan transition-colors"
-              />
-            </div>
-
-            {/* Voice section header */}
-            <div className="border-t border-border pt-4">
-              <p className="font-mono text-[9px] text-text-muted tracking-widest mb-3">VOICE SYSTEM</p>
-            </div>
-
-            {/* Voice Output (TTS) */}
-            <ToggleRow
-              icon={settings.voice ? <Volume2 size={16} /> : <VolumeX size={16} />}
-              label="VOICE OUTPUT"
-              sublabel="JARVIS speaks responses aloud"
-              value={settings.voice || false}
-              onChange={v => updateSetting('voice', v)}
-            />
-
-            {/* Voice Input (STT) */}
-            <ToggleRow
-              icon={settings.voiceInput !== false ? <Mic size={16} /> : <MicOff size={16} />}
-              label="VOICE INPUT"
-              sublabel="Microphone for speech-to-text"
-              value={settings.voiceInput !== false}
-              onChange={v => updateSetting('voiceInput', v)}
-            />
-
-            {/* Auto-Conversation */}
-            <ToggleRow
-              icon={<MessageCircle size={16} />}
-              label="AUTO-CONVERSATION"
-              sublabel="Mic reactivates after JARVIS speaks"
-              value={settings.autoConversation !== false}
-              onChange={v => updateSetting('autoConversation', v)}
-            />
-
-            {/* Voice Speed */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="font-mono text-xs text-text-dim tracking-wider">VOICE SPEED</span>
-                <span className="font-mono text-xs text-cyan">{(settings.voiceSpeed || 1.0).toFixed(1)}x</span>
-              </div>
-              <input
-                type="range"
-                min="0.8"
-                max="1.5"
-                step="0.1"
-                value={settings.voiceSpeed || 1.0}
-                onChange={e => updateSetting('voiceSpeed', parseFloat(e.target.value))}
-                className="w-full accent-cyan h-1"
-              />
-              <div className="flex justify-between mt-0.5">
-                <span className="font-mono text-[9px] text-text-muted">0.8x</span>
-                <span className="font-mono text-[9px] text-text-muted">1.5x</span>
-              </div>
-            </div>
-
-            {/* Gemini Voice section */}
-            <div className="border-t border-border pt-4">
               <p className="font-mono text-[9px] text-text-muted tracking-widest mb-3">GEMINI VOICE</p>
             </div>
 
@@ -200,7 +132,7 @@ export default function Settings({ isOpen, onClose }) {
             <ToggleRow
               icon={<Mic size={16} />}
               label="GEMINI VOICE"
-              sublabel="Real-time voice via Gemini 2.5 Flash"
+              sublabel="Real-time voice via Gemini Live"
               value={settings.geminiVoice !== false}
               onChange={v => updateSetting('geminiVoice', v)}
             />
