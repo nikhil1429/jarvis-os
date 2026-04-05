@@ -504,11 +504,6 @@ function App() {
       </main>
 
       <QuickCapture />
-      <GlobalMic
-        onTap={handleGlobalMicTap}
-        onLongPress={handleGlobalMicLongPress}
-        voiceState={globalVoiceState}
-      />
       <GeminiVoiceButton />
       <BottomNav
         activeTab={activeTab}

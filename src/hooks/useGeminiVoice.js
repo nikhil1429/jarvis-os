@@ -208,6 +208,11 @@ export default function useGeminiVoice() {
   }, [])
 
   const connectToJarvis = useCallback(async () => {
+    // Guard against concurrent connections
+    if (wsRef.current && wsRef.current.readyState <= WebSocket.OPEN) {
+      console.log('[Gemini] Already connected, skipping')
+      return
+    }
     const apiKey = getApiKey()
     if (!apiKey) { setError('Gemini API key not configured. Add it in Settings.'); return }
     setError(null)
