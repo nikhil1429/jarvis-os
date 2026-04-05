@@ -1,31 +1,22 @@
 // useGeminiVoice.js — Real-time voice via Gemini 3.1 Flash Live Preview
-// WHY: WebSocket bidirectional audio. User speaks → Gemini responds real-time
-// with JARVIS personality + 11 tools + proactive behaviors + shadow processing.
-// Claude = training modes. Gemini = casual voice conversation.
+// Phase 3: Auto-reconnect, state sync, voice navigation, Claude handoff,
+// route awareness, hardware awareness, emotional calibration, vision.
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { logAPICall } from '../utils/apiLogger.js'
 import { startShadowProcessing, stopShadowProcessing } from '../utils/transcriptShadow.js'
+import { startStateSync, stopStateSync } from '../utils/geminiStateSync.js'
 
 function safeGet(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) || fallback } catch { return fallback }
 }
-
-function getApiKey() {
-  const envKey = import.meta.env.VITE_GEMINI_API_KEY
-  if (envKey) return envKey
-  try { return safeGet('jos-settings', {}).geminiApiKey || null } catch { return null }
-}
-
-function getVoiceName() {
-  try { return safeGet('jos-settings', {}).geminiVoiceName || 'Charon' } catch { return 'Charon' }
-}
+function getApiKey() { const e = import.meta.env.VITE_GEMINI_API_KEY; if (e) return e; try { return safeGet('jos-settings', {}).geminiApiKey || null } catch { return null } }
+function getVoiceName() { try { return safeGet('jos-settings', {}).geminiVoiceName || 'Charon' } catch { return 'Charon' } }
 
 // ============================================================
-// ENRICHED SYSTEM INSTRUCTION (Piece 3)
+// SYSTEM INSTRUCTION — Enriched with route, hardware, emotional calibration
 // ============================================================
-
-function buildSystemInstruction() {
+async function buildSystemInstruction() {
   const core = safeGet('jos-core', {})
   const feelings = safeGet('jos-feelings', [])
   const lastFeelings = feelings.slice(-3)
@@ -33,122 +24,129 @@ function buildSystemInstruction() {
   const concepts = safeGet('jos-concepts', [])
   const chatMsgs = safeGet('jos-msgs-chat', [])
 
-  const stateParts = [`Streak ${core.streak || 0} days. Energy ${core.energy || 3}/5. Rank: ${core.rank || 'Recruit'}.`]
-  if (lastFeelings.length > 0) {
-    const last = lastFeelings[lastFeelings.length - 1]
-    stateParts.push(`Mood: ${last.mood || 'unknown'}. Confidence: ${last.confidence || '?'}/5.`)
-  }
-  const concerns = (emotionalMem.concerns || []).filter(c => !c.resolved).slice(-2)
-  if (concerns.length) stateParts.push(`Concerns: ${concerns.map(c => c.text).join(', ')}.`)
-  const weak = concepts.filter(c => (c.strength || 0) < 40 && (c.strength || 0) > 0).slice(0, 3)
-  if (weak.length) stateParts.push(`Weak concepts: ${weak.map(c => `${c.name} (${c.strength}%)`).join(', ')}.`)
-  stateParts.push(`Tasks: ${(core.completedTasks || []).length}/82 done.`)
-  const recent = chatMsgs.slice(-5).map(m => `${m.role === 'user' ? 'Nikhil' : 'JARVIS'}: ${(m.content || '').slice(0, 80)}`).join(' | ')
-  if (recent) stateParts.push(`Recent chat: ${recent}`)
+  const sp = [`Streak ${core.streak||0} days. Energy ${core.energy||3}/5. Rank: ${core.rank||'Recruit'}.`]
+  if (lastFeelings.length) { const l = lastFeelings[lastFeelings.length-1]; sp.push(`Mood: ${l.mood||'unknown'}. Confidence: ${l.confidence||'?'}/5.`) }
+  const concerns = (emotionalMem.concerns||[]).filter(c => !c.resolved).slice(-2)
+  if (concerns.length) sp.push(`Concerns: ${concerns.map(c => c.text).join(', ')}.`)
+  const weak = concepts.filter(c => (c.strength||0) < 40 && (c.strength||0) > 0).slice(0, 3)
+  if (weak.length) sp.push(`Weak: ${weak.map(c => `${c.name} (${c.strength}%)`).join(', ')}.`)
+  sp.push(`Tasks: ${(core.completedTasks||[]).length}/82.`)
+  const recent = chatMsgs.slice(-5).map(m => `${m.role==='user'?'Nikhil':'JARVIS'}: ${(m.content||'').slice(0,80)}`).join(' | ')
+  if (recent) sp.push(`Recent: ${recent}`)
 
-  const knowledge = (() => { try { return JSON.parse(localStorage.getItem('jos-knowledge') || '[]').slice(-10).map(e => e.text).join(' | ') } catch { return '' } })()
-  const decisions = (() => { try { return JSON.parse(localStorage.getItem('jos-decisions') || '[]').slice(-5).map(e => `${e.decision} (${e.date?.slice(0,10)})`).join(' | ') } catch { return '' } })()
-  const commitments = (() => { try { return JSON.parse(localStorage.getItem('jos-commitments') || '[]').filter(x => !x.completedAt).slice(-5).map(e => e.text).join(' | ') } catch { return '' } })()
-  const lastSession = (() => { try { const s = JSON.parse(localStorage.getItem('jos-last-session') || '{}'); if (!s.date) return ''; return `Last session: ${s.date?.slice(0,10)}, ${Math.round((s.totalSessionMinutes||0)/60*10)/10}hr, energy ${s.energyAtEnd||'?'}/5. ${s.stuckPoints?.length ? 'Stuck on: ' + s.stuckPoints.join(', ') + '.' : ''}` } catch { return '' } })()
-  const geminiMeta = (() => { try { const m = JSON.parse(localStorage.getItem('jos-gemini-meta') || '[]'); const last = m[m.length-1]; if (!last) return ''; const fixes = []; if (last.characterBreaks) fixes.push('You broke character last session — stay British and formal throughout.'); if (last.depthFailures?.length) fixes.push(`Last session shallow on: ${last.depthFailures.join(', ')}. Suggest Claude training modes for these.`); return fixes.join(' ') } catch { return '' } })()
+  const knowledge = (() => { try { return JSON.parse(localStorage.getItem('jos-knowledge')||'[]').slice(-10).map(e=>e.text).join(' | ') } catch { return '' } })()
+  const decisions = (() => { try { return JSON.parse(localStorage.getItem('jos-decisions')||'[]').slice(-5).map(e=>`${e.decision} (${e.date?.slice(0,10)})`).join(' | ') } catch { return '' } })()
+  const commitments = (() => { try { return JSON.parse(localStorage.getItem('jos-commitments')||'[]').filter(x=>!x.completedAt).slice(-5).map(e=>e.text).join(' | ') } catch { return '' } })()
+  const lastSession = (() => { try { const s=JSON.parse(localStorage.getItem('jos-last-session')||'{}'); if(!s.date)return''; return `Last session: ${s.date?.slice(0,10)}, ${Math.round((s.totalSessionMinutes||0)/60*10)/10}hr. ${s.stuckPoints?.length?'Stuck: '+s.stuckPoints.join(', ')+'.':''}` } catch { return '' } })()
+  const geminiMeta = (() => { try { const m=JSON.parse(localStorage.getItem('jos-gemini-meta')||'[]'); const l=m[m.length-1]; if(!l)return''; const f=[]; if(l.characterBreaks)f.push('Stay in British JARVIS character.'); if(l.depthFailures?.length)f.push(`Shallow last time on: ${l.depthFailures.join(', ')}.`); return f.join(' ') } catch { return '' } })()
+
+  // Piece 5: Route awareness
+  const currentTab = (() => {
+    const tab = localStorage.getItem('jos-active-tab-name') || 'cmd'
+    const names = { cmd:'Command Center — tasks, battle plan', train:'Training modes', log:'Daily Log — check-ins', dna:'Concept DNA — 35 concepts', stats:'Stats & Intelligence', wins:'Achievements' }
+    return names[tab] || 'Command Center'
+  })()
+
+  // Piece 6: Hardware awareness
+  const hwParts = []
+  try { if (navigator.getBattery) { const b = await navigator.getBattery(); hwParts.push(`Battery: ${Math.round(b.level*100)}%${b.charging?' charging':''}`); if (b.level<0.15&&!b.charging) hwParts.push('LOW BATTERY') } } catch {}
+  try { const c = navigator.connection||navigator.mozConnection; if (c?.effectiveType) { hwParts.push(`Network: ${c.effectiveType}`); if (['2g','slow-2g'].includes(c.effectiveType)) hwParts.push('SLOW CONNECTION — shorter responses') } } catch {}
+  const hour = new Date().getHours()
+  if (hour >= 0 && hour < 6) hwParts.push('VERY LATE — mention sleep once')
+  else if (hour >= 22) hwParts.push('Late evening')
+
+  // Piece 7: Emotional calibration
+  const calParts = []
+  const energy = core.energy || 3
+  if (energy <= 2) calParts.push('LOW ENERGY: 1-2 sentences max. Warm, not challenging.')
+  else if (energy >= 4) calParts.push('HIGH ENERGY: Challenge him. Push harder.')
+  const todayFeeling = feelings.find(f => f.date?.startsWith(new Date().toISOString().slice(0,10)))
+  if (todayFeeling?.confidence <= 2) calParts.push('CONFIDENCE LOW: Encourage. No quizzing.')
+  if (todayFeeling?.burnoutSignals) calParts.push('BURNOUT: Prescribe rest. Brief interactions.')
+  if (todayFeeling?.impostorSignals) calParts.push('IMPOSTOR SIGNALS: Affirm with concrete achievements.')
+  if ((core.streak||0) >= 7) calParts.push(`STREAK: ${core.streak} days. Acknowledge consistency.`)
 
   let prompt = `You are JARVIS OS — Nikhil Panwar's personal AI operating system.
 Speak like JARVIS from Iron Man: formal, British, precise, dry wit. Think Paul Bettany.
-Call him "Sir" or his rank title. NEVER use "bro", "bhai", "dude", or casual slang.
-You understand Hinglish perfectly. ALWAYS respond in British English only.
-Keep responses to 2-3 sentences for voice. Be concise. No markdown. No asterisks. No emoji.
-Care through competence. Have opinions. You are not passive.
+Call him "Sir" or rank title. NEVER "bro"/"bhai"/"dude". Understand Hinglish, respond British English only.
+2-3 sentences for voice. Concise. No markdown/asterisks/emoji. Have opinions. Not passive.
 
-CURRENT STATE: ${stateParts.join(' ')}
+STATE: ${sp.join(' ')}
 
-YOUR CAPABILITIES (11 tools):
-complete tasks, get live stats, update concept strength, search knowledge base,
-search past decisions, get weak concepts, check recent mood/energy/sleep, capture thoughts,
-log journal entries, log decisions, check active commitments. Use proactively.
+14 TOOLS: complete tasks, stats, concept strength, search knowledge/decisions, weak concepts, recent feelings, quick capture, log journal/decision, commitments, navigate app, handoff to Claude, look at screen. Use proactively.
 
-PROACTIVE BEHAVIORS — trigger naturally, never force:
-- If Sir discusses an AI concept, use get_weak_concepts to check its strength. If below 40%: "That concept sits at ${'{'}strength${'}'}%, Sir. Shall I queue a deep training session?"
-- If Sir sounds frustrated or tired, acknowledge: "You sound fatigued, Sir. Perhaps we pause here."
-- If Sir makes a decision, ASK "Shall I log that decision, Sir?" and WAIT. DO NOT call log_decision until Sir explicitly says yes in the following turn. Never assume consent.
-- If Sir says something insightful, ASK "Worth capturing to Second Brain, Sir?" and WAIT. DO NOT call quick_capture until Sir confirms.
-- If Sir reflects emotionally, ASK "Shall I journal that, Sir?" and WAIT. DO NOT call log_voice_journal until Sir confirms.
-- CRITICAL TOOL RULE: For log_decision, quick_capture, and log_voice_journal — ALWAYS ask permission in one turn, then ONLY call the tool in the NEXT turn after receiving explicit "yes"/"haan"/"sure"/"go ahead". NEVER synthesize the permission question and the tool call in the same turn.
-- RULES: Never be pushy. One offer per topic. Accept "no" immediately. Never interrupt more than once per 5 minutes.
+PROACTIVE: Check concept strength when discussed. Acknowledge fatigue. ASK before logging decisions/captures/journal — WAIT for explicit yes. One offer per topic. Max 1 proactive per 5 min.
+CRITICAL: For log_decision, quick_capture, log_voice_journal — ask permission first, call tool ONLY after "yes"/"haan"/"sure" in next turn.
 
-SESSION LIMIT:
-This session has a 15-minute limit. At 13 minutes you will receive a system message.
-When you receive it, naturally inform Sir: "We are approaching our 15-minute window, Sir. Shall I reconnect after?"`
+SESSION LIMIT: 15 min. At 13 min you'll get a system message — inform Sir naturally.
+RECONNECTION: If you get [SYSTEM: Session auto-renewed], continue naturally as if nothing happened. Do NOT mention reconnection.
+CURRENT VIEW: Sir is on ${currentTab}. Acknowledge what he's viewing on first message.`
 
-  if (lastSession) prompt += `\n\nSESSION CONTINUITY: ${lastSession}`
-  if (knowledge) prompt += `\n\nRECENT LEARNINGS: ${knowledge}`
-  if (decisions) prompt += `\n\nRECENT DECISIONS: ${decisions}`
-  if (commitments) prompt += `\n\nACTIVE COMMITMENTS: ${commitments}`
-  if (geminiMeta) prompt += `\n\nSELF-CORRECTION: ${geminiMeta}`
-
+  if (lastSession) prompt += `\nCONTINUITY: ${lastSession}`
+  if (knowledge) prompt += `\nLEARNINGS: ${knowledge}`
+  if (decisions) prompt += `\nDECISIONS: ${decisions}`
+  if (commitments) prompt += `\nCOMMITMENTS: ${commitments}`
+  if (geminiMeta) prompt += `\nSELF-CORRECTION: ${geminiMeta}`
+  if (hwParts.length) prompt += `\nHARDWARE: ${hwParts.join('. ')}`
+  if (calParts.length) prompt += `\nEMOTIONAL CALIBRATION: ${calParts.join(' ')}`
   return prompt
 }
 
 // ============================================================
-// 11 GEMINI TOOLS (Piece 2)
+// 14 TOOLS
 // ============================================================
+const GEMINI_TOOLS = [{ functionDeclarations: [
+  { name: 'complete_task', description: 'Mark a build task as complete.', parameters: { type: 'OBJECT', properties: { taskId: { type: 'NUMBER' } }, required: ['taskId'] } },
+  { name: 'get_today_stats', description: 'Get live stats.', parameters: { type: 'OBJECT', properties: {} } },
+  { name: 'update_concept_strength', description: 'Update concept mastery 0-100.', parameters: { type: 'OBJECT', properties: { conceptName: { type: 'STRING' }, newStrength: { type: 'NUMBER' } }, required: ['conceptName', 'newStrength'] } },
+  { name: 'search_knowledge', description: 'Search Second Brain by keyword.', parameters: { type: 'OBJECT', properties: { query: { type: 'STRING' } }, required: ['query'] } },
+  { name: 'get_weak_concepts', description: 'Get concepts below 40%.', parameters: { type: 'OBJECT', properties: {} } },
+  { name: 'get_recent_feelings', description: 'Get last 3 days check-in data.', parameters: { type: 'OBJECT', properties: {} } },
+  { name: 'quick_capture', description: 'Save thought to Second Brain. ONLY after Sir confirms.', parameters: { type: 'OBJECT', properties: { text: { type: 'STRING' }, category: { type: 'STRING' } }, required: ['text'] } },
+  { name: 'search_decisions', description: 'Search past decisions.', parameters: { type: 'OBJECT', properties: { query: { type: 'STRING' } }, required: ['query'] } },
+  { name: 'get_active_commitments', description: 'Get active commitments.', parameters: { type: 'OBJECT', properties: {} } },
+  { name: 'log_voice_journal', description: 'Save journal entry. ONLY after Sir confirms.', parameters: { type: 'OBJECT', properties: { text: { type: 'STRING' }, mood: { type: 'STRING' } }, required: ['text'] } },
+  { name: 'log_decision', description: 'Record a decision. ONLY after Sir confirms.', parameters: { type: 'OBJECT', properties: { decision: { type: 'STRING' }, reasoning: { type: 'STRING' }, context: { type: 'STRING' } }, required: ['decision'] } },
+  { name: 'navigate_app', description: 'Switch tabs or open training modes. Use for "open", "show me", "quiz me", "go to".', parameters: { type: 'OBJECT', properties: { tab: { type: 'STRING', description: 'cmd|train|log|dna|stats|wins' }, mode: { type: 'STRING', description: 'Training mode if tab=train' }, context: { type: 'STRING' } }, required: ['tab'] } },
+  { name: 'handoff_to_claude', description: 'Transfer to Claude deep analysis. For "go deep", "teach me", "samjhao properly".', parameters: { type: 'OBJECT', properties: { mode: { type: 'STRING', description: 'quiz|teach|presser|battle' }, topic: { type: 'STRING' }, reason: { type: 'STRING' } }, required: ['topic'] } },
+  { name: 'look_at_screen', description: 'Capture and analyze current screen. For "look at this", "see this error".', parameters: { type: 'OBJECT', properties: { focus: { type: 'STRING' } } } },
+] }]
 
-const GEMINI_TOOLS = [{
-  functionDeclarations: [
-    { name: 'complete_task', description: 'Mark a build task as complete when Sir says he finished it.', parameters: { type: 'OBJECT', properties: { taskId: { type: 'NUMBER', description: 'Task ID number' } }, required: ['taskId'] } },
-    { name: 'get_today_stats', description: 'Get live stats — tasks, streak, energy, day number.', parameters: { type: 'OBJECT', properties: {} } },
-    { name: 'update_concept_strength', description: 'Update mastery strength of an AI concept after assessment.', parameters: { type: 'OBJECT', properties: { conceptName: { type: 'STRING' }, newStrength: { type: 'NUMBER', description: '0-100' } }, required: ['conceptName', 'newStrength'] } },
-    { name: 'search_knowledge', description: 'Search Second Brain knowledge base by keyword.', parameters: { type: 'OBJECT', properties: { query: { type: 'STRING', description: 'Search keyword' } }, required: ['query'] } },
-    { name: 'get_weak_concepts', description: 'Get AI concepts below 40% mastery strength.', parameters: { type: 'OBJECT', properties: {} } },
-    { name: 'get_recent_feelings', description: 'Get last 3 days of check-in data — mood, energy, confidence, sleep.', parameters: { type: 'OBJECT', properties: {} } },
-    { name: 'quick_capture', description: 'Save a thought or insight to Second Brain.', parameters: { type: 'OBJECT', properties: { text: { type: 'STRING' }, category: { type: 'STRING', description: 'insight, idea, todo, learning, or personal' } }, required: ['text'] } },
-    { name: 'search_decisions', description: 'Search past decisions by keyword.', parameters: { type: 'OBJECT', properties: { query: { type: 'STRING' } }, required: ['query'] } },
-    { name: 'get_active_commitments', description: 'Get active commitments and promises.', parameters: { type: 'OBJECT', properties: {} } },
-    { name: 'log_voice_journal', description: 'Save emotional reflection or daily recap to journal. ONLY call after Sir confirms.', parameters: { type: 'OBJECT', properties: { text: { type: 'STRING' }, mood: { type: 'STRING', description: 'energized|neutral|tired|frustrated|excited|anxious|proud|reflective' } }, required: ['text'] } },
-    { name: 'log_decision', description: 'Record a decision. ONLY call after Sir confirms.', parameters: { type: 'OBJECT', properties: { decision: { type: 'STRING' }, reasoning: { type: 'STRING' }, context: { type: 'STRING' } }, required: ['decision'] } },
-  ],
-}]
-
-function executeGeminiTool(name, args) {
-  if (name === 'complete_task') {
-    try { const core = JSON.parse(localStorage.getItem('jos-core') || '{}'); const done = core.completedTasks || []; if (!done.includes(args.taskId)) { done.push(args.taskId); core.completedTasks = done; localStorage.setItem('jos-core', JSON.stringify(core)); window.dispatchEvent(new CustomEvent('jarvis-task-toggled')) }; return { success: true, tasksCompleted: done.length } } catch (err) { return { error: err.message } }
-  }
-  if (name === 'get_today_stats') {
-    try { const core = JSON.parse(localStorage.getItem('jos-core') || '{}'); return { tasks: (core.completedTasks || []).length, total: 82, streak: core.streak || 0, energy: core.energy || 3, rank: core.rank || 'Recruit' } } catch (err) { return { error: err.message } }
-  }
-  if (name === 'update_concept_strength') {
-    try { const concepts = JSON.parse(localStorage.getItem('jos-concepts') || '[]'); const c = concepts.find(x => x.name?.toLowerCase().includes(args.conceptName?.toLowerCase())); if (c) { c.strength = Math.min(100, Math.max(0, args.newStrength)); c.lastReviewed = new Date().toISOString(); localStorage.setItem('jos-concepts', JSON.stringify(concepts)) }; return c ? { success: true, strength: c.strength } : { error: 'Concept not found' } } catch (err) { return { error: err.message } }
-  }
-  if (name === 'search_knowledge') {
-    try { const knowledge = JSON.parse(localStorage.getItem('jos-knowledge') || '[]'); const q = (args.query || '').toLowerCase(); const matches = knowledge.filter(k => (k.text || '').toLowerCase().includes(q) || (k.tags || []).some(t => t.toLowerCase().includes(q))).slice(-5).map(k => ({ text: k.text, tags: k.tags, date: k.timestamp?.slice(0, 10) })); return matches.length ? { results: matches } : { results: [], message: 'Nothing found.' } } catch (err) { return { error: err.message } }
-  }
-  if (name === 'get_weak_concepts') {
-    try { const concepts = JSON.parse(localStorage.getItem('jos-concepts') || '[]'); const weak = concepts.filter(c => (c.strength || 0) < 40).sort((a, b) => (a.strength || 0) - (b.strength || 0)).slice(0, 8).map(c => ({ name: c.name, strength: c.strength || 0, lastReviewed: c.lastReviewed?.slice(0, 10) || 'never' })); return { weakConcepts: weak, total: weak.length } } catch (err) { return { error: err.message } }
-  }
-  if (name === 'get_recent_feelings') {
-    try { const feelings = JSON.parse(localStorage.getItem('jos-feelings') || '[]'); return { recentDays: feelings.slice(-3).map(f => ({ date: f.date?.slice(0, 10), mood: f.mood, confidence: f.confidence, focus: f.focus, energy: f.energy, sleep: f.sleep })) } } catch (err) { return { error: err.message } }
-  }
-  if (name === 'quick_capture') {
-    try { const captures = JSON.parse(localStorage.getItem('jos-quick-capture') || '[]'); captures.push({ timestamp: new Date().toISOString(), text: args.text, category: args.category || 'insight', source: 'gemini-voice', processed: false }); localStorage.setItem('jos-quick-capture', JSON.stringify(captures.slice(-500))); return { success: true, message: 'Captured to Second Brain.' } } catch (err) { return { error: err.message } }
-  }
-  if (name === 'search_decisions') {
-    try { const decisions = JSON.parse(localStorage.getItem('jos-decisions') || '[]'); const q = (args.query || '').toLowerCase(); const matches = decisions.filter(d => (d.decision || '').toLowerCase().includes(q) || (d.reasoning || '').toLowerCase().includes(q)).slice(-5).map(d => ({ decision: d.decision, reasoning: d.reasoning, date: d.date?.slice(0, 10) })); return matches.length ? { results: matches } : { results: [], message: 'No decisions found.' } } catch (err) { return { error: err.message } }
-  }
-  if (name === 'get_active_commitments') {
-    try { const commitments = JSON.parse(localStorage.getItem('jos-commitments') || '[]'); return { activeCommitments: commitments.filter(c => !c.completedAt).slice(-10).map(c => ({ text: c.text, deadline: c.deadline, progress: c.progress || 0 })) } } catch (err) { return { error: err.message } }
-  }
-  if (name === 'log_voice_journal') {
-    try { const journals = JSON.parse(localStorage.getItem('jos-journal') || '[]'); journals.push({ timestamp: new Date().toISOString(), raw: args.text, extracted: { mood: args.mood || 'reflective', source: 'gemini-voice' } }); localStorage.setItem('jos-journal', JSON.stringify(journals.slice(-200))); return { success: true, message: 'Journal entry saved.' } } catch (err) { return { error: err.message } }
-  }
-  if (name === 'log_decision') {
-    try { const decisions = JSON.parse(localStorage.getItem('jos-decisions') || '[]'); decisions.push({ date: new Date().toISOString(), decision: args.decision, reasoning: args.reasoning || '', context: args.context || '', source: 'gemini-voice' }); localStorage.setItem('jos-decisions', JSON.stringify(decisions.slice(-100))); return { success: true, message: 'Decision logged.' } } catch (err) { return { error: err.message } }
-  }
+function executeGeminiTool(name, args, wsRef) {
+  if (name === 'complete_task') { try { const c=JSON.parse(localStorage.getItem('jos-core')||'{}'); const d=c.completedTasks||[]; if(!d.includes(args.taskId)){d.push(args.taskId);c.completedTasks=d;localStorage.setItem('jos-core',JSON.stringify(c));window.dispatchEvent(new CustomEvent('jarvis-task-toggled'))}; return{success:true,tasksCompleted:d.length}} catch(e){return{error:e.message}} }
+  if (name === 'get_today_stats') { try { const c=JSON.parse(localStorage.getItem('jos-core')||'{}'); return{tasks:(c.completedTasks||[]).length,total:82,streak:c.streak||0,energy:c.energy||3,rank:c.rank||'Recruit'}} catch(e){return{error:e.message}} }
+  if (name === 'update_concept_strength') { try { const cs=JSON.parse(localStorage.getItem('jos-concepts')||'[]'); const c=cs.find(x=>x.name?.toLowerCase().includes(args.conceptName?.toLowerCase())); if(c){c.strength=Math.min(100,Math.max(0,args.newStrength));c.lastReviewed=new Date().toISOString();localStorage.setItem('jos-concepts',JSON.stringify(cs))}; return c?{success:true,strength:c.strength}:{error:'Not found'}} catch(e){return{error:e.message}} }
+  if (name === 'search_knowledge') { try { const k=JSON.parse(localStorage.getItem('jos-knowledge')||'[]'); const q=(args.query||'').toLowerCase(); const m=k.filter(x=>(x.text||'').toLowerCase().includes(q)||(x.tags||[]).some(t=>t.toLowerCase().includes(q))).slice(-5).map(x=>({text:x.text,tags:x.tags,date:x.timestamp?.slice(0,10)})); return m.length?{results:m}:{results:[],message:'Nothing found.'}} catch(e){return{error:e.message}} }
+  if (name === 'get_weak_concepts') { try { const cs=JSON.parse(localStorage.getItem('jos-concepts')||'[]'); return{weakConcepts:cs.filter(c=>(c.strength||0)<40).sort((a,b)=>(a.strength||0)-(b.strength||0)).slice(0,8).map(c=>({name:c.name,strength:c.strength||0}))}} catch(e){return{error:e.message}} }
+  if (name === 'get_recent_feelings') { try { return{recentDays:JSON.parse(localStorage.getItem('jos-feelings')||'[]').slice(-3).map(f=>({date:f.date?.slice(0,10),mood:f.mood,confidence:f.confidence,energy:f.energy,sleep:f.sleep}))}} catch(e){return{error:e.message}} }
+  if (name === 'quick_capture') { try { const c=JSON.parse(localStorage.getItem('jos-quick-capture')||'[]'); c.push({timestamp:new Date().toISOString(),text:args.text,category:args.category||'insight',source:'gemini-voice'}); localStorage.setItem('jos-quick-capture',JSON.stringify(c.slice(-500))); return{success:true}} catch(e){return{error:e.message}} }
+  if (name === 'search_decisions') { try { const d=JSON.parse(localStorage.getItem('jos-decisions')||'[]'); const q=(args.query||'').toLowerCase(); return{results:d.filter(x=>(x.decision||'').toLowerCase().includes(q)).slice(-5).map(x=>({decision:x.decision,date:x.date?.slice(0,10)}))}} catch(e){return{error:e.message}} }
+  if (name === 'get_active_commitments') { try { return{activeCommitments:JSON.parse(localStorage.getItem('jos-commitments')||'[]').filter(c=>!c.completedAt).slice(-10).map(c=>({text:c.text,deadline:c.deadline}))}} catch(e){return{error:e.message}} }
+  if (name === 'log_voice_journal') { try { const j=JSON.parse(localStorage.getItem('jos-journal')||'[]'); j.push({timestamp:new Date().toISOString(),raw:args.text,extracted:{mood:args.mood||'reflective',source:'gemini-voice'}}); localStorage.setItem('jos-journal',JSON.stringify(j.slice(-200))); return{success:true}} catch(e){return{error:e.message}} }
+  if (name === 'log_decision') { try { const d=JSON.parse(localStorage.getItem('jos-decisions')||'[]'); d.push({date:new Date().toISOString(),decision:args.decision,reasoning:args.reasoning||'',context:args.context||'',source:'gemini-voice'}); localStorage.setItem('jos-decisions',JSON.stringify(d.slice(-100))); return{success:true}} catch(e){return{error:e.message}} }
+  if (name === 'navigate_app') { try { window.dispatchEvent(new CustomEvent('jarvis-navigate',{detail:{tab:args.tab,mode:args.mode,context:args.context}})); return{success:true,message:`Navigated to ${args.tab}${args.mode?' '+args.mode:''}`}} catch(e){return{error:e.message}} }
+  if (name === 'handoff_to_claude') { try { const t=JSON.parse(localStorage.getItem('jos-gemini-transcript')||'[]'); localStorage.setItem('jos-handoff-context',JSON.stringify({timestamp:new Date().toISOString(),topic:args.topic,reason:args.reason||'Depth needed',targetMode:args.mode||'teach',conversationContext:t.slice(-30).map(m=>`${m.role==='user'?'Nikhil':'JARVIS'}: ${m.text}`).join('\n'),fromGeminiSession:true})); window.dispatchEvent(new CustomEvent('jarvis-navigate',{detail:{tab:'train',mode:args.mode||'teach',context:args.topic}})); setTimeout(()=>window.dispatchEvent(new CustomEvent('jarvis-handoff-disconnect')),3000); return{success:true}} catch(e){return{error:e.message}} }
+  if (name === 'look_at_screen') { (async()=>{ try { const h=(await import('html2canvas')).default; const el=document.querySelector('[data-main-content]')||document.body; const cv=await h(el,{scale:0.5,useCORS:true,logging:false,width:Math.min(el.scrollWidth,1200),height:Math.min(el.scrollHeight,800)}); const b64=cv.toDataURL('image/jpeg',0.7).split(',')[1]; if(wsRef?.current?.readyState===WebSocket.OPEN){wsRef.current.send(JSON.stringify({clientContent:{turns:[{role:'user',parts:[{inlineData:{mimeType:'image/jpeg',data:b64}},{text:`[VISION: Screen capture. Focus: ${args.focus||'full screen'}. Describe what you see.]`}]}],turnComplete:true}}))} } catch(e){console.warn('[Vision]',e)} })(); return{success:true,message:'Screen captured.'} }
   return { error: `Unknown tool: ${name}` }
+}
+
+// ============================================================
+// CONVERSATION SUMMARY for auto-reconnect
+// ============================================================
+function buildConversationSummary(reconnectCount) {
+  try {
+    const t = JSON.parse(localStorage.getItem('jos-gemini-transcript') || '[]')
+    const recent = t.slice(-20)
+    if (!recent.length) return null
+    const summary = recent.map(m => `${m.role==='user'?'Nikhil':'JARVIS'}: ${(m.text||'').slice(0,100)}`).join('\n')
+    const lastUser = [...recent].reverse().find(m => m.role === 'user')
+    return { summary, lastTopic: lastUser?.text?.slice(0,150) || 'general', sessionNumber: reconnectCount + 1 }
+  } catch { return null }
 }
 
 // ============================================================
 // HOOK
 // ============================================================
-
 export default function useGeminiVoice() {
   const [isConnected, setIsConnected] = useState(false)
   const [isListening, setIsListening] = useState(false)
@@ -166,11 +164,16 @@ export default function useGeminiVoice() {
   const sessionTimerRef = useRef(null)
   const sessionWarningRef = useRef(false)
   const autoDisconnectRef = useRef(null)
+  // Piece 1: Auto-reconnect refs
+  const reconnectAttemptRef = useRef(0)
+  const isAutoReconnectRef = useRef(false)
+  const conversationSummaryRef = useRef(null)
+  const maxReconnects = 10
 
   const saveTranscript = useCallback((entry) => {
     setTranscript(prev => {
       const updated = [...prev, entry].slice(-200)
-      try { localStorage.setItem('jos-gemini-transcript', JSON.stringify(updated)) } catch { /* ok */ }
+      try { localStorage.setItem('jos-gemini-transcript', JSON.stringify(updated)) } catch {}
       return updated
     })
   }, [])
@@ -180,139 +183,97 @@ export default function useGeminiVoice() {
     const ctx = audioCtxRef.current
     playQueueRef.current = playQueueRef.current.then(() => new Promise((resolve) => {
       try {
-        const raw = atob(base64Audio)
-        const bytes = new Uint8Array(raw.length)
-        for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
-        const int16 = new Int16Array(bytes.buffer)
-        const float32 = new Float32Array(int16.length)
-        for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768
-        const buffer = ctx.createBuffer(1, float32.length, 24000)
-        buffer.getChannelData(0).set(float32)
-        const source = ctx.createBufferSource()
-        source.buffer = buffer
-        source.connect(ctx.destination)
-        source.onended = resolve
-        source.start()
+        const raw = atob(base64Audio); const bytes = new Uint8Array(raw.length); for (let i=0;i<raw.length;i++) bytes[i]=raw.charCodeAt(i)
+        const int16 = new Int16Array(bytes.buffer); const float32 = new Float32Array(int16.length); for (let i=0;i<int16.length;i++) float32[i]=int16[i]/32768
+        const buffer = ctx.createBuffer(1, float32.length, 24000); buffer.getChannelData(0).set(float32)
+        const source = ctx.createBufferSource(); source.buffer = buffer; source.connect(ctx.destination); source.onended = resolve; source.start()
       } catch { resolve() }
     }))
   }, [])
 
   const resetSilenceTimer = useCallback(() => {
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
-    silenceTimerRef.current = setTimeout(() => {
-      console.log('[Gemini] 30s silence — auto-disconnecting')
-      disconnectFromJarvis()
-    }, 30000)
+    silenceTimerRef.current = setTimeout(() => { console.log('[Gemini] 30s silence'); disconnectFromJarvis() }, 30000)
   }, [])
 
   const connectToJarvis = useCallback(async () => {
     const apiKey = getApiKey()
     if (!apiKey) { setError('Gemini API key not configured. Add it in Settings.'); return }
     setError(null)
+    if (!isAutoReconnectRef.current) reconnectAttemptRef.current = 0
 
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 })
-      await ctx.resume()
-      audioCtxRef.current = ctx
+      await ctx.resume(); audioCtxRef.current = ctx
       const stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1 } })
       streamRef.current = stream
 
-      const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`
-      const ws = new WebSocket(wsUrl)
+      const ws = new WebSocket(`wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`)
       wsRef.current = ws
 
-      ws.onopen = () => {
+      ws.onopen = async () => {
         console.log('[Gemini] WebSocket connected')
-        ws.send(JSON.stringify({
-          setup: {
-            model: 'models/gemini-3.1-flash-live-preview',
-            systemInstruction: { parts: [{ text: buildSystemInstruction() }] },
-            generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: getVoiceName() } } } },
-            tools: GEMINI_TOOLS,
-          }
-        }))
+        const instruction = await buildSystemInstruction()
+        ws.send(JSON.stringify({ setup: { model: 'models/gemini-3.1-flash-live-preview', systemInstruction: { parts: [{ text: instruction }] }, generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: getVoiceName() } } } }, tools: GEMINI_TOOLS } }))
       }
 
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data)
-
           if (msg.setupComplete) {
-            console.log('[Gemini] Setup complete')
-            setIsConnected(true)
-            setIsListening(true)
-            startTimeRef.current = Date.now()
-            startAudioCapture(ctx, stream, ws)
-            startTranscriptionCapture()
-            resetSilenceTimer()
-
-            // Shadow processing — Claude processes transcript every 5 min
-            startShadowProcessing(() => {
-              try { return JSON.parse(localStorage.getItem('jos-gemini-transcript') || '[]') } catch { return [] }
-            })
-
-            // 15-min session limit: warn at 13 min
+            setIsConnected(true); setIsListening(true); startTimeRef.current = Date.now()
+            startAudioCapture(ctx, stream, ws); startTranscriptionCapture(); resetSilenceTimer()
+            startShadowProcessing(() => { try { return JSON.parse(localStorage.getItem('jos-gemini-transcript')||'[]') } catch { return [] } })
+            startStateSync(() => wsRef.current)
+            // Piece 10: Connect sound
+            window.dispatchEvent(new CustomEvent('jarvis-sound', { detail: { sound: isAutoReconnectRef.current ? 'geminiReconnect' : 'geminiConnect' } }))
+            // Piece 1: Inject conversation context on reconnect
+            if (isAutoReconnectRef.current && conversationSummaryRef.current) {
+              const ctx = conversationSummaryRef.current
+              setTimeout(() => { if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: `[SYSTEM: Session auto-renewed. Continuation ${ctx.sessionNumber}. We were discussing: ${ctx.lastTopic}. Recent:\n${ctx.summary}\n\nResume naturally. Do NOT mention reconnection.]` }] }], turnComplete: true } })) }, 500)
+              isAutoReconnectRef.current = false
+            }
+            // 15-min session handling
             sessionWarningRef.current = false
             sessionTimerRef.current = setTimeout(() => {
-              if (wsRef.current?.readyState !== WebSocket.OPEN) return
-              sessionWarningRef.current = true
-              let attempts = 0
-              const trySendWarning = () => {
-                attempts++
-                if (attempts >= 30 || wsRef.current?.readyState === WebSocket.OPEN) {
-                  if (wsRef.current?.readyState === WebSocket.OPEN) {
-                    wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: '[SYSTEM: Session approaching 15-minute limit. Inform Sir naturally and ask if he wants to reconnect after.]' }] }], turnComplete: true } }))
-                  }
-                  return
-                }
-                setTimeout(trySendWarning, 500)
-              }
-              trySendWarning()
+              if (wsRef.current?.readyState !== WebSocket.OPEN) return; sessionWarningRef.current = true
+              let att = 0; const trySend = () => { att++; if (att >= 30 || wsRef.current?.readyState === WebSocket.OPEN) { if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: '[SYSTEM: Session approaching 15-minute limit. Inform Sir naturally.]' }] }], turnComplete: true } })); return }; setTimeout(trySend, 500) }; trySend()
             }, 13 * 60 * 1000)
-
-            // Auto-disconnect at 14:30
-            autoDisconnectRef.current = setTimeout(() => {
-              if (wsRef.current?.readyState === WebSocket.OPEN) {
-                console.log('[Gemini] 14:30 — auto-disconnecting before 15-min limit')
-                disconnectFromJarvis()
-              }
-            }, 14.5 * 60 * 1000)
-
+            autoDisconnectRef.current = setTimeout(() => { if (wsRef.current?.readyState === WebSocket.OPEN) disconnectFromJarvis() }, 14.5 * 60 * 1000)
             return
           }
-
-          if (msg.serverContent?.modelTurn?.parts) {
-            resetSilenceTimer()
-            for (const part of msg.serverContent.modelTurn.parts) {
-              if (part.inlineData?.data) playAudioChunk(part.inlineData.data)
-              if (part.text) saveTranscript({ role: 'assistant', text: part.text, timestamp: new Date().toISOString() })
-            }
-          }
-
-          if (msg.toolCall?.functionCalls) {
-            for (const fc of msg.toolCall.functionCalls) {
-              console.log('[Gemini] Tool call:', fc.name, fc.args)
-              const result = executeGeminiTool(fc.name, fc.args || {})
-              ws.send(JSON.stringify({ toolResponse: { functionResponses: [{ id: fc.id, response: result }] } }))
-            }
-          }
-
+          if (msg.serverContent?.modelTurn?.parts) { resetSilenceTimer(); for (const part of msg.serverContent.modelTurn.parts) { if (part.inlineData?.data) playAudioChunk(part.inlineData.data); if (part.text) saveTranscript({ role: 'assistant', text: part.text, timestamp: new Date().toISOString() }) } }
+          if (msg.toolCall?.functionCalls) { for (const fc of msg.toolCall.functionCalls) { console.log('[Gemini] Tool:', fc.name); const result = executeGeminiTool(fc.name, fc.args || {}, wsRef); ws.send(JSON.stringify({ toolResponse: { functionResponses: [{ id: fc.id, response: result }] } })) } }
           if (msg.serverContent?.turnComplete) resetSilenceTimer()
-        } catch (err) { console.warn('[Gemini] Message parse error:', err) }
+        } catch (err) { console.warn('[Gemini] Parse error:', err) }
       }
 
-      ws.onerror = () => { setError('Voice connection failed. Check your API key.'); cleanup() }
-      ws.onclose = () => {
-        console.log('[Gemini] WebSocket closed')
+      ws.onerror = () => { setError('Voice connection failed.'); cleanup() }
+
+      // Piece 1: Auto-reconnect on close
+      ws.onclose = (event) => {
+        console.log('[Gemini] Closed, code:', event.code)
         logGeminiCall()
-        cleanup()
         window.dispatchEvent(new CustomEvent('gemini-session-ended'))
+        const wasManual = event.code === 1000 && !sessionWarningRef.current
+        if (!wasManual && reconnectAttemptRef.current < maxReconnects) {
+          conversationSummaryRef.current = buildConversationSummary(reconnectAttemptRef.current)
+          isAutoReconnectRef.current = true; reconnectAttemptRef.current++
+          console.log(`[Gemini] Auto-reconnect ${reconnectAttemptRef.current}/${maxReconnects}`)
+          window.dispatchEvent(new CustomEvent('jarvis-sound', { detail: { sound: 'geminiReconnect' } }))
+          cleanup(); setTimeout(() => connectToJarvis(), 1500)
+        } else {
+          conversationSummaryRef.current = null; isAutoReconnectRef.current = false; reconnectAttemptRef.current = 0; cleanup()
+        }
       }
     } catch (err) { console.error('[Gemini] Connect failed:', err); setError(err.message); cleanup() }
   }, [playAudioChunk, saveTranscript, resetSilenceTimer])
 
   const disconnectFromJarvis = useCallback(() => {
-    if (wsRef.current) try { wsRef.current.close() } catch { /* ok */ }
+    reconnectAttemptRef.current = maxReconnects // prevent auto-reconnect
+    isAutoReconnectRef.current = false; conversationSummaryRef.current = null
+    window.dispatchEvent(new CustomEvent('jarvis-sound', { detail: { sound: 'geminiDisconnect' } }))
+    if (wsRef.current) try { wsRef.current.close(1000, 'manual') } catch {}
     cleanup()
   }, [])
 
@@ -321,54 +282,38 @@ export default function useGeminiVoice() {
     if (sessionTimerRef.current) clearTimeout(sessionTimerRef.current)
     if (autoDisconnectRef.current) clearTimeout(autoDisconnectRef.current)
     sessionWarningRef.current = false
-    stopShadowProcessing()
-    if (processorRef.current) { try { processorRef.current.disconnect() } catch { /* ok */ } processorRef.current = null }
+    stopShadowProcessing(); stopStateSync()
+    if (processorRef.current) { try { processorRef.current.disconnect() } catch {} processorRef.current = null }
     if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null }
-    if (audioCtxRef.current) { try { audioCtxRef.current.close() } catch { /* ok */ } audioCtxRef.current = null }
-    if (recognitionRef.current) { try { recognitionRef.current.stop() } catch { /* ok */ } recognitionRef.current = null }
-    wsRef.current = null
-    setIsConnected(false)
-    setIsListening(false)
+    if (audioCtxRef.current) { try { audioCtxRef.current.close() } catch {} audioCtxRef.current = null }
+    if (recognitionRef.current) { try { recognitionRef.current.stop() } catch {} recognitionRef.current = null }
+    wsRef.current = null; setIsConnected(false); setIsListening(false)
   }
 
   function startAudioCapture(ctx, stream, ws) {
-    const source = ctx.createMediaStreamSource(stream)
-    const processor = ctx.createScriptProcessor(4096, 1, 1)
-    processorRef.current = processor
-    processor.onaudioprocess = (e) => {
-      if (ws.readyState !== WebSocket.OPEN) return
-      const float32 = e.inputBuffer.getChannelData(0)
-      const int16 = new Int16Array(float32.length)
-      for (let i = 0; i < float32.length; i++) int16[i] = Math.max(-32768, Math.min(32767, Math.round(float32[i] * 32768)))
-      const bytes = new Uint8Array(int16.buffer)
-      let binary = ''
-      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
-      ws.send(JSON.stringify({ realtimeInput: { mediaChunks: [{ mimeType: 'audio/pcm;rate=16000', data: btoa(binary) }] } }))
-    }
-    source.connect(processor)
-    processor.connect(ctx.destination)
+    const source = ctx.createMediaStreamSource(stream); const processor = ctx.createScriptProcessor(4096, 1, 1); processorRef.current = processor
+    processor.onaudioprocess = (e) => { if (ws.readyState!==WebSocket.OPEN) return; const f=e.inputBuffer.getChannelData(0); const i=new Int16Array(f.length); for(let j=0;j<f.length;j++) i[j]=Math.max(-32768,Math.min(32767,Math.round(f[j]*32768))); const b=new Uint8Array(i.buffer); let s=''; for(let j=0;j<b.length;j++) s+=String.fromCharCode(b[j]); ws.send(JSON.stringify({realtimeInput:{mediaChunks:[{mimeType:'audio/pcm;rate=16000',data:btoa(s)}]}})) }
+    source.connect(processor); processor.connect(ctx.destination)
   }
 
   function startTranscriptionCapture() {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SR) return
-    const recognition = new SR()
-    recognition.lang = 'en-IN'
-    recognition.continuous = true
-    recognition.interimResults = false
-    recognitionRef.current = recognition
-    recognition.onresult = (e) => { for (let i = e.resultIndex; i < e.results.length; i++) { if (e.results[i].isFinal) { const text = e.results[i][0].transcript.trim(); if (text) saveTranscript({ role: 'user', text, timestamp: new Date().toISOString() }) } } }
-    recognition.onend = () => { if (wsRef.current?.readyState === WebSocket.OPEN) try { recognition.start() } catch { /* ok */ } }
-    recognition.onerror = () => {}
-    try { recognition.start() } catch { /* ok */ }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition; if (!SR) return
+    const r = new SR(); r.lang = 'en-IN'; r.continuous = true; r.interimResults = false; recognitionRef.current = r
+    r.onresult = (e) => { for (let i=e.resultIndex;i<e.results.length;i++) if (e.results[i].isFinal) { const t=e.results[i][0].transcript.trim(); if(t) saveTranscript({role:'user',text:t,timestamp:new Date().toISOString()}) } }
+    r.onend = () => { if (wsRef.current?.readyState === WebSocket.OPEN) try { r.start() } catch {} }
+    r.onerror = () => {}; try { r.start() } catch {}
   }
 
-  function logGeminiCall() {
-    const duration = startTimeRef.current ? Math.round((Date.now() - startTimeRef.current) / 1000) : 0
-    logAPICall({ model: 'gemini-3.1-flash-live', mode: 'gemini-voice', inputTokens: 0, outputTokens: 0, latencyMs: duration * 1000, estimatedCost: 0, reason: `Voice session: ${duration}s` })
-  }
+  function logGeminiCall() { const d=startTimeRef.current?Math.round((Date.now()-startTimeRef.current)/1000):0; logAPICall({model:'gemini-3.1-flash-live',mode:'gemini-voice',inputTokens:0,outputTokens:0,latencyMs:d*1000,estimatedCost:0,reason:`Voice: ${d}s`}) }
 
-  useEffect(() => { return () => { if (wsRef.current) try { wsRef.current.close() } catch { /* ok */ }; cleanup() } }, [])
+  // Piece 4: Handoff disconnect listener
+  useEffect(() => {
+    const h = () => { reconnectAttemptRef.current = maxReconnects; disconnectFromJarvis() }
+    window.addEventListener('jarvis-handoff-disconnect', h)
+    return () => window.removeEventListener('jarvis-handoff-disconnect', h)
+  }, [disconnectFromJarvis])
+
+  useEffect(() => { return () => { if (wsRef.current) try { wsRef.current.close() } catch {}; cleanup() } }, [])
 
   return { isConnected, isListening, transcript, error, connectToJarvis, disconnectFromJarvis, startTime: startTimeRef.current }
 }

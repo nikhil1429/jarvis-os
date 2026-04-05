@@ -295,6 +295,14 @@ export default function useAI() {
         if (avoidanceCtx) systemPrompt += '\n\n' + avoidanceCtx
         const selfLearnCtx = getSelfLearningPrompt()
         if (selfLearnCtx) systemPrompt += '\n\n' + selfLearnCtx
+        // Gemini voice handoff context
+        try {
+          const handoff = JSON.parse(localStorage.getItem('jos-handoff-context') || 'null')
+          if (handoff?.fromGeminiSession && (Date.now() - new Date(handoff.timestamp).getTime()) < 30 * 60000) {
+            systemPrompt += `\n\nVOICE HANDOFF: Sir was discussing "${handoff.topic}" in voice. Reason: ${handoff.reason}.\nRecent voice conversation:\n${handoff.conversationContext}\n\nContinue from where voice left off. Go deeper. Acknowledge: "Picking up from your voice session, Sir."`
+            localStorage.removeItem('jos-handoff-context')
+          }
+        } catch {}
       } catch { /* ok — intelligence prompts optional */ }
 
       // Load conversation history for this mode (last 50 messages)

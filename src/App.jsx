@@ -56,6 +56,7 @@ import useSessionContinuity from './hooks/useSessionContinuity.js'
 import { speakTheatrical, SPEECHES, getSpeechText } from './utils/theatricalSpeech.js'
 import TASKS from './data/tasks.js'
 import GeminiVoiceButton from './components/GeminiVoiceButton.jsx'
+import { startInitiator, stopInitiator } from './utils/jarvisInitiator.js'
 
 const DEFAULT_KEYS = {
   core: { startDate: new Date().toISOString(), totalCheckIns: 0, streak: 0, rank: 'Recruit', completedTasks: [], energy: 3 },
@@ -103,6 +104,27 @@ function App() {
   const eventBus = useEventBus()
   const { captureTab } = useAutoCapture()
   useSessionContinuity() // Auto-saves session state for inter-session memory
+
+  // JARVIS initiator — proactive check every 60s
+  useEffect(() => { const id = startInitiator(); return () => stopInitiator(id) }, [])
+
+  // Gemini acoustic cues listener
+  useEffect(() => {
+    const h = (e) => { const s = e.detail?.sound; if (s) play(s) }
+    window.addEventListener('jarvis-sound', h)
+    return () => window.removeEventListener('jarvis-sound', h)
+  }, [play])
+
+  // Gemini voice navigation listener
+  useEffect(() => {
+    const h = (e) => {
+      const { tab, mode } = e.detail || {}
+      if (tab && ['cmd','train','log','dna','stats','wins'].includes(tab)) handleTabChange(tab)
+      if (tab === 'train' && mode) setTimeout(() => window.dispatchEvent(new CustomEvent('jarvis-open-mode', { detail: { mode } })), 300)
+    }
+    window.addEventListener('jarvis-navigate', h)
+    return () => window.removeEventListener('jarvis-navigate', h)
+  }, [handleTabChange])
 
   // Global toast system
   useEffect(() => {
@@ -409,6 +431,8 @@ function App() {
     captureTab(tab)
     play('tab')
     if (tab === 'cmd') setHasPulse(false)
+    localStorage.setItem('jos-active-tab-name', tab)
+    window.dispatchEvent(new CustomEvent('jarvis-tab-changed', { detail: { tab } }))
   }, [play, captureTab])
 
   // Global listener for jarvis-activate-mic — works from ANY tab (Bug 1 fix)
@@ -463,7 +487,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-void flex flex-col" style={{ position: 'relative', zIndex: 1 }}>
+    <div data-active-tab={activeTab} className="min-h-screen bg-void flex flex-col" style={{ position: 'relative', zIndex: 1 }}>
       {toast && (
         <div className={`fixed top-4 right-4 z-[100] px-4 py-2 rounded-lg font-mono text-xs
           border backdrop-blur-md transition-all duration-300 ${
@@ -483,7 +507,7 @@ function App() {
       />
 
       {showScanSweep && <div className="scan-sweep-full" />}
-      <main ref={contentRef} className="flex-1 pb-28 px-4 pt-4">
+      <main data-main-content ref={contentRef} className="flex-1 pb-28 px-4 pt-4">
         {renderTab()}
       </main>
 
