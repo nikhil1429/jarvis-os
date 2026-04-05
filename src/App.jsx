@@ -51,7 +51,7 @@ import useReportGenerator from './hooks/useReportGenerator.js'
 import DashboardOverlay from './components/viz/DashboardOverlay.jsx'
 import VizDependencyTree from './components/viz/VizDependencyTree.jsx'
 import { getDayNumber, getWeekNumber } from './utils/dateUtils.js'
-import { jarvisSpeak, jarvisStop, preCacheCommonPhrases, preWarmServer } from './utils/jarvisSpeaker.js'
+// TTS removed — all speech through Gemini Live voice
 import useSessionContinuity from './hooks/useSessionContinuity.js'
 import { speakTheatrical, SPEECHES, getSpeechText } from './utils/theatricalSpeech.js'
 import TASKS from './data/tasks.js'
@@ -266,15 +266,7 @@ function App() {
     if (isSupabaseConfigured()) syncOnBoot()
   }, [])
 
-  // Chrome voices load async — reset cache when they arrive
-  useEffect(() => {
-    if (window.speechSynthesis) {
-      window.speechSynthesis.onvoiceschanged = () => {
-        window._jarvisVoice = null // Reset cache so next speak picks voice
-        console.log('VOICES: loaded', window.speechSynthesis.getVoices().length, 'voices')
-      }
-    }
-  }, [])
+  // Voice init removed — Gemini Live handles all speech
 
   const core = get('core') || DEFAULT_KEYS.core
   const dayNumber = getDayNumber(core.startDate)
@@ -301,7 +293,7 @@ function App() {
 
       // Theatrical speech: dramatic pauses between segments
       const segments = SPEECHES.rankUp(newRank)
-      speakTheatrical(segments, jarvisSpeak)
+      speakTheatrical(segments, (() => {}))
 
       setTimeout(() => setRankUpOverlay(null), 7000)
     }
@@ -339,9 +331,9 @@ function App() {
         const theatricalKey = `milestone${ms.pct}`
         const segments = SPEECHES[theatricalKey]
         if (segments) {
-          speakTheatrical(segments, jarvisSpeak)
+          speakTheatrical(segments, (() => {}))
         } else {
-          jarvisSpeak(ms.speech)
+          (() => {})(ms.speech)
         }
 
         // Dismiss after longer duration for theatrical
@@ -362,10 +354,7 @@ function App() {
     } catch { /* ok */ }
     setAppState('main')
     window._briefingStopped = false
-    console.log('BOOT COMPLETE: voice server warming, phrase cache starting')
-    // Pre-warm voice server + cache common phrases in background
-    preWarmServer()
-    setTimeout(() => preCacheCommonPhrases(), 2000) // after boot settles
+    console.log('BOOT COMPLETE: Gemini Live voice ready')
     // Start ambient sound
     try { play('boot') } catch { /* ok */ }
     // Show boot briefing dashboard after 1s

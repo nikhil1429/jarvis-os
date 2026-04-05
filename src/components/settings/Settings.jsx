@@ -3,7 +3,7 @@
 // Voice Input, Voice Output, Auto-Conversation, and Voice Speed controls.
 
 import { useState, useEffect } from 'react'
-import { X, Download, Upload, Trash2, Volume2, VolumeX, Eye, EyeOff, Mic, MicOff, MessageCircle, AlertTriangle, Shield, Radio } from 'lucide-react'
+import { X, Download, Upload, Trash2, Volume2, VolumeX, Eye, EyeOff, Mic, MicOff, MessageCircle, AlertTriangle, Shield } from 'lucide-react'
 import useStorage from '../../hooks/useStorage.js'
 import { getDataHealth, runSystemDiagnostics } from '../../utils/dataIntegrity.js'
 
@@ -176,9 +176,6 @@ export default function Settings({ isOpen, onClose }) {
                 <span className="font-mono text-[9px] text-text-muted">1.5x</span>
               </div>
             </div>
-
-            {/* Local Voice Server */}
-            <LocalVoiceServerToggle settings={settings} updateSetting={updateSetting} />
 
             {/* Gemini Voice section */}
             <div className="border-t border-border pt-4">
@@ -484,62 +481,6 @@ export default function Settings({ isOpen, onClose }) {
           </div>
         </div>
       </div>
-    </div>
-  )
-}
-
-function LocalVoiceServerToggle({ settings, updateSetting }) {
-  const [status, setStatus] = useState('checking')
-
-  useEffect(() => {
-    if (settings.localVoiceServer === false) { setStatus('disabled'); return }
-    let cancelled = false
-    const check = async () => {
-      try {
-        const res = await fetch('http://localhost:8100/health', { signal: AbortSignal.timeout(2000) })
-        if (!cancelled) setStatus(res.ok ? 'online' : 'offline')
-      } catch {
-        if (!cancelled) setStatus('offline')
-      }
-    }
-    check()
-    const interval = setInterval(check, 10000)
-    return () => { cancelled = true; clearInterval(interval) }
-  }, [settings.localVoiceServer])
-
-  const statusColor = status === 'online' ? '#10b981' : status === 'offline' ? '#ef4444' : status === 'disabled' ? '#5a7a94' : '#d4a853'
-  const statusLabel = status === 'online' ? 'CONNECTED' : status === 'offline' ? 'OFFLINE' : status === 'disabled' ? 'DISABLED' : 'CHECKING...'
-
-  return (
-    <div>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className={settings.localVoiceServer !== false ? 'text-cyan' : 'text-text-muted'}>
-            <Radio size={16} />
-          </span>
-          <div>
-            <span className="font-mono text-xs text-text-dim tracking-wider">LOCAL VOICE SERVER</span>
-            <p className="font-mono text-[9px] text-text-muted">Pocket-TTS with emotion routing</p>
-          </div>
-        </div>
-        <button
-          onClick={() => updateSetting('localVoiceServer', settings.localVoiceServer === false ? true : false)}
-          className={`w-10 h-5 rounded-full transition-all duration-200 relative ${
-            settings.localVoiceServer !== false ? 'bg-cyan/30' : 'bg-border'
-          }`}
-        >
-          <div className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-200 ${
-            settings.localVoiceServer !== false ? 'left-5 bg-cyan' : 'left-0.5 bg-text-muted'
-          }`} />
-        </button>
-      </div>
-      {settings.localVoiceServer !== false && (
-        <div className="flex items-center gap-1.5 mt-1.5 ml-6">
-          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: statusColor }} />
-          <span className="font-mono text-[9px] tracking-wider" style={{ color: statusColor }}>{statusLabel}</span>
-          <span className="font-mono text-[9px] text-text-muted">localhost:8100</span>
-        </div>
-      )}
     </div>
   )
 }

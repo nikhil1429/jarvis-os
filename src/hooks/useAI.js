@@ -259,9 +259,8 @@ export default function useAI() {
         systemPrompt += `\n\n--- BEHAVIORAL ENGINE ---\n${behavior.promptModifier}`
         systemPrompt += `\n\nCURRENT SIGNALS:\n- Energy: ${behavior.signals.energy}/5\n- Streak: ${behavior.signals.streak} days\n- Mood: "${behavior.signals.mood}"\n- Time: ${behavior.signals.hour}:${String(new Date().getMinutes()).padStart(2, '0')}\n- Session: ${behavior.signals.sessionHours} hours\n- Meds: ${behavior.signals.medsWearingOff ? 'wearing off' : 'active'}\n- Sleep: ${behavior.signals.sleep}/5\n- Rank: ${behavior.signals.rank}\n- Week: ${behavior.signals.weekNumber}`
 
-        // Store voice directives globally for jarvisVoice.js to read
+        // Store behavior flags globally
         if (typeof window !== 'undefined') {
-          window.__jarvisVoiceDirectives = behavior.voiceDirectives
           window.__jarvisBehaviorFlags = behavior.behaviorFlags
         }
 

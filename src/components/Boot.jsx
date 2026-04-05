@@ -8,7 +8,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import useStorage from '../hooks/useStorage.js'
 import { getDayNumber, getWeekNumber, getTimeOfDay } from '../utils/dateUtils.js'
-import { jarvisSpeak, jarvisStop } from '../utils/jarvisSpeaker.js'
+// TTS removed — Gemini Live handles speech
 import BootReactor from './BootReactor.jsx'
 import TASKS from '../data/tasks.js'
 
@@ -87,8 +87,6 @@ Write 3-5 sentence briefing in JARVIS voice (formal British, "Sir"). Under 100 w
 // ============================================================
 export default function Boot({ onComplete }) {
   const { get, update } = useStorage()
-  // Voice: universal jarvisSpeak (Pocket-TTS > browser fallback)
-
   const [phase, setPhase] = useState(1)
   const [reactorVisible, setReactorVisible] = useState(false)
   const [reactorPhase, setReactorPhase] = useState('void') // void|ignition|running|ambient|briefing|exit
@@ -114,10 +112,8 @@ export default function Boot({ onComplete }) {
 
   const VOICE_QS = ['', 'Energy level, Sir?', 'Primary focus today?', 'Any blockers?', 'Morning bet — what will you accomplish today?']
 
-  // Voice helper: universal speaker (Pocket-TTS > browser fallback)
-  const speakQ = (text) => {
-    jarvisSpeak(text, { force: true })
-  }
+  // Voice removed — Gemini Live handles speech
+  const speakQ = () => {}
 
   // Check if returning user (compressed boot)
   const isReturning = useRef(false)
@@ -358,13 +354,7 @@ export default function Boot({ onComplete }) {
       }
     }, charDelay)
 
-    // Speak the briefing — universal speaker (Pocket-TTS > browser fallback)
-    if (!window._briefingStopped) {
-      const settings = JSON.parse(localStorage.getItem('jos-settings') || '{}')
-      if (settings.voice !== false) {
-        jarvisSpeak(finalText, { force: true })
-      }
-    }
+    // Briefing speech removed — Gemini Live handles voice
 
   }, [energy, focus, blockers, morningBet, update, fetchBriefing, get])
 
@@ -372,14 +362,14 @@ export default function Boot({ onComplete }) {
     // BRUTE FORCE: Set flag FIRST — blocks any queued/in-flight briefing speech
     window._briefingStopped = true
 
-    // Kill ALL audio via universal stop
-    jarvisStop()
+    // Kill all audio
+    document.querySelectorAll('audio').forEach(a => { try { a.pause(); a.currentTime = 0 } catch {} })
 
     // Kill thinking ticks
     if (window._thinkingStop) { window._thinkingStop(); window._thinkingStop = null }
 
-    // Kill again after 50ms (catches anything that re-queues)
-    setTimeout(() => { jarvisStop() }, 50)
+    // Kill again after 50ms
+    setTimeout(() => { document.querySelectorAll('audio').forEach(a => { try { a.pause() } catch {} }) }, 50)
 
     console.log('BOOT: stopped all audio on ENTER click (_briefingStopped = true)')
 

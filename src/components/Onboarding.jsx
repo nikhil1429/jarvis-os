@@ -6,7 +6,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Mic, SkipForward } from 'lucide-react'
 import useJarvisVoice from '../hooks/useJarvisVoice.js'
-import { jarvisSpeak } from '../utils/jarvisSpeaker.js'
+// jarvisSpeaker removed — speech through Gemini Live
+const jarvisSpeak = () => {}
 
 const SECTIONS = [
   {

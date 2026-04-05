@@ -517,19 +517,7 @@ INTELLIGENCE OBSERVATIONS (from tracked data):
     }
   } catch { /* ok */ }
 
-  // Voice emotion tagging — only when local voice server is enabled
-  let voiceEmotionPrompt = ''
-  try {
-    const settings = JSON.parse(localStorage.getItem('jos-settings') || '{}')
-    if (settings.localVoiceServer !== false) {
-      voiceEmotionPrompt = `
-VOICE EMOTION TAGGING:
-Tag EVERY sentence with an emotion tag at the start. This controls vocal tone.
-Available: [neutral] [warm] [concerned] [urgent] [proud] [witty] [serious] [clinical] [dramatic] [gentle] [commanding]
-Rules: Every sentence starts with a tag. Data/numbers are [clinical]. Vary emotions. Sarcasm is [witty].
-Example: "[warm] Good evening, Sir. [clinical] Your streak is at fourteen days. [proud] Impressive work."`
-    }
-  } catch { /* ok */ }
+  // Voice emotion tagging removed — Gemini Live handles voice tone natively
 
   // Layer 9: Personality evolution — voice character shifts by week
   const personalityEvolution = getPersonalityEvolution(weekNumber)
@@ -543,7 +531,6 @@ Current rank: ${rank} Panwar | Day ${dayNumber} | Week ${weekNumber} | Streak: $
 ${personalityShift}${dynamicIdentity}
 
 ${antiCrutch}
-${voiceEmotionPrompt}
 ${personalityEvolution}
 ${voiceCalibration}
 

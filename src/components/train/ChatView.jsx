@@ -12,7 +12,8 @@ import useJarvisVoice from '../../hooks/useJarvisVoice.js'
 import { processVoiceCommand } from '../../utils/voiceCommands.js'
 import TASKS from '../../data/tasks.js'
 import { extractQuizScores, stripQuizTags, updateConceptStrength } from '../../utils/quizScoring.js'
-import { stripEmotionTags } from '../../utils/jarvisVoice.js'
+// stripEmotionTags inlined — jarvisVoice.js removed
+const stripEmotionTags = (t) => t ? t.replace(/\[\s*(?:warm|clinical|cold|hot|proud|witty|concerned|gentle|urgent|whisper|neutral|serious|dramatic|commanding)\s*\]\s*/gi, '').replace(/\[\w+\]\s*/g, '').trim() : ''
 import renderMd from '../../utils/renderMd.js'
 import { shouldCompress, getCompressionPrompt, applyCompression } from '../../utils/conversationMemory.js'
 import { analyzeSubtext, shouldAnalyze } from '../../utils/subtextAnalyzer.js'
@@ -26,7 +27,8 @@ import { classifyStyle, trackResponse } from '../../utils/communicationTracker.j
 import { recordQuizScore } from '../../utils/adaptiveDifficulty.js'
 import { checkMicroCelebration, buildTaskContext, buildConceptContext } from '../../utils/microCelebrations.js'
 import { recordActivity } from '../../utils/momentumTracker.js'
-import { jarvisSpeak } from '../../utils/jarvisSpeaker.js'
+// jarvisSpeaker removed — Gemini Live handles speech
+const jarvisSpeak = () => {}
 import { autoDetectDismissal } from '../../utils/selfLearning.js'
 import { logInteraction } from '../../utils/auditTrail.js'
 
@@ -155,9 +157,8 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
       setPendingImage(null)
       stopTick(); stopThinking()
       if (result) {
-        // Layer 10: Start opus ambient for Opus responses or behavioral directive
-        const behaviorAmbient = typeof window !== 'undefined' && window.__jarvisVoiceDirectives?.ambientSound
-        if (result.tier >= 2 || behaviorAmbient) startOpusAmbient('opus')
+        // Opus ambient for Opus-tier responses
+        if (result.tier >= 2) startOpusAmbient('opus')
 
         // Strip quiz score tags + emotion tags for display, keep raw for voice
         const quizClean = stripQuizTags(result.text)
