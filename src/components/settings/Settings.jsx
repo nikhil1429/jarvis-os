@@ -180,6 +180,55 @@ export default function Settings({ isOpen, onClose }) {
             {/* Local Voice Server */}
             <LocalVoiceServerToggle settings={settings} updateSetting={updateSetting} />
 
+            {/* Gemini Voice section */}
+            <div className="border-t border-border pt-4">
+              <p className="font-mono text-[9px] text-text-muted tracking-widest mb-3">GEMINI VOICE</p>
+            </div>
+
+            <div>
+              <label className="font-mono text-[10px] text-text-dim tracking-wider block mb-1.5">
+                GEMINI API KEY
+              </label>
+              <input
+                type="password"
+                value={settings.geminiApiKey || ''}
+                onChange={e => updateSetting('geminiApiKey', e.target.value)}
+                placeholder="AIza..."
+                className="w-full bg-void border border-border rounded px-3 py-2 font-mono text-xs
+                  text-text placeholder:text-text-muted focus:outline-none focus:border-cyan transition-colors"
+              />
+              <p className="font-mono text-[8px] text-text-muted mt-0.5">Or set VITE_GEMINI_API_KEY in .env.local</p>
+            </div>
+
+            <ToggleRow
+              icon={<Mic size={16} />}
+              label="GEMINI VOICE"
+              sublabel="Real-time voice via Gemini 2.5 Flash"
+              value={settings.geminiVoice !== false}
+              onChange={v => updateSetting('geminiVoice', v)}
+            />
+
+            <div>
+              <label className="font-mono text-[10px] text-text-dim tracking-wider block mb-1.5">
+                VOICE MODEL
+              </label>
+              <div className="flex gap-1.5 flex-wrap">
+                {['Charon', 'Puck', 'Fenrir', 'Kore', 'Aoede'].map(v => (
+                  <button key={v}
+                    onClick={() => updateSetting('geminiVoiceName', v)}
+                    className="font-mono text-[10px] px-2 py-1 rounded border transition-all"
+                    style={{
+                      borderColor: (settings.geminiVoiceName || 'Charon') === v ? '#00b4d8' : '#0d2137',
+                      color: (settings.geminiVoiceName || 'Charon') === v ? '#00b4d8' : '#5a7a94',
+                      background: (settings.geminiVoiceName || 'Charon') === v ? 'rgba(0,180,216,0.1)' : 'transparent',
+                    }}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Other toggles section */}
             <div className="border-t border-border pt-4">
               <p className="font-mono text-[9px] text-text-muted tracking-widest mb-3">DISPLAY</p>

@@ -55,6 +55,7 @@ import { jarvisSpeak, jarvisStop, preCacheCommonPhrases, preWarmServer } from '.
 import useSessionContinuity from './hooks/useSessionContinuity.js'
 import { speakTheatrical, SPEECHES, getSpeechText } from './utils/theatricalSpeech.js'
 import TASKS from './data/tasks.js'
+import GeminiVoiceButton from './components/GeminiVoiceButton.jsx'
 
 const DEFAULT_KEYS = {
   core: { startDate: new Date().toISOString(), totalCheckIns: 0, streak: 0, rank: 'Recruit', completedTasks: [], energy: 3 },
@@ -474,6 +475,7 @@ function App() {
         onLongPress={handleGlobalMicLongPress}
         voiceState={globalVoiceState}
       />
+      <GeminiVoiceButton />
       <BottomNav
         activeTab={activeTab}
         onTabChange={handleTabChange}
