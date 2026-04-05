@@ -30,36 +30,6 @@ export default function GeminiVoiceButton() {
     return () => window.removeEventListener('gemini-session-ended', h)
   }, [processTranscript])
 
-  // Boot briefing: auto-connect Gemini and speak briefing text
-  useEffect(() => {
-    const h = async (e) => {
-      const text = e.detail?.text
-      if (!text || !enabled) return
-      try {
-        // Connect, then once connected inject briefing as model turn
-        connectToJarvis()
-        // Wait for connection to establish, then inject briefing
-        const waitForConnection = (retries = 0) => {
-          if (retries > 20) return // 10s max wait
-          setTimeout(() => {
-            // Check if connected by looking for active WebSocket
-            if (isConnected) {
-              // Dispatch event for the hook to inject text into Gemini session
-              window.dispatchEvent(new CustomEvent('gemini-inject-briefing', { detail: { text } }))
-            } else {
-              waitForConnection(retries + 1)
-            }
-          }, 500)
-        }
-        waitForConnection()
-      } catch (err) {
-        console.warn('[Boot] Gemini briefing failed, text-only fallback:', err)
-      }
-    }
-    window.addEventListener('jarvis-boot-briefing', h)
-    return () => window.removeEventListener('jarvis-boot-briefing', h)
-  }, [connectToJarvis, isConnected, enabled])
-
   // Piece 8: JARVIS initiates — glow on important events
   useEffect(() => {
     const h = (e) => {

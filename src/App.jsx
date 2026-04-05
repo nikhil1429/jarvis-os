@@ -53,7 +53,7 @@ import VizDependencyTree from './components/viz/VizDependencyTree.jsx'
 import { getDayNumber, getWeekNumber } from './utils/dateUtils.js'
 // TTS removed — all speech through Gemini Live voice
 import useSessionContinuity from './hooks/useSessionContinuity.js'
-import { speakTheatrical, SPEECHES } from './utils/theatricalSpeech.js'
+// Voice: Gemini Live only
 import TASKS from './data/tasks.js'
 import GeminiVoiceButton from './components/GeminiVoiceButton.jsx'
 import { startInitiator, stopInitiator } from './utils/jarvisInitiator.js'
@@ -291,9 +291,8 @@ function App() {
       setRankUpOverlay({ from: currentRank, to: newRank })
       play('milestone')
 
-      // Theatrical speech: dramatic pauses between segments
-      const segments = SPEECHES.rankUp(newRank)
-      speakTheatrical(segments, (() => {}))
+      // Rank-up speech via Gemini voice
+      window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: `Rank up. You are now ${newRank} Panwar.` } }))
 
       setTimeout(() => setRankUpOverlay(null), 7000)
     }
@@ -328,13 +327,8 @@ function App() {
         setMilestoneOverlay(ms)
         play('milestone')
 
-        const theatricalKey = `milestone${ms.pct}`
-        const segments = SPEECHES[theatricalKey]
-        if (segments) {
-          speakTheatrical(segments, (() => {}))
-        } else {
-          (() => {})(ms.speech)
-        }
+        // Milestone speech via Gemini voice
+        window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: ms.speech } }))
 
         // Dismiss after longer duration for theatrical
         const duration = ms.pct === 100 ? 10000 : ms.pct >= 50 ? 5000 : 3500
@@ -353,18 +347,15 @@ function App() {
       localStorage.setItem('jos-core', JSON.stringify(core))
     } catch { /* ok */ }
     setAppState('main')
-    window._briefingStopped = false
     console.log('BOOT COMPLETE: Gemini Live voice ready')
     // Start ambient sound
     try { play('boot') } catch { /* ok */ }
-    // Auto-connect Gemini and speak briefing
+    // Speak briefing via Gemini if connected
     try {
       const weekly = JSON.parse(localStorage.getItem('jos-weekly') || '{}')
       const briefingText = weekly.briefing?.text || weekly.lastBriefing?.text
       if (briefingText) {
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('jarvis-boot-briefing', { detail: { text: briefingText } }))
-        }, 1500) // Wait for app to settle
+        setTimeout(() => window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: briefingText } })), 1500)
       }
     } catch { /* ok */ }
     // Show boot briefing dashboard after 1s

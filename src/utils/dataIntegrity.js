@@ -352,31 +352,17 @@ export async function runSystemDiagnostics() {
     report.checks.push({ name: 'Storage', status: 'failed', detail: 'Cannot read', icon: '❌' })
   }
 
-  // CHECK 6: ElevenLabs
+  // CHECK 6: Gemini Voice
   try {
-    const elKey = import.meta.env.VITE_ELEVENLABS_API_KEY
-      || JSON.parse(localStorage.getItem('jos-settings') || '{}').elevenLabsKey
+    const gKey = import.meta.env.VITE_GEMINI_API_KEY
+      || JSON.parse(localStorage.getItem('jos-settings') || '{}').geminiApiKey
     report.checks.push({
-      name: 'ElevenLabs', icon: elKey ? '✅' : '⏭️',
-      status: elKey ? 'ok' : 'skipped',
-      detail: elKey ? 'API key configured' : 'Browser TTS fallback',
+      name: 'Gemini Voice', icon: gKey ? '✅' : '⏭️',
+      status: gKey ? 'ok' : 'skipped',
+      detail: gKey ? 'API key configured' : 'No API key — voice unavailable',
     })
   } catch {
-    report.checks.push({ name: 'ElevenLabs', status: 'skipped', detail: 'Browser TTS fallback', icon: '⏭️' })
-  }
-
-  // CHECK 7: Browser TTS
-  try {
-    const synth = window.speechSynthesis
-    if (synth) {
-      const voices = synth.getVoices()
-      const brit = voices.find(v => v.lang === 'en-GB')
-      report.checks.push({ name: 'Browser TTS', status: 'ok', detail: `${voices.length} voices${brit ? ', British found' : ''}`, icon: '✅' })
-    } else {
-      report.checks.push({ name: 'Browser TTS', status: 'failed', detail: 'Not available', icon: '❌' })
-    }
-  } catch {
-    report.checks.push({ name: 'Browser TTS', status: 'warning', detail: 'Cannot check', icon: '⚠️' })
+    report.checks.push({ name: 'Gemini Voice', status: 'skipped', detail: 'Not configured', icon: '⏭️' })
   }
 
   // CHECK 8: Sentry

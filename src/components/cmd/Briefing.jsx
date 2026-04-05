@@ -4,7 +4,7 @@
 
 import { Mic, Volume2 } from 'lucide-react'
 import useStorage from '../../hooks/useStorage.js'
-import { speakWithFallback } from '../../utils/elevenLabsSpeak.js'
+// Voice removed — Gemini Live handles speech
 import renderMd from '../../utils/renderMd.js'
 import { getLastSession, generateContinuityBriefing } from '../../utils/sessionContinuity.js'
 
@@ -20,7 +20,7 @@ export default function Briefing() {
     if (briefing?.text) {
       const settings = JSON.parse(localStorage.getItem('jos-settings') || '{}')
       if (settings.voice !== false) {
-        await speakWithFallback(briefing.text)
+        window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: briefing.text } }))
       }
     }
   }

@@ -9,7 +9,7 @@ import { Check, ClipboardCheck, Target } from 'lucide-react'
 import useStorage from '../../hooks/useStorage.js'
 import useSound from '../../hooks/useSound.js'
 import useEventBus from '../../hooks/useEventBus.js'
-import { speakWithFallback } from '../../utils/elevenLabsSpeak.js'
+// Voice removed — Gemini Live handles speech
 import { compileSummary } from '../../utils/strategicCompiler.js'
 import { bridgeCheckinToBiometrics } from '../../utils/gadgetSchemas.js'
 
@@ -80,7 +80,7 @@ export default function CheckInForm() {
   const { get, update } = useStorage()
   const { play } = useSound()
   const eventBus = useEventBus()
-  // tts removed — using speakElevenLabs directly
+  // Voice: jarvis-speak event → Gemini Live
   const [saved, setSaved] = useState(false)
   const [debriefing, setDebriefing] = useState(false)
   const [debrief, setDebrief] = useState(null)
@@ -175,7 +175,7 @@ Tone: JARVIS formal British, call him Sir. Keep under 150 words. No markdown.`
 
       // Speak the debrief if voice enabled
       const settings = JSON.parse(localStorage.getItem('jos-settings') || '{}')
-      if (settings.voice !== false) speakWithFallback(text)
+      window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text } }))
     } catch (err) {
       console.error('[CheckInForm] Debrief generation failed:', err)
     } finally {

@@ -317,18 +317,10 @@ export default function Boot({ onComplete }) {
     const fallbackText = `${greetings[timeOfDay]}, Sir. Day ${dayNumber}, Week ${weekNumber}. Streak: ${core.streak || 0} days. ${completed}/82 tasks complete (${pct}%). ${mastered} concepts mastered. Energy at ${energy}/5. ${energy >= 4 ? 'High energy — schedule the difficult modes.' : energy <= 2 ? 'Low energy detected. Consider Body Double or lighter training.' : 'Nominal conditions. Shall we begin?'}`
     const finalText = aiBriefing || fallbackText
 
-    // Reset briefing flag for this boot
-    window._briefingStopped = false
-
     // Typewriter effect for briefing
     let i = 0
     const charDelay = isReturning.current ? 8 : 18
     const interval = setInterval(() => {
-      if (window._briefingStopped) {
-        clearInterval(interval)
-        console.log('BRIEFING: typewriter stopped by _briefingStopped flag')
-        return
-      }
       if (i <= finalText.length) {
         // Settled chars (real text) + 3 scrambling frontier chars
         const settled = finalText.slice(0, i)
@@ -360,18 +352,9 @@ export default function Boot({ onComplete }) {
 
   const handleEnter = useCallback(() => {
     // BRUTE FORCE: Set flag FIRST — blocks any queued/in-flight briefing speech
-    window._briefingStopped = true
-
-    // Kill all audio
+    // Kill any playing audio
     document.querySelectorAll('audio').forEach(a => { try { a.pause(); a.currentTime = 0 } catch {} })
-
-    // Kill thinking ticks
     if (window._thinkingStop) { window._thinkingStop(); window._thinkingStop = null }
-
-    // Kill again after 50ms
-    setTimeout(() => { document.querySelectorAll('audio').forEach(a => { try { a.pause() } catch {} }) }, 50)
-
-    console.log('BOOT: stopped all audio on ENTER click (_briefingStopped = true)')
 
     // Chrome audio unlock — use AudioContext only, do NOT speak another utterance
     try {

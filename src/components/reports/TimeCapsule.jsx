@@ -6,7 +6,7 @@ import { Lock, Unlock, Plus } from 'lucide-react'
 import useAI from '../../hooks/useAI.js'
 import useStorage from '../../hooks/useStorage.js'
 import { compileSummary } from '../../utils/strategicCompiler.js'
-import { speakWithFallback } from '../../utils/elevenLabsSpeak.js'
+// Voice removed — Gemini Live handles speech
 import { getDayNumber } from '../../utils/dateUtils.js'
 
 export default function TimeCapsule() {
@@ -69,7 +69,7 @@ Warm JARVIS voice, like a mentor. Under 150 words. No markdown.`
       return updated
     })
     const capsule = capsules[idx]
-    if (capsule?.content) speakWithFallback(capsule.content)
+    if (capsule?.content) window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: capsule.content } }))
   }
 
   return (

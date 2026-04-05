@@ -6,7 +6,7 @@ import { X, Download } from 'lucide-react'
 import jsPDF from 'jspdf'
 import useAI from '../../hooks/useAI.js'
 import { compileSummary } from '../../utils/strategicCompiler.js'
-import { speakWithFallback } from '../../utils/elevenLabsSpeak.js'
+// Voice removed — Gemini Live handles speech
 
 export default function QuarterlyReport({ onClose }) {
   const { sendMessage, isStreaming } = useAI()
@@ -57,7 +57,7 @@ JARVIS voice. Formal, data-driven. Under 600 words. Section headers in CAPS. No 
         }))
         // Speak first section
         const firstPara = result.text.split('\n\n')[0]
-        if (firstPara) speakWithFallback(firstPara)
+        if (firstPara) window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: firstPara } }))
         // Save
         try {
           const weekly = JSON.parse(localStorage.getItem('jos-weekly') || '{}')

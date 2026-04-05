@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import useAI from '../../hooks/useAI.js'
 import { compileSummary } from '../../utils/strategicCompiler.js'
-import { speakWithFallback } from '../../utils/elevenLabsSpeak.js'
+// Voice removed — Gemini Live handles speech
 
 export default function InterviewBrief({ onClose }) {
   const { sendMessage } = useAI()
@@ -41,7 +41,7 @@ JARVIS military briefing voice. Under 500 words. Section headers CAPS. No markdo
           return { title: lines[0], body: lines.slice(1).join('\n').trim() }
         }))
         setGenerated(true)
-        speakWithFallback(result.text.split('\n\n')[0] || '')
+        window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: result.text.split('\n\n')[0] || '' } }))
         try {
           const apps = JSON.parse(localStorage.getItem('jos-applications') || '[]')
           apps.push({ company, role, briefDate: new Date().toISOString(), brief: result.text })

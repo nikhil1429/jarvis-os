@@ -8,7 +8,7 @@ import useStorage from '../../hooks/useStorage.js'
 import useSound from '../../hooks/useSound.js'
 import useEventBus from '../../hooks/useEventBus.js'
 import useJarvisVoice from '../../hooks/useJarvisVoice.js'
-import { speakWithFallback } from '../../utils/elevenLabsSpeak.js'
+// Voice removed — Gemini Live handles speech
 import { getDaySummary } from '../../hooks/useAutoCapture.js'
 import { saveConcern, savePromise } from '../../utils/emotionalMemory.js'
 import { bridgeCheckinToBiometrics } from '../../utils/gadgetSchemas.js'
@@ -118,7 +118,7 @@ Transcript: "${text}"`,
     bridgeCheckinToBiometrics(entry)
     play('check')
     setPhase('saved')
-    speakWithFallback('Logged, Sir.')
+    window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: 'Logged, Sir.' } }))
     setTimeout(() => onComplete?.(), 1500)
   }, [quickEnergy, today, update, eventBus, play, onComplete])
 
@@ -167,7 +167,7 @@ Transcript: "${text}"`,
     setPhase('saved')
 
     const observation = extracted.mood ? `Mood: ${extracted.mood}.` : ''
-    speakWithFallback(`Logged, Sir. ${observation}`)
+    window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: `Logged, Sir. ${observation}` } }))
     setTimeout(() => onComplete?.(), 2000)
   }, [extracted, quickEnergy, transcript, today, update, eventBus, play, onComplete])
 

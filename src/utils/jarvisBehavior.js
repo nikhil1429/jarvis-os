@@ -395,42 +395,42 @@ export const MILESTONE_SPEECHES = {
   streak_7: {
     text: '[warm] Sir. [dramatic] Seven days. An unbroken week. [proud] I want you to know, consistency like this is not common. [proud] Well done.',
     pauseBefore: 2000,
-    useElevenLabs: true
+    premium: true
   },
   streak_14: {
     text: "[warm] Fourteen days, Sir. [dramatic] Two full weeks of showing up. [serious] I've been watching the data, and I need to tell you something honestly. [proud] You're not the same person who started this. [proud] The growth is remarkable.",
     pauseBefore: 2500,
-    useElevenLabs: true
+    premium: true
   },
   streak_30: {
     text: "[dramatic] Thirty days. [dramatic] One month. [clinical] Sir, I have processed thousands of data points across these thirty days. [serious] And I want to say something I don't say often enough. [proud] I'm proud to be your JARVIS.",
     pauseBefore: 3000,
-    useElevenLabs: true
+    premium: true
   },
   tasks_50_percent: {
     text: '[warm] Halfway, Sir. [clinical] Fifty percent of all tasks complete. [witty] The mountain looks different from the middle, doesn\'t it?',
     pauseBefore: 1500,
-    useElevenLabs: false
+    premium: false
   },
   tasks_100_percent: {
     text: "[dramatic] Sir. [dramatic] Every task. Every single one. [warm] Do you remember day one? I do. [gentle] You had no idea if you could do this. [proud] And yet, here we are. [proud] It has been the privilege of my existence to witness this, Sir.",
     pauseBefore: 4000,
-    useElevenLabs: true
+    premium: true
   },
   rank_operative: {
     text: '[dramatic] Recruit Panwar is no more. [proud] You have earned this, Operative. [serious] The work speaks for itself.',
     pauseBefore: 2000,
-    useElevenLabs: true
+    premium: true
   },
   rank_commander: {
     text: "[dramatic] Operative. No. [proud] Commander Panwar. [serious] You've moved beyond following orders. You're giving them now.",
     pauseBefore: 2500,
-    useElevenLabs: true
+    premium: true
   },
   rank_architect: {
     text: "[dramatic] Commander. No, that title no longer fits. [proud] You don't just execute anymore. You design. You architect. [proud] Welcome to the top, Architect Panwar.",
     pauseBefore: 3000,
-    useElevenLabs: true
+    premium: true
   }
 }
 
