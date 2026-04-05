@@ -214,7 +214,7 @@ export default function useGeminiVoice() {
       ws.onopen = async () => {
         console.log('[Gemini] WebSocket connected')
         const instruction = await buildSystemInstruction()
-        ws.send(JSON.stringify({ setup: { model: 'models/gemini-3.1-flash-live-preview', systemInstruction: { parts: [{ text: instruction }] }, generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: getVoiceName() } } } }, tools: GEMINI_TOOLS } }))
+        ws.send(JSON.stringify({ setup: { model: 'models/gemini-3.1-flash-live-preview', systemInstruction: { parts: [{ text: instruction }] }, generationConfig: { responseModalities: ['AUDIO'], thinkingConfig: { thinkingBudget: 2048 }, speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: getVoiceName() } } } }, tools: GEMINI_TOOLS } }))
       }
 
       ws.onmessage = (event) => {
