@@ -24,6 +24,7 @@ import ContextRecoveryCard from './ContextRecoveryCard.jsx'
 import DecisionEliminator from './DecisionEliminator.jsx'
 import InitiationCard from './InitiationCard.jsx'
 import WorkingThread from './WorkingThread.jsx'
+import ProactiveSuggestion from './ProactiveSuggestion.jsx'
 
 function WeeklyNewsletter() {
   const { get } = useStorage()
@@ -173,6 +174,12 @@ export default function CmdTab({ completedTasks, onToggleTask, pulse, onDismissP
 
       {/* Morning Briefing */}
       <div><Briefing /></div>
+
+      {/* JARVIS Proactive Suggestion — optimal action right now */}
+      <ProactiveSuggestion onAction={(action) => {
+        if (action?.type === 'mode') window.dispatchEvent(new CustomEvent('jarvis-open-mode', { detail: { mode: action.mode } }))
+        if (action?.type === 'checkin') window.dispatchEvent(new CustomEvent('jarvis-open-checkin'))
+      }} />
 
       {/* Proactive JARVIS observation */}
       {topObservation && (

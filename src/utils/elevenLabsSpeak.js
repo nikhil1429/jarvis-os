@@ -166,28 +166,10 @@ export async function speakElevenLabs(text) {
 /**
  * Speak with ElevenLabs, falling back to browser TTS if unavailable
  * Use this for any speech that should ALWAYS produce audio (onboarding, reports, shutdown, etc.)
+ * NOW routes through jarvisSpeaker — Pocket-TTS > ElevenLabs > browser TTS
  */
 export async function speakWithFallback(text) {
-  const ok = await speakElevenLabs(text)
-  if (!ok) {
-    const synth = window.speechSynthesis
-    if (!synth) return
-    return new Promise(resolve => {
-      const clean = text.replace(/[*_~`#]/g, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-        .replace(/\n{2,}/g, '. ').replace(/\n/g, ', ').replace(/[-]{3,}/g, '').trim()
-      if (!clean) { resolve(); return }
-      synth.cancel()
-      const u = new SpeechSynthesisUtterance(clean)
-      u.lang = 'en-GB'
-      const voices = synth.getVoices()
-      const v = voices.find(x => x.lang === 'en-GB') || voices.find(x => x.lang.startsWith('en')) || voices[0]
-      if (v) u.voice = v
-      const _s = (() => { try { return JSON.parse(localStorage.getItem('jos-settings') || '{}') } catch { return {} } })()
-      u.rate = _s.voiceSpeed || 1.0; u.pitch = 0.95
-      u.onend = resolve
-      u.onerror = resolve
-      setTimeout(resolve, Math.max(8000, clean.length * 80))
-      synth.speak(u)
-    })
-  }
+  // Route through universal speaker (Pocket-TTS > browser fallback)
+  const { jarvisSpeak } = await import('./jarvisSpeaker.js')
+  return jarvisSpeak(text, { force: true })
 }

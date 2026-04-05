@@ -5,7 +5,8 @@
 // Headphones mode: mic stays active through PROCESSING + SPEAKING (no echo).
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { speakElevenLabs } from '../utils/elevenLabsSpeak.js'
+import { stripEmotionTags } from '../utils/jarvisVoice.js'
+import { jarvisSpeak as universalSpeak, jarvisStop as universalStop } from '../utils/jarvisSpeaker.js'
 
 const SpeechRecognition = typeof window !== 'undefined'
   ? window.SpeechRecognition || window.webkitSpeechRecognition
@@ -36,17 +37,9 @@ function getSilenceDelay(wordCount) {
   return 1800
 }
 
-// Global stop — kills ALL audio
+// Global stop — kills ALL audio via universal speaker
 function jarvisStopAll() {
-  window._jarvisStopped = true
-  window.speechSynthesis?.cancel()
-  if (window._jarvisAudio) {
-    try { window._jarvisAudio.pause(); window._jarvisAudio.currentTime = 0 } catch { /* ok */ }
-    window._jarvisAudio = null
-  }
-  document.querySelectorAll('audio').forEach(a => {
-    try { a.pause(); a.currentTime = 0 } catch { /* ok */ }
-  })
+  universalStop()
   if (window._thinkingStop) { try { window._thinkingStop() } catch { /* ok */ }; window._thinkingStop = null }
   console.log('JARVIS STOP: everything killed')
 }
@@ -54,61 +47,12 @@ function jarvisStopAll() {
 // Register globally
 if (typeof window !== 'undefined') window.jarvisStop = jarvisStopAll
 
-// Browser TTS for short acks only
+// Short acks — route through universal speaker (will use cached phrases if available)
 function speakBrowserAck(text) {
-  const synth = window.speechSynthesis
-  if (!synth) return
-  synth.cancel()
-  const u = new SpeechSynthesisUtterance(text)
-  let v = window._jarvisVoice
-  if (!v) {
-    const voices = synth.getVoices()
-    v = voices.find(x => x.lang === 'en-GB') || voices.find(x => x.lang.startsWith('en')) || voices[0]
-    window._jarvisVoice = v
-  }
-  if (v) u.voice = v
-  u.rate = 1.1; u.pitch = 0.95
-  synth.speak(u)
+  universalSpeak(text, { force: true })
 }
 
-// Browser TTS fallback for full responses — speaks sentences ONE AT A TIME
-// V4 fix: sequential playback so cancel() reliably stops between sentences
-function speakBrowserFallback(text) {
-  return new Promise(async (resolve) => {
-    const synth = window.speechSynthesis
-    if (!synth) { resolve(); return }
-    const clean = text.replace(/[*_~`#]/g, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-      .replace(/\n{2,}/g, '. ').replace(/\n/g, ', ').replace(/[-]{3,}/g, '').trim()
-    if (!clean) { resolve(); return }
-    synth.cancel()
-    const sentences = clean.match(/[^.!?]+[.!?]+/g) || [clean]
-    let v = window._jarvisVoice
-    if (!v) {
-      const voices = synth.getVoices()
-      v = voices.find(x => x.name.includes('Google UK English Male'))
-        || voices.find(x => x.lang === 'en-GB') || voices.find(x => x.lang.startsWith('en')) || voices[0]
-      window._jarvisVoice = v
-    }
-
-    for (const sentence of sentences) {
-      if (window._jarvisStopped) break
-      await new Promise(sentenceResolve => {
-        const u = new SpeechSynthesisUtterance(sentence.trim())
-        if (v) u.voice = v
-        const _s = (() => { try { return JSON.parse(localStorage.getItem('jos-settings') || '{}') } catch { return {} } })()
-        u.rate = _s.voiceSpeed || 1.0; u.pitch = 0.95
-        u.onend = sentenceResolve
-        u.onerror = sentenceResolve
-        // Safety timeout per sentence
-        const timer = setTimeout(sentenceResolve, Math.max(8000, sentence.length * 80))
-        u.onend = () => { clearTimeout(timer); sentenceResolve() }
-        u.onerror = () => { clearTimeout(timer); sentenceResolve() }
-        synth.speak(u)
-      })
-    }
-    resolve()
-  })
-}
+// Browser TTS fallback removed — all speech routes through jarvisSpeaker.js
 
 export default function useJarvisVoice() {
   const [voiceState, setVoiceState] = useState(VS.IDLE)
@@ -172,7 +116,7 @@ export default function useJarvisVoice() {
   }, [updateState])
 
   // ============================================================
-  // SPEAK — ElevenLabs only, browser TTS fallback
+  // SPEAK — Local Voice Server > ElevenLabs > browser TTS fallback
   // ============================================================
   const speak = useCallback(async (text, options = {}) => {
     lastResponseRef.current = text
@@ -206,11 +150,15 @@ export default function useJarvisVoice() {
     jarvisSpeakingRef.current = true
     window._jarvisStopped = false
 
-    // ElevenLabs for all responses
-    const success = await speakElevenLabs(text)
-    if (!success && jarvisSpeakingRef.current) {
-      console.log('TTS: ElevenLabs failed, browser TTS fallback')
-      await speakBrowserFallback(text)
+    // Layer 8: Play voiceActivate sound before speech
+    window.dispatchEvent(new CustomEvent('jarvis-play-sound', { detail: { sound: 'voiceActivate' } }))
+
+    // Universal speaker: Pocket-TTS > browser TTS
+    await universalSpeak(text, options)
+
+    // Layer 8: Play voiceDeactivate after speech
+    if (!window._jarvisStopped) {
+      window.dispatchEvent(new CustomEvent('jarvis-play-sound', { detail: { sound: 'voiceDeactivate' } }))
     }
 
     jarvisSpeakingRef.current = false
@@ -282,8 +230,13 @@ export default function useJarvisVoice() {
     setSilenceCountdown(null)
     waitModeRef.current = false
     setIsWaitMode(false)
-    userStopTimestampRef.current = 0 // V2 fix: clear stop suppression on new voice session
+    userStopTimestampRef.current = 0
 
+    // Kill all audio before opening mic (prevents garbled bleed-through)
+    jarvisStopAll()
+
+    // Wait 150ms for audio to fully stop, then open mic
+    setTimeout(() => {
     navigator.mediaDevices.getUserMedia({ audio: true })
       .then((stream) => {
         stream.getTracks().forEach(t => t.stop())
@@ -395,6 +348,7 @@ export default function useJarvisVoice() {
         }
       })
       .catch(() => updateState(VS.IDLE))
+    }, 150) // 150ms delay after killing audio
   }, [updateState, stopListening, executeControl])
 
   // Smart silence timer with countdown

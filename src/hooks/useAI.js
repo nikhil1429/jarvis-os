@@ -18,6 +18,16 @@ import { getSelfAwarenessPrompt } from '../utils/jarvisInnerLife.js'
 import { logAPICall } from '../utils/apiLogger.js'
 import { getDayNumber, getWeekNumber } from '../utils/dateUtils.js'
 import { compileSummary } from '../utils/strategicCompiler.js'
+import { getJarvisBehavior, getSpecialPromptAdditions } from '../utils/jarvisBehavior.js'
+import { getPatternPrompt } from '../utils/patternEngine.js'
+import { getCommunicationPrompt } from '../utils/communicationTracker.js'
+import { getMoodPredictionPrompt } from '../utils/moodEngine.js'
+import { getSessionContinuityPrompt } from '../utils/sessionContinuity.js'
+import { getProactiveSuggestionPrompt } from '../utils/proactiveEngine.js'
+import { getDifficultyPrompt } from '../utils/adaptiveDifficulty.js'
+import { getMomentumPrompt } from '../utils/momentumTracker.js'
+import { getAvoidancePrompt } from '../utils/avoidanceDetector.js'
+import { getSelfLearningPrompt } from '../utils/selfLearning.js'
 import CONCEPTS_DATA from '../data/concepts.js'
 
 // WHY: Cross-mode memory maps define which modes feed context to each other.
@@ -242,6 +252,50 @@ export default function useAI() {
           console.warn('[useAI] Strategic compiler failed:', err)
         }
       }
+
+      // Behavioral engine — MCU-canon reactive personality
+      try {
+        const behavior = getJarvisBehavior()
+        systemPrompt += `\n\n--- BEHAVIORAL ENGINE ---\n${behavior.promptModifier}`
+        systemPrompt += `\n\nCURRENT SIGNALS:\n- Energy: ${behavior.signals.energy}/5\n- Streak: ${behavior.signals.streak} days\n- Mood: "${behavior.signals.mood}"\n- Time: ${behavior.signals.hour}:${String(new Date().getMinutes()).padStart(2, '0')}\n- Session: ${behavior.signals.sessionHours} hours\n- Meds: ${behavior.signals.medsWearingOff ? 'wearing off' : 'active'}\n- Sleep: ${behavior.signals.sleep}/5\n- Rank: ${behavior.signals.rank}\n- Week: ${behavior.signals.weekNumber}`
+
+        // Store voice directives globally for jarvisVoice.js to read
+        if (typeof window !== 'undefined') {
+          window.__jarvisVoiceDirectives = behavior.voiceDirectives
+          window.__jarvisBehaviorFlags = behavior.behaviorFlags
+        }
+
+        // Check user message for special interactions (gratitude, self-doubt, etc.)
+        const lastAssistantMsg = (get(`msgs-${mode}`) || []).filter(m => m.role === 'assistant').pop()?.content || ''
+        const specialAdditions = getSpecialPromptAdditions(userMessage, lastAssistantMsg)
+        if (specialAdditions) systemPrompt += specialAdditions
+
+        console.log('[useAI] Behavior scenario:', behavior.scenario)
+      } catch (err) {
+        console.warn('[useAI] Behavioral engine failed:', err)
+      }
+
+      // Intelligence layer prompts: patterns, communication, mood, continuity, proactive, difficulty, momentum
+      try {
+        const patternCtx = getPatternPrompt()
+        if (patternCtx) systemPrompt += '\n\n' + patternCtx
+        const commCtx = getCommunicationPrompt()
+        if (commCtx) systemPrompt += '\n\n' + commCtx
+        const moodCtx = getMoodPredictionPrompt()
+        if (moodCtx) systemPrompt += '\n\n' + moodCtx
+        const continuityCtx = getSessionContinuityPrompt()
+        if (continuityCtx) systemPrompt += '\n\n' + continuityCtx
+        const proactiveCtx = getProactiveSuggestionPrompt()
+        if (proactiveCtx) systemPrompt += '\n\n' + proactiveCtx
+        const difficultyCtx = getDifficultyPrompt(mode, options.activeConcept || null)
+        if (difficultyCtx) systemPrompt += '\n\n' + difficultyCtx
+        const momentumCtx = getMomentumPrompt()
+        if (momentumCtx) systemPrompt += '\n\n' + momentumCtx
+        const avoidanceCtx = getAvoidancePrompt()
+        if (avoidanceCtx) systemPrompt += '\n\n' + avoidanceCtx
+        const selfLearnCtx = getSelfLearningPrompt()
+        if (selfLearnCtx) systemPrompt += '\n\n' + selfLearnCtx
+      } catch { /* ok — intelligence prompts optional */ }
 
       // Load conversation history for this mode (last 50 messages)
       const msgKey = `msgs-${mode}`

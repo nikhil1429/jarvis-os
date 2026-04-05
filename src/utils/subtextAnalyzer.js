@@ -28,7 +28,7 @@ Return ONLY valid JSON:
 Only include fields you can genuinely infer. Use null for uncertain.`
 
   try {
-    const result = await sendMessageFn(prompt, 'chat', {})
+    const result = await sendMessageFn(prompt, '_subtext-internal', {})
     if (!result?.text) return null
 
     const cleaned = result.text.replace(/```json|```/g, '').trim()

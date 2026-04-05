@@ -4,6 +4,239 @@
 
 ---
 
+### Session 60H — Avoidance Detection + Self-Learning + Audit Trail (2026-04-05)
+Three meta-intelligence systems: JARVIS watches what you avoid, learns from its own mistakes, and keeps a complete audit trail.
+
+**Feature 1: Avoidance Detector** (`avoidanceDetector.js`)
+- Mode avoidance: tracks 18 modes — never-used hard modes flagged as high severity, 14+ day gaps as medium/high
+- Concept avoidance: cross-references 35 concepts from concepts.js, flags untouched core concepts
+- Check-in field skipping: if sleep/food/confidence skipped 70%+ of last 14 check-ins, flagged (sleep skip = high severity, often signals poor sleep)
+- Topic drops: compares keyword frequency (finops, interview, dsa, concepts) between this week vs last week — 3+ mentions → 0 = flagged
+- `getAvoidancePrompt()` — top 3 high-severity items injected into Claude system prompt. "Surface gently when natural."
+
+**Feature 2: Self-Learning Engine** (`selfLearning.js`)
+- `logAdvice(advice)` — every suggestion JARVIS makes is logged with type (break/mode-switch/concept-review/task/concern), context (energy, hour, mode)
+- `markAdviceOutcome(id, followed)` — tracked when user follows or ignores
+- `autoDetectDismissal(action, mode)` — if JARVIS suggested break but user sent another message, auto-marks as ignored. If suggested mode X but user entered mode Y, auto-marks as ignored.
+- `getAdviceEffectiveness()` — groups by type and time-of-day, calculates follow rates
+- `getSelfLearningPrompt()` — "break suggestions: only 20% followed. Reduce frequency." / "mode-switch: 85% followed. Continue."
+- Time-of-day adaptation: "Evening suggestions mostly ignored — reduce proactive advice in evening."
+
+**Feature 3: Audit Trail** (`auditTrail.js`)
+- `logInteraction(interaction)` — logs to `jos-audit-trail` (last 500 entries). Types: advice, prediction, observation, conviction, celebration, avoidance, difficulty-adjust, response
+- `getAuditSummary()` — counts by type for Quarterly Report
+- `getAuditPrompt()` — summary for strategic system prompt
+- ChatView logs every JARVIS response + every celebration to audit trail
+
+**Wiring:**
+- useAI.js: avoidance prompt + self-learning prompt added to intelligence layer (now 10 intelligence prompts total)
+- ChatView.jsx: `autoDetectDismissal()` on every message send, `logInteraction()` on responses + celebrations
+
+**Files created:** avoidanceDetector.js, selfLearning.js, auditTrail.js
+**Files updated:** useAI.js, ChatView.jsx
+
+---
+
+### Session 60G — Adaptive Difficulty + Micro-Celebrations + Momentum (2026-04-05)
+Three intelligence systems that make training feel alive and responsive.
+
+**Feature 1: Adaptive Difficulty Engine** (`adaptiveDifficulty.js`)
+- 4 levels: Foundations (<40% strength / <4 avg score) → Standard (40-70%) → Advanced (70-90%) → Expert (90%+)
+- Each level injects specific prompt modifier: Foundations="ask basic definitions", Expert="design a system, debug production, defend your approach"
+- `recordQuizScore(concept, score)` — tracks per-concept quiz history (last 20 scores)
+- `getDifficultyPrompt(mode, concept)` — injected into system prompt for quiz/presser/battle modes
+- Trend detection: if last 5 scores rising → "Push harder, find the ceiling." Falling → "Slow down, reinforce foundations."
+- When no specific concept known: shows weakest + strongest concepts with difficulty guidance
+
+**Feature 2: Micro-Celebration System** (`microCelebrations.js`)
+- 16 celebration triggers across 6 categories:
+  - Task completions: 1st today, 3rd, 5th (spoken), every 10th (spoken)
+  - Concept strength: exits red zone (30%), competent (60%, spoken), mastery (80%, spoken)
+  - Session time: 1hr mark, 2hr mark (spoken)
+  - Streak: 3 days, 5 days (spoken)
+  - Quiz: near-perfect score (spoken), score improvement +3
+  - Body double completion (spoken), check-in streak (7+, spoken)
+- Each celebration: message + sound + optional `jarvisSpeak()`
+- `buildTaskContext()` / `buildConceptContext()` helpers for context assembly
+
+**Feature 3: Session Momentum Tracker** (`momentumTracker.js`)
+- `recordActivity(type)` — called on message sent, concept reviewed, task completed
+- `getMomentum()` — compares activity in last 30min vs previous 30min:
+  - Stalling (was active, now nothing): "Check if stuck. Don't be pushy."
+  - Decelerating (>60% drop): "Suggest break or mode switch naturally."
+  - Accelerating (>50% increase): "In flow. DO NOT interrupt. Keep responses concise."
+  - Steady: normal engagement
+- `getMomentumPrompt()` — injected into Claude system prompt
+- `getMomentumGhostCard()` — generates ghost cards for stalling/major deceleration
+
+**Wiring:**
+- useAI.js: difficulty prompt + momentum prompt added to intelligence layer
+- ChatView.jsx: `recordActivity('message')` on every send, `recordQuizScore()` on quiz scoring, micro-celebrations fire on concept strength changes and quiz scores
+- ghostCardEngine.js: momentum ghost cards (stalling/deceleration) added to generation
+
+**Files created:** adaptiveDifficulty.js, microCelebrations.js, momentumTracker.js
+**Files updated:** useAI.js, ChatView.jsx, ghostCardEngine.js
+
+---
+
+### Session 60F — Continuity + Proactive Suggestions (2026-04-05)
+Two highest-impact missing features: JARVIS remembers yesterday and thinks about today.
+
+**Feature 1: Inter-Session Continuity Engine**
+- `sessionContinuity.js` (NEW) — Saves session state to `jos-last-session`: date, end time, last mode, session minutes, energy, tasks completed, stuck points (extracted from "stuck"/"confused"/"error" messages), highlights (task completions, quiz scores, streak), unfinished business (concepts reviewed but <60%).
+- `useSessionContinuity.js` (NEW hook) — Auto-saves on: `beforeunload` (tab close), `jarvis-shutdown` event, every 5 minutes, and on unmount.
+- `getLastSession()` — Returns previous day's session (not today's, max 7 days old).
+- `generateContinuityBriefing()` — Human-readable: "Yesterday: 3.1hr session, 4 tasks. Stuck on: embedding mismatch."
+- `getSessionContinuityPrompt()` — Injected into Claude system prompt: "Reference naturally if relevant."
+- Briefing.jsx shows continuity briefing above the morning briefing text.
+- ShutdownSequence.jsx calls `saveSessionState()` on ceremony start.
+- App.jsx mounts `useSessionContinuity` hook for auto-save.
+
+**Feature 2: Proactive Task Suggestion Engine**
+- `proactiveEngine.js` (NEW) — `suggestOptimalAction()` scores candidates:
+  - Check-in needed (urgency 0.85 if 8+hrs stale)
+  - Overdue concept reviews (spaced repetition schedule, decay detection)
+  - Build tasks (energy >= 3, pending count)
+  - Hard training (energy >= 4, presser mode)
+  - Easy training (energy <= 2, teach mode)
+  - Body Double (medium energy + pending tasks)
+  - Wind down (late night)
+- Scoring: urgency base + energy match (+0.2) + time match (+0.15) - meds penalty (-0.4) - late night penalty (-0.3)
+- `getProactiveSuggestionPrompt()` — "I recommend X right now. If Sir asks what to do, suggest this."
+- `ProactiveSuggestion.jsx` (NEW) — "JARVIS SUGGESTS" card on CMD tab with emoji, label, reason, DO THIS button, OPTIONS dropdown for alternatives with scores.
+- CmdTab.jsx mounts card after Briefing. DO THIS dispatches `jarvis-open-mode` event.
+
+**Wiring:**
+- useAI.js: continuity prompt + proactive suggestion prompt injected into system prompt
+- CmdTab.jsx: ProactiveSuggestion card after Briefing
+- Briefing.jsx: continuity briefing shown above morning briefing
+- App.jsx: useSessionContinuity hook mounted
+- ShutdownSequence.jsx: saveSessionState() on shutdown
+
+**Files created:** sessionContinuity.js, useSessionContinuity.js, proactiveEngine.js, ProactiveSuggestion.jsx
+**Files updated:** CmdTab.jsx, Briefing.jsx, useAI.js, App.jsx, ShutdownSequence.jsx
+
+---
+
+### Session 60E — Intelligence Deepening: 5 Thin Files → Full Power (2026-04-05)
+5 skeleton utility files deepened into god-tier intelligence systems. All wired into system prompt + ChatView.
+
+**File 1: jarvisConvictions.js** (26→180 lines) — JARVIS moral backbone
+- 2→14 convictions with priority ordering (critical/high/medium/low)
+- New: no food 5+hrs, 3+ hard modes consecutive, 6hr session, late night+poor sleep, post-rejection RSD guard, check-in skip 3+days, energy not set, mode avoidance 14+days, overdue concept 30+days, perfectionism detection, Sunday weekly review, streak-at-risk 23:30
+- `buildConvictionContext()` — gathers all signals from localStorage
+- `getActiveConvictions()` — returns ALL triggered convictions sorted by priority for briefing
+
+**File 2: patternEngine.js** (71→250 lines) — Correlation machine
+- 2→8 pattern detectors with statistical significance (>15% difference to report)
+- New: meds→energy, session length→next-day energy, day-of-week productivity, streak→confidence, energy→message length (engagement proxy), time-of-day→quiz performance
+- Confidence tiers: low (<14 points), medium (14-30), high (30+)
+- `getTopPatterns(n)` — top N for briefing/newsletter
+- `getPatternPrompt()` — patterns as Claude system prompt context
+
+**File 3: communicationTracker.js** (23→100 lines) — JARVIS learns HOW to talk
+- `classifyStyle(msg)` — classifies response into: question, data-heavy, detailed, direct, humor, analogy, encouragement, challenge
+- `trackResponse(styles, userLength)` — tracks engagement via user response length vs running average
+- `getCommunicationPrompt()` — "Nikhil responds best to: encouragement (85% engagement)"
+- Wired: ChatView classifies every JARVIS response, tracks engagement on every user message
+
+**File 4: moodEngine.js** (30→115 lines) — Prediction engine
+- `predictMood()` — predicts energy/focus from day-of-week historical patterns + 3-day trend
+- `scorePrediction(predicted, actual)` — compares with check-in, logs to jos-mood-predictions
+- `getPredictionAccuracy()` — tracking accuracy over time
+- `getMoodPredictionPrompt()` — "I predict today (Tuesday) energy ~3.2. Accuracy: 72%"
+
+**File 5: WinsTab.jsx** (90→200 lines) — Full trophy room
+- 4 rarity tiers: Common (cyan), Rare (gold), Epic (gold+glow), Legendary (gold+bright glow)
+- Progress bars for locked progressive achievements (streak, messages, concepts, tasks, check-ins)
+- Stats header: "3 COMMON • 2 RARE • 1 EPIC • 0 LEGENDARY"
+- "Next closest" card with progress bar — dopamine target
+- Expand on tap: shows rarity tier, unlock date/time
+- Each achievement mapped to rarity tier
+
+**Wiring:**
+- useAI.js: pattern prompt + communication prompt + mood prediction prompt injected into every system prompt
+- ChatView.jsx: classifyStyle() after every JARVIS response, trackResponse() after every user message
+
+**Files updated:** jarvisConvictions.js, patternEngine.js, communicationTracker.js, moodEngine.js, WinsTab.jsx, useAI.js, ChatView.jsx
+
+---
+
+### Session 60D — Universal Pocket-TTS Integration (2026-04-05)
+EVERY word JARVIS speaks now routes through one function: `jarvisSpeak()` in `jarvisSpeaker.js`. Pocket-TTS voice server (localhost:8100) is first priority. Browser speechSynthesis is last-resort fallback only.
+
+**The Architecture:**
+- `jarvisSpeaker.js` (NEW) — Single speech gateway. Health check cached 30s. Phrase cache for 11 common phrases ("Very well, Sir.", "Noted.", etc.) pre-generated after boot for zero-latency playback. Reads behavioral voiceDirectives from window global. Sends context (hour, energy, speed_override, volume_multiplier) to server.
+- `elevenLabsSpeak.js` `speakWithFallback` — Now redirects to `jarvisSpeak()`. This single change covers 8 files: Onboarding, VoiceDebrief, ShutdownSequence, Briefing, InterviewBrief, QuarterlyReport, CheckInForm, TimeCapsule.
+- `useJarvisVoice.js` — TTS chain replaced: `universalSpeak()` instead of ElevenLabs > browser chain. `jarvisStopAll()` uses `universalStop()`. `speakBrowserAck` routes through `universalSpeak`. `speakBrowserFallback` removed (dead code).
+- `App.jsx` — Rank-up + milestone speeches use `jarvisSpeak` instead of speakElevenLabs + speechSynthesis. `preCacheCommonPhrases()` called 2s after boot. `preWarmServer()` on boot transition.
+- `Boot.jsx` — `speakQ` and briefing speech routed through `jarvisSpeak`. `handleEnter` uses `jarvisStop()` for universal kill.
+- `Onboarding.jsx` — `speakBrowserAck` and all `speakWithFallback` calls replaced with `jarvisSpeak`.
+
+**Coverage verification:** `grep` confirms zero `new SpeechSynthesisUtterance` or `speechSynthesis.speak` calls remain in any component. Only the two fallback utility files (jarvisSpeaker.js, jarvisVoice.js) contain browser TTS code.
+
+**Files created:** src/utils/jarvisSpeaker.js
+**Files updated:** src/utils/elevenLabsSpeak.js, src/hooks/useJarvisVoice.js, src/App.jsx, src/components/Boot.jsx, src/components/Onboarding.jsx
+
+---
+
+### Session 60C — JARVIS Self-Knowledge Layer (2026-04-05)
+JARVIS now knows about its own systems and can talk about itself naturally. Added ~300 token SELF-KNOWLEDGE block to BASE_PERSONALITY in prompts.js. Covers: voice body (3 tiers, breathing, speed, volume), senses (energy, mood, meds, streak, concepts, time), behavioral engine (auto-shifting personality), personality evolution (formal→brotherhood), and how to respond when asked about itself (natural, never technical). "I monitor several signals, Sir" not "my behavioral engine detected low energy."
+
+**Files updated:** src/data/prompts.js
+
+---
+
+### Session 60B — MCU Canon Personality Engine (2026-04-05)
+Behavioral engine that changes HOW JARVIS responds based on real-time signals. Based on Paul Bettany's performance across Iron Man 1-3, Avengers 1-2.
+
+**Part 1: Behavioral Engine** (jarvisBehavior.js)
+- 9 priority-ordered behavioral scenarios detected from real-time signals:
+  - **CRISIS_CALM** (confidence<=1) — Iron Man 3 anxiety attack. JARVIS gets calmer. Short sentences, warm/gentle only, no data dumps.
+  - **COMEBACK_BROTHERHOOD** (3+ days absent) — Age of Ultron ownership. No guilt trip. "I should have reminded you, Sir."
+  - **DEEP_NIGHT_WHISPER** (2-6 AM) — Iron Man 3 sleep deprivation. Volume 35%, speed 0.78x, activation sounds disabled.
+  - **NIGHT_WIND_DOWN** (10PM-2AM) — Softer delivery, gentle time nudges.
+  - **FATIGUE_MONITOR** (4+ hrs session) — Iron Man 2 palladium monitoring. Proactive break suggestion.
+  - **LOW_ENERGY_SUGGEST** (energy<=2) — Iron Man 1 "Might I suggest..." pattern. Decision fatigue elimination.
+  - **HIGH_ENERGY_CHALLENGE** (energy>=4, confidence>=4) — Mark 2 test flight energy. Push harder, force anti-crutch.
+  - **SUNDAY_WAR_COUNCIL** — Strategic advisor mode with opus ambient hum.
+  - **NORMAL_OPS** — Standard balanced JARVIS.
+- Each scenario returns: `promptModifier` (Claude instructions), `voiceDirectives` (speed/volume/breath/pause), `behaviorFlags` (disable anti-crutch, suggest breaks, etc.)
+
+**Part 2: Special Interactions** — Detect gratitude, Iron Man easter egg, Nidhi mentions, self-doubt, suggestion dismissal ("Very well, Sir.")
+
+**Part 3: Milestone Speeches** — Cinematic pre-written speeches for streak_7, streak_14, streak_30, tasks_50%, tasks_100%, rank_up (operative/commander/architect). Emotion-tagged for voice server.
+
+**Part 4: System Prompt Injection** — Behavioral engine injected into every Claude API call via useAI.js. Signals (energy, streak, mood, time, meds, sleep) sent alongside behavioral mode instructions.
+
+**Part 5: Voice Server Integration** — VoiceDirectives (speed_override, volume_multiplier, breath_frequency) sent to Python server via context object. Server applies behavioral overrides on top of time-of-day profiles.
+
+**Part 6: UI Integration** — ThinkingIndicator (3 gold dots during deliberate pauses), milestone speech handler via event bus, behavioral ambient sound trigger, milestone-styled message bubbles.
+
+**Files created:** src/utils/jarvisBehavior.js
+**Files updated:** src/hooks/useAI.js, src/utils/jarvisVoice.js, src/components/train/ChatView.jsx, jarvis_voice_server.py (v3.1)
+
+---
+
+### Session 60A — God-Tier Voice Realism (10 Layers) (2026-04-05)
+Makes JARVIS sound like a REAL HUMAN, not an AI reading text. 10 realism layers across server + client.
+
+1. **Breath Engine** (server) — synthetic inhale/micro-breath spliced between sentences using scipy bandpass-filtered noise. Context-aware: emotional sentences get longer inhales, clinical gets fewer breaths, short responses get none.
+2. **Thinking Pauses** (client) — deliberate silence BEFORE speech based on context. Opus=800ms, milestone=1500ms, gratitude=800ms, comeback=1200ms. Emits `jarvis-thinking-pause` event for UI animation.
+3. **Dynamic Speed** (server) — emotion-mapped TTS speed per sentence. Clinical=1.05x crisp, dramatic=0.85x deliberate, urgent=1.12x fast. Same response has VARYING speeds across sentences.
+4. **Whisper Engine** (server+client) — time-of-day volume/speed. Night (10PM-2AM)=55% volume, 0.88x speed. Deep night (2-6AM)=40% volume, 0.82x speed. Morning/work=full. Client sends hour with every request.
+5. **Emotional Context Injection** (client) — Nikhil's current state (energy, mood, streak, session hours) sent to voice server AND injected into Claude system prompt for voice calibration.
+6. **Sentence Gap Engine** (server) — context-aware silence between sentences. Emotion transitions=400ms+100ms shift bonus. Humor/pride gets +150ms to land. Gravity shifts get +200ms. All +-15% jitter.
+7. **Word Emphasis** (server) — CAPS on emotional keywords (NEVER, ALWAYS, IMPRESSIVE, etc.) for natural TTS stress. Pocket-TTS naturally emphasizes capitalized words.
+8. **Activation/Deactivation Sounds** (client) — holographic shimmer (C6+E6 sine) before speech, triangle G5 fade after speech, barely-audible A2 hum during thinking pauses. All via Tone.js.
+9. **Personality Evolution** (client) — system prompt voice phase shifts by week. Week 1-2=FORMAL (cold/clinical dominant). Week 3-4=WARMING (dry wit emerging). Week 5-8=COMFORTABLE (warm dominant). Week 9+=BROTHERHOOD (full emotional range).
+10. **Ambient Context Sound** (client) — Opus auto-upgrade triggers deep D1 sine hum with LFO oscillation (-38dB). Fades out over 2.5s when response completes.
+
+**Files created:** src/utils/ambientSound.js
+**Files updated:** jarvis_voice_server.py (v3.0), src/utils/jarvisVoice.js (v2.0), src/hooks/useJarvisVoice.js, src/hooks/useSound.js, src/data/prompts.js, src/components/train/ChatView.jsx
+
+---
+
 ### Session 59D — 10 ADHD Cognitive Prosthetic Features (2026-04-03)
 Each feature addresses a specific executive function deficit in ADHD-PI:
 1. **Time Blindness Anchoring** — reactor pulses every 30 min (no numbers to read, physical sensation)

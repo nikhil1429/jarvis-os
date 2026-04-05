@@ -1,8 +1,13 @@
 // ghostCardEngine.js — Decides what ghost cards to show based on context
 
+import { getMomentumGhostCard } from './momentumTracker.js'
+
 export function generateGhostCards(context) {
   const cards = []
   try {
+    // Momentum-based ghost cards (stalling / decelerating detection)
+    const momentumCard = getMomentumGhostCard()
+    if (momentumCard && context.tab === 'cmd') cards.push(momentumCard)
     const core = JSON.parse(localStorage.getItem('jos-core') || '{}')
     const completed = core.completedTasks || []
     const concepts = JSON.parse(localStorage.getItem('jos-concepts') || '[]')

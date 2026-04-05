@@ -6,7 +6,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Mic, SkipForward } from 'lucide-react'
 import useJarvisVoice from '../hooks/useJarvisVoice.js'
-import { speakWithFallback } from '../utils/elevenLabsSpeak.js'
+import { jarvisSpeak } from '../utils/jarvisSpeaker.js'
 
 const SECTIONS = [
   {
@@ -54,19 +54,7 @@ const TOTAL_QUESTIONS = SECTIONS.reduce((sum, s) => sum + s.questions.length, 0)
 const ACKS = ['Noted, Sir.', 'Understood.', 'Very good.', "That's helpful, Sir.", 'Acknowledged.']
 
 function speakBrowserAck(text) {
-  const synth = window.speechSynthesis
-  if (!synth) return
-  synth.cancel()
-  const u = new SpeechSynthesisUtterance(text)
-  let v = window._jarvisVoice
-  if (!v) {
-    const voices = synth.getVoices()
-    v = voices.find(x => x.lang === 'en-GB') || voices.find(x => x.lang.startsWith('en')) || voices[0]
-    window._jarvisVoice = v
-  }
-  if (v) u.voice = v
-  u.rate = 1.1; u.pitch = 0.95
-  synth.speak(u)
+  jarvisSpeak(text, { force: true })
 }
 
 export default function Onboarding({ onComplete }) {
@@ -112,7 +100,7 @@ export default function Onboarding({ onComplete }) {
     typeText(intro, () => {
       setTimeout(() => showSectionTransition(0), 1000)
     })
-    await speakWithFallback(intro)
+    await jarvisSpeak(intro)
   }, [typeText])
 
   const showSectionTransition = useCallback((idx) => {
@@ -144,7 +132,7 @@ export default function Onboarding({ onComplete }) {
       }, 20000)
     })
 
-    await speakWithFallback(question)
+    await jarvisSpeak(question)
   }, [typeText, voice])
 
   const handleAnswer = useCallback((answerText) => {
@@ -323,7 +311,7 @@ Structure:
     setPhase('complete')
     const msg = 'Initial calibration complete, Sir. I now have a foundational understanding of your patterns, preferences, and objectives. Shall we begin?'
     typeText(msg)
-    await speakWithFallback(msg)
+    await jarvisSpeak(msg)
     setTimeout(() => onComplete(), 3000)
   }, [onComplete, typeText])
 

@@ -6,6 +6,7 @@ import { Mic, Volume2 } from 'lucide-react'
 import useStorage from '../../hooks/useStorage.js'
 import { speakWithFallback } from '../../utils/elevenLabsSpeak.js'
 import renderMd from '../../utils/renderMd.js'
+import { getLastSession, generateContinuityBriefing } from '../../utils/sessionContinuity.js'
 
 export default function Briefing() {
   const { get } = useStorage()
@@ -68,6 +69,16 @@ export default function Briefing() {
             </button>
           </div>
         </div>
+        {(() => {
+          const last = getLastSession()
+          const continuity = last ? generateContinuityBriefing(last) : ''
+          if (!continuity) return null
+          return (
+            <p className="font-body text-[10px] text-text-dim leading-relaxed mb-2 pb-2 border-b border-border/30 italic">
+              {continuity}
+            </p>
+          )
+        })()}
         <div className="font-body text-xs text-text leading-relaxed" dangerouslySetInnerHTML={{ __html: renderMd(briefing.text) }} />
         {briefing.generatedAt && (
           <p className="font-mono text-[8px] text-text-muted mt-1.5">

@@ -151,6 +151,44 @@ export default function useSound() {
           synth.triggerAttackRelease('G5', '32n', now + 0.06)
           break
 
+        // ========== LAYER 8: VOICE ACTIVATION/DEACTIVATION ==========
+        // WHY: These sounds create a "JARVIS is coming alive" feeling before
+        // speech and a "JARVIS is done" closure after. Subliminal but powerful.
+
+        case 'voiceActivate': {
+          // Holographic shimmer — two quick sine tones before JARVIS speaks
+          const va1 = new Tone.Synth({
+            oscillator: { type: 'sine' },
+            envelope: { attack: 0.05, decay: 0.1, sustain: 0.05, release: 0.15 }
+          }).toDestination()
+          va1.volume.value = -28
+          va1.triggerAttackRelease('C6', '0.08', now)
+          setTimeout(() => {
+            try {
+              const va2 = new Tone.Synth({
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.03, decay: 0.08, sustain: 0, release: 0.1 }
+              }).toDestination()
+              va2.volume.value = -32
+              va2.triggerAttackRelease('E6', '0.06')
+              setTimeout(() => { try { va1.dispose(); va2.dispose() } catch {} }, 500)
+            } catch { /* ok */ }
+          }, 40)
+          break
+        }
+
+        case 'voiceDeactivate': {
+          // Gentle fade-out — triangle wave after JARVIS finishes speaking
+          const vd = new Tone.Synth({
+            oscillator: { type: 'triangle' },
+            envelope: { attack: 0.02, decay: 0.2, sustain: 0, release: 0.3 }
+          }).toDestination()
+          vd.volume.value = -30
+          vd.triggerAttackRelease('G5', '0.15', now)
+          setTimeout(() => { try { vd.dispose() } catch {} }, 800)
+          break
+        }
+
         default:
           synth.triggerAttackRelease('C5', '32n', now)
       }
@@ -159,6 +197,27 @@ export default function useSound() {
       console.warn('[useSound] Failed to play:', soundName, err)
     }
   }, [canPlay, ensureSynth])
+
+  // Layer 8: Thinking hum — barely audible sine during deliberate pauses
+  // Returns a stop function. Caller must stop it when pause ends.
+  const startThinkingHum = useCallback(async () => {
+    if (!canPlay()) return () => {}
+    try {
+      await Tone.start()
+      const hum = new Tone.Synth({
+        oscillator: { type: 'sine' },
+        envelope: { attack: 0.3, decay: 0, sustain: 1, release: 0.5 }
+      }).toDestination()
+      hum.volume.value = -42  // Barely audible
+      hum.triggerAttack('A2') // Deep, warm
+      return () => {
+        try { hum.triggerRelease() } catch { /* ok */ }
+        setTimeout(() => { try { hum.dispose() } catch {} }, 1000)
+      }
+    } catch {
+      return () => {}
+    }
+  }, [canPlay])
 
   // WHY separate function: thinkingSound is a looping tick that plays every 500ms
   // during API wait. It needs a stop function, unlike one-shot sounds.
@@ -245,5 +304,5 @@ export default function useSound() {
     if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null }
   }, [])
 
-  return { play, startThinking, stopThinking, startAmbient, stopAmbient, setAmbientEnergy, startHeartbeat, stopHeartbeat }
+  return { play, startThinking, stopThinking, startThinkingHum, startAmbient, stopAmbient, setAmbientEnergy, startHeartbeat, stopHeartbeat }
 }

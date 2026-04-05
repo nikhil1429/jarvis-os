@@ -12,6 +12,7 @@ import useJarvisVoice from '../../hooks/useJarvisVoice.js'
 import { processVoiceCommand } from '../../utils/voiceCommands.js'
 import TASKS from '../../data/tasks.js'
 import { extractQuizScores, stripQuizTags, updateConceptStrength } from '../../utils/quizScoring.js'
+import { stripEmotionTags } from '../../utils/jarvisVoice.js'
 import renderMd from '../../utils/renderMd.js'
 import { shouldCompress, getCompressionPrompt, applyCompression } from '../../utils/conversationMemory.js'
 import { analyzeSubtext, shouldAnalyze } from '../../utils/subtextAnalyzer.js'
@@ -19,6 +20,15 @@ import { getTemporalContext } from '../../utils/temporalAwareness.js'
 import { detectPeopleMentions } from '../../utils/peopleMap.js'
 import { detectInSessionCrash } from '../../utils/emotionalMemory.js'
 import VizSmartCards from '../viz/VizSmartCards.jsx'
+import { startAmbient as startOpusAmbient, stopAmbient as stopOpusAmbient } from '../../utils/ambientSound.js'
+import { MILESTONE_SPEECHES } from '../../utils/jarvisBehavior.js'
+import { classifyStyle, trackResponse } from '../../utils/communicationTracker.js'
+import { recordQuizScore } from '../../utils/adaptiveDifficulty.js'
+import { checkMicroCelebration, buildTaskContext, buildConceptContext } from '../../utils/microCelebrations.js'
+import { recordActivity } from '../../utils/momentumTracker.js'
+import { jarvisSpeak } from '../../utils/jarvisSpeaker.js'
+import { autoDetectDismissal } from '../../utils/selfLearning.js'
+import { logInteraction } from '../../utils/auditTrail.js'
 
 const SpeechRecognition = typeof window !== 'undefined'
   ? window.SpeechRecognition || window.webkitSpeechRecognition
@@ -27,7 +37,7 @@ const SpeechRecognition = typeof window !== 'undefined'
 export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoMic }) {
   const { sendMessage, isStreaming, streamingText, error } = useAI()
   const { get } = useStorage()
-  const { play, startThinking, stopThinking } = useSound()
+  const { play, startThinking, stopThinking, startThinkingHum } = useSound()
   const eventBus = useEventBus()
   const checkIn = useVoiceCheckIn()
   const voice = useJarvisVoice()
@@ -37,9 +47,11 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
   const [messages, setMessages] = useState([])
   const [pendingImage, setPendingImage] = useState(null)
   const [lastTier, setLastTier] = useState(1)
+  const [isThinking, setIsThinking] = useState(false)
 
   const messagesContainerRef = useRef(null)
   const inputRef = useRef(null)
+  const lastJarvisStyleRef = useRef([])
 
   // Scroll on new messages
 
@@ -116,6 +128,13 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
     // Normal API call
     setMessages(prev => [...prev, { role: 'user', content: trimmed, timestamp: new Date().toISOString() }])
     play('send')
+    recordActivity('message') // Momentum tracking
+    autoDetectDismissal('message-sent', mode.id) // Self-learning: detect advice dismissal
+
+    // Communication tracker: track user engagement with previous JARVIS style
+    if (lastJarvisStyleRef.current.length > 0) {
+      trackResponse(lastJarvisStyleRef.current, trimmed.length)
+    }
 
     // Fire-and-forget subtext analysis for meaningful messages
     if (shouldAnalyze(trimmed, mode.id)) {
@@ -136,18 +155,31 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
       setPendingImage(null)
       stopTick(); stopThinking()
       if (result) {
-        // Strip quiz score tags from display + voice
-        const cleanText = stripQuizTags(result.text)
+        // Layer 10: Start opus ambient for Opus responses or behavioral directive
+        const behaviorAmbient = typeof window !== 'undefined' && window.__jarvisVoiceDirectives?.ambientSound
+        if (result.tier >= 2 || behaviorAmbient) startOpusAmbient('opus')
+
+        // Strip quiz score tags + emotion tags for display, keep raw for voice
+        const quizClean = stripQuizTags(result.text)
+        const displayText = stripEmotionTags(quizClean)
         setMessages(prev => [...prev, {
-          role: 'assistant', content: cleanText, timestamp: new Date().toISOString(),
+          role: 'assistant', content: displayText, timestamp: new Date().toISOString(),
           model: result.model, tier: result.tier, autoUpgraded: result.autoUpgraded, reason: result.reason,
         }])
         setLastTier(result.tier)
         play('receive')
-        voice.speak(cleanText)
+        // Pass raw tagged text to voice — emotion tags drive vocal tone
+        // Pass options so JarvisVoice can detect pause type (tier, milestone, etc.)
+        voice.speak(quizClean, { tier: result.tier })
+
+        // Communication tracker: classify JARVIS response style
+        lastJarvisStyleRef.current = classifyStyle(displayText)
+
+        // Audit trail: log JARVIS response
+        logInteraction({ type: 'response', content: displayText.slice(0, 200), mode: mode.id })
 
         // Decision log — auto-capture decisions
-        checkDecisionLog(trimmed, cleanText)
+        checkDecisionLog(trimmed, displayText)
 
         // Parse quiz scores and update concepts
         if (['quiz', 'presser', 'battle', 'forensics', 'code-autopsy', 'scenario-bomb'].includes(mode.id)) {
@@ -157,6 +189,26 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
             if (change) {
               eventBus.emit('quiz:score', { concept, score, ...change })
               console.log(`QUIZ: ${concept} ${change.oldStrength}% → ${change.newStrength}% (score: ${score}/10)`)
+
+              // Adaptive difficulty: record score for concept
+              recordQuizScore(concept, score)
+              recordActivity('concept')
+
+              // Micro-celebration: concept strength milestones
+              const celebration = checkMicroCelebration('concept:strength',
+                buildConceptContext(concept, change.oldStrength, change.newStrength))
+              if (celebration) {
+                play(celebration.sound)
+                if (celebration.speak) jarvisSpeak(celebration.message, { force: true })
+                logInteraction({ type: 'celebration', content: celebration.message, mode: mode.id })
+              }
+
+              // Micro-celebration: quiz score
+              const quizCeleb = checkMicroCelebration('quiz:score', { score, improvement: score - (change.oldStrength > 60 ? 7 : 4) })
+              if (quizCeleb && !celebration) {
+                play(quizCeleb.sound)
+                if (quizCeleb.speak) jarvisSpeak(quizCeleb.message, { force: true })
+              }
             }
           })
         }
@@ -295,6 +347,58 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
     }
   }, [])
 
+  // Layer 8: Voice activation/deactivation sounds + thinking pause hum
+  // Layer 10: Stop opus ambient when JARVIS finishes speaking
+  // Behavioral engine: ThinkingIndicator + milestone speeches
+  useEffect(() => {
+    let stopHum = null
+    const onPlaySound = (e) => { play(e.detail?.sound) }
+    const onThinkingPause = async (e) => {
+      setIsThinking(true)
+      if (startThinkingHum) {
+        stopHum = await startThinkingHum()
+        const dur = e.detail?.durationMs || 800
+        setTimeout(() => {
+          setIsThinking(false)
+          if (stopHum) { stopHum(); stopHum = null }
+        }, dur)
+      }
+    }
+    const onSpeaking = () => { setIsThinking(false) }
+    const onDoneSpeaking = () => { stopOpusAmbient() }
+    window.addEventListener('jarvis-play-sound', onPlaySound)
+    window.addEventListener('jarvis-thinking-pause', onThinkingPause)
+    window.addEventListener('jarvis-voice-speaking', onSpeaking)
+    window.addEventListener('jarvis-done-speaking', onDoneSpeaking)
+    return () => {
+      window.removeEventListener('jarvis-play-sound', onPlaySound)
+      window.removeEventListener('jarvis-thinking-pause', onThinkingPause)
+      window.removeEventListener('jarvis-voice-speaking', onSpeaking)
+      window.removeEventListener('jarvis-done-speaking', onDoneSpeaking)
+      if (stopHum) stopHum()
+      stopOpusAmbient()
+    }
+  }, [play, startThinkingHum])
+
+  // Milestone speech handler — triggered via event bus
+  useEffect(() => {
+    const handleMilestone = (data) => {
+      const key = data?.milestoneKey
+      const speech = key && MILESTONE_SPEECHES[key]
+      if (!speech) return
+      console.log('[MILESTONE] Playing speech:', key)
+      // Display milestone text (stripped of tags) + speak with voice
+      const displayText = stripEmotionTags(speech.text)
+      setMessages(prev => [...prev, {
+        role: 'assistant', content: displayText, timestamp: new Date().toISOString(),
+        isMilestone: true
+      }])
+      voice.speak(speech.text, { isMilestone: true })
+    }
+    const unsub = eventBus.subscribe('milestone:speech', handleMilestone)
+    return () => unsub()
+  }, [voice, eventBus])
+
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
@@ -344,7 +448,7 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
         {isStreaming && streamingText && (
           <div className={`rounded-lg p-3 border ${isOpusTier ? 'bg-gold/5 border-gold/20' : 'bg-card border-border'}`}>
             <p className={`font-body text-sm whitespace-pre-wrap ${isOpusTier ? 'text-gold' : 'text-cyan'}`}>
-              {streamingText}<span className="typewriter-cursor" />
+              {stripEmotionTags(streamingText)}<span className="typewriter-cursor" />
             </p>
           </div>
         )}
@@ -386,7 +490,16 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
             <span className="font-mono text-[10px] text-gold tracking-wider animate-pulse">Thinking...</span>
           </div>
         )}
-        {vs === 'SPEAKING' && (
+        {vs === 'SPEAKING' && isThinking && (
+          <div className="flex items-center gap-2 mb-1.5 mx-1">
+            <div className="flex gap-1">
+              <span className="w-1.5 h-1.5 bg-gold rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+              <span className="w-1.5 h-1.5 bg-gold rounded-full animate-pulse" style={{ animationDelay: '200ms' }} />
+              <span className="w-1.5 h-1.5 bg-gold rounded-full animate-pulse" style={{ animationDelay: '400ms' }} />
+            </div>
+          </div>
+        )}
+        {vs === 'SPEAKING' && !isThinking && (
           <div className="flex items-center mb-1.5 mx-1">
             <span className="font-mono text-[10px] text-gold tracking-wider animate-pulse">
               &#128266; Speaking... <span className="text-text-muted">(say "stop" to interrupt)</span>
@@ -462,25 +575,36 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
 function MessageBubble({ message }) {
   const isUser = message.role === 'user'
   const isOpus = message.tier >= 2
+  const isMilestone = message.isMilestone
+  // Safety strip: remove any emotion tags that leaked into stored content
+  const displayContent = (message.content || '').replace(/\[\s*(?:warm|clinical|cold|hot|proud|witty|concerned|gentle|urgent|whisper|neutral|serious|dramatic|commanding)\s*\]\s*/gi, '')
   if (isUser) {
     return (
       <div className="flex justify-end">
         <div className="max-w-[80%] bg-cyan/10 border border-cyan/20 rounded-lg px-4 py-2.5">
-          <p className="font-body text-sm text-text" dangerouslySetInnerHTML={{ __html: renderMd(message.content) }} />
+          <p className="font-body text-sm text-text" dangerouslySetInnerHTML={{ __html: renderMd(displayContent) }} />
         </div>
       </div>
     )
   }
   return (
     <div className="flex justify-start">
-      <div className={`max-w-[85%] rounded-lg px-4 py-2.5 border holo-response ${isOpus ? 'glass-card-gold' : 'glass-card'}`}>
+      <div className={`max-w-[85%] rounded-lg px-4 py-2.5 border holo-response ${
+        isMilestone ? 'glass-card-gold border-gold/30 bg-gold/5' : isOpus ? 'glass-card-gold' : 'glass-card'
+      }`}>
         {message.autoUpgraded && (
           <div className="flex items-center gap-1.5 mb-1.5">
             <Zap size={10} className="text-gold" />
             <span className="font-mono text-[9px] text-gold/70 tracking-wider">OPUS — {message.reason}</span>
           </div>
         )}
-        <p className={`font-body text-sm leading-relaxed ${isOpus ? 'text-gold' : 'text-text'}`} dangerouslySetInnerHTML={{ __html: renderMd(message.content) }} />
+        {isMilestone && (
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <span className="text-gold text-xs">&#9733;</span>
+            <span className="font-mono text-[9px] text-gold tracking-wider">MILESTONE</span>
+          </div>
+        )}
+        <p className={`font-body text-sm leading-relaxed ${isMilestone ? 'text-gold' : isOpus ? 'text-gold' : 'text-text'}`} dangerouslySetInnerHTML={{ __html: renderMd(displayContent) }} />
         <span className="font-mono text-[9px] text-text-muted mt-1.5 block">
           {new Date(message.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
         </span>

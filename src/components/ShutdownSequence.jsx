@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react'
 import { speakWithFallback } from '../utils/elevenLabsSpeak.js'
+import { saveSessionState } from '../utils/sessionContinuity.js'
 
 const BOOT_LINES_REVERSE = [
   'Neural interface',
@@ -21,6 +22,8 @@ export default function ShutdownSequence({ onComplete }) {
   const [finalText, setFinalText] = useState('')
 
   useEffect(() => {
+    // Save session state for next boot's continuity briefing
+    saveSessionState()
     // Signal background to enter shutdown mode
     window.dispatchEvent(new CustomEvent('jarvis-shutdown'))
 

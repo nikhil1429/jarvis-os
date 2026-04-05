@@ -83,23 +83,26 @@ export function getMoodTrajectory() {
 
 // Feature 6: In-session crash detection (RSD shield)
 export function detectInSessionCrash(messages) {
-  if (!messages || messages.length < 4) return null
+  if (!messages || messages.length < 6) return null
   const userMsgs = messages.filter(m => m.role === 'user')
-  if (userMsgs.length < 4) return null
+  if (userMsgs.length < 6) return null
 
   const recent = userMsgs.slice(-4)
   const earlier = userMsgs.slice(-8, -4)
+
+  // Exempt short greetings/acks — if any recent message is under 5 chars, skip
+  if (recent.some(m => (m.content || '').length < 5)) return null
 
   // Check message length collapse (80%+ drop)
   if (earlier.length >= 2) {
     const avgEarlier = earlier.reduce((s, m) => s + (m.content?.length || 0), 0) / earlier.length
     const avgRecent = recent.reduce((s, m) => s + (m.content?.length || 0), 0) / recent.length
-    if (avgEarlier > 30 && avgRecent < avgEarlier * 0.2) {
+    if (avgEarlier > 80 && avgRecent < avgEarlier * 0.2) {
       return { type: 'length-collapse', text: "Sir, your responses got much shorter. That's often a signal. Want to switch to something that reminds you what you DO know?" }
     }
   }
 
-  // Check for repeated "idk" / "I don't know"
+  // Check for repeated "idk" / "I don't know" (need 3 out of last 4)
   const idkCount = recent.filter(m => {
     const l = (m.content || '').toLowerCase()
     return l.includes('idk') || l.includes("i don't know") || l.includes('no idea') || l.includes('pata nahi')

@@ -8,7 +8,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import useStorage from '../hooks/useStorage.js'
 import { getDayNumber, getWeekNumber, getTimeOfDay } from '../utils/dateUtils.js'
-import { speakElevenLabs } from '../utils/elevenLabsSpeak.js'
+import { jarvisSpeak, jarvisStop } from '../utils/jarvisSpeaker.js'
 import BootReactor from './BootReactor.jsx'
 import TASKS from '../data/tasks.js'
 
@@ -87,7 +87,7 @@ Write 3-5 sentence briefing in JARVIS voice (formal British, "Sir"). Under 100 w
 // ============================================================
 export default function Boot({ onComplete }) {
   const { get, update } = useStorage()
-  // tts removed — speakElevenLabs imported directly
+  // Voice: universal jarvisSpeak (Pocket-TTS > browser fallback)
 
   const [phase, setPhase] = useState(1)
   const [reactorVisible, setReactorVisible] = useState(false)
@@ -114,11 +114,9 @@ export default function Boot({ onComplete }) {
 
   const VOICE_QS = ['', 'Energy level, Sir?', 'Primary focus today?', 'Any blockers?', 'Morning bet — what will you accomplish today?']
 
-  // Voice helper: ElevenLabs with browser TTS fallback
+  // Voice helper: universal speaker (Pocket-TTS > browser fallback)
   const speakQ = (text) => {
-    speakElevenLabs(text).then(ok => {
-      if (!ok) { const u = new SpeechSynthesisUtterance(text); u.lang = 'en-GB'; window.speechSynthesis?.speak(u) }
-    }).catch(() => { const u = new SpeechSynthesisUtterance(text); u.lang = 'en-GB'; window.speechSynthesis?.speak(u) })
+    jarvisSpeak(text, { force: true })
   }
 
   // Check if returning user (compressed boot)
@@ -360,23 +358,11 @@ export default function Boot({ onComplete }) {
       }
     }, charDelay)
 
-    // Speak the briefing — ElevenLabs only, browser TTS as fallback
+    // Speak the briefing — universal speaker (Pocket-TTS > browser fallback)
     if (!window._briefingStopped) {
       const settings = JSON.parse(localStorage.getItem('jos-settings') || '{}')
       if (settings.voice !== false) {
-        speakElevenLabs(finalText).then(success => {
-          if (!success && !window._briefingStopped) {
-            // Fallback to browser TTS
-            const synth = window.speechSynthesis
-            if (synth) {
-              const u = new SpeechSynthesisUtterance(finalText)
-              const voices = synth.getVoices()
-              const v = voices.find(x => x.lang === 'en-GB') || voices[0]
-              if (v) u.voice = v
-              synth.speak(u)
-            }
-          }
-        })
+        jarvisSpeak(finalText, { force: true })
       }
     }
 
@@ -386,28 +372,14 @@ export default function Boot({ onComplete }) {
     // BRUTE FORCE: Set flag FIRST — blocks any queued/in-flight briefing speech
     window._briefingStopped = true
 
-    // Kill browser TTS
-    window.speechSynthesis.cancel()
-
-    // Kill ElevenLabs audio
-    if (window._jarvisAudio) {
-      window._jarvisAudio.pause()
-      window._jarvisAudio.currentTime = 0
-      window._jarvisAudio = null
-    }
-
-    // Kill ALL audio elements on page
-    document.querySelectorAll('audio').forEach(a => { a.pause(); a.currentTime = 0 })
+    // Kill ALL audio via universal stop
+    jarvisStop()
 
     // Kill thinking ticks
     if (window._thinkingStop) { window._thinkingStop(); window._thinkingStop = null }
 
     // Kill again after 50ms (catches anything that re-queues)
-    setTimeout(() => {
-      window.speechSynthesis.cancel()
-      document.querySelectorAll('audio').forEach(a => { a.pause(); a.currentTime = 0 })
-      if (window._jarvisAudio) { window._jarvisAudio.pause(); window._jarvisAudio = null }
-    }, 50)
+    setTimeout(() => { jarvisStop() }, 50)
 
     console.log('BOOT: stopped all audio on ENTER click (_briefingStopped = true)')
 

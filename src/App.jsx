@@ -51,8 +51,8 @@ import useReportGenerator from './hooks/useReportGenerator.js'
 import DashboardOverlay from './components/viz/DashboardOverlay.jsx'
 import VizDependencyTree from './components/viz/VizDependencyTree.jsx'
 import { getDayNumber, getWeekNumber } from './utils/dateUtils.js'
-import { speakElevenLabs } from './utils/elevenLabsSpeak.js'
-// smartVoiceRouter removed — always ElevenLabs
+import { jarvisSpeak, jarvisStop, preCacheCommonPhrases, preWarmServer } from './utils/jarvisSpeaker.js'
+import useSessionContinuity from './hooks/useSessionContinuity.js'
 import { speakTheatrical, SPEECHES, getSpeechText } from './utils/theatricalSpeech.js'
 import TASKS from './data/tasks.js'
 
@@ -101,7 +101,7 @@ function App() {
   const { play } = useSound()
   const eventBus = useEventBus()
   const { captureTab } = useAutoCapture()
-  // tts removed
+  useSessionContinuity() // Auto-saves session state for inter-session memory
 
   const [appState, setAppState] = useState(() => {
     if (!localStorage.getItem('jos-onboarding')) return 'onboarding'
@@ -275,16 +275,9 @@ function App() {
       setRankUpOverlay({ from: currentRank, to: newRank })
       play('milestone')
 
-      // Theatrical speech: dramatic pauses between segments via ElevenLabs
+      // Theatrical speech: dramatic pauses between segments
       const segments = SPEECHES.rankUp(newRank)
-      const speakFn = async (text) => {
-        const ok = await speakElevenLabs(text)
-        if (!ok) {
-          const synth = window.speechSynthesis
-          if (synth) { const u = new SpeechSynthesisUtterance(text); synth.speak(u) }
-        }
-      }
-      speakTheatrical(segments, speakFn)
+      speakTheatrical(segments, jarvisSpeak)
 
       setTimeout(() => setRankUpOverlay(null), 7000)
     }
@@ -322,25 +315,9 @@ function App() {
         const theatricalKey = `milestone${ms.pct}`
         const segments = SPEECHES[theatricalKey]
         if (segments) {
-          const speakFn = async (text) => {
-            const ok = await speakElevenLabs(text)
-            if (!ok) {
-              const synth = window.speechSynthesis
-              if (synth) { const u = new SpeechSynthesisUtterance(text); synth.speak(u) }
-            }
-          }
-          speakTheatrical(segments, speakFn)
+          speakTheatrical(segments, jarvisSpeak)
         } else {
-          speakElevenLabs(ms.speech).then(ok => {
-            if (!ok) {
-              const synth = window.speechSynthesis
-              if (synth) {
-                const u = new SpeechSynthesisUtterance(ms.speech)
-                u.lang = 'en-GB'
-                synth.speak(u)
-              }
-            }
-          })
+          jarvisSpeak(ms.speech)
         }
 
         // Dismiss after longer duration for theatrical
@@ -361,7 +338,10 @@ function App() {
     } catch { /* ok */ }
     setAppState('main')
     window._briefingStopped = false
-    console.log('BRIEFING FLAG: reset after boot complete, ElevenLabs enabled')
+    console.log('BOOT COMPLETE: voice server warming, phrase cache starting')
+    // Pre-warm voice server + cache common phrases in background
+    preWarmServer()
+    setTimeout(() => preCacheCommonPhrases(), 2000) // after boot settles
     // Start ambient sound
     try { play('boot') } catch { /* ok */ }
     // Show boot briefing dashboard after 1s
