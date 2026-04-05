@@ -237,7 +237,7 @@ export default function useGeminiVoice() {
         if (event.data instanceof Blob) {
           try {
             const arrayBuffer = await event.data.arrayBuffer()
-            if (arrayBuffer.byteLength < 10) return // skip tiny control frames
+            if (arrayBuffer.byteLength < 100) return // skip handshake/control packets
             console.log('[Gemini] Binary audio received, bytes:', arrayBuffer.byteLength)
             resetSilenceTimer()
 
@@ -272,7 +272,7 @@ export default function useGeminiVoice() {
 
             if (msg.setupComplete) {
               setIsConnected(true); setIsListening(true); startTimeRef.current = Date.now()
-              startAudioCapture(ctx, stream, ws); startTranscriptionCapture(); resetSilenceTimer()
+              setTimeout(() => startAudioCapture(ctx, stream, ws), 500); startTranscriptionCapture(); resetSilenceTimer()
               startShadowProcessing(() => { try { return JSON.parse(localStorage.getItem('jos-gemini-transcript')||'[]') } catch { return [] } })
               startStateSync(() => wsRef.current)
               window.dispatchEvent(new CustomEvent('jarvis-sound', { detail: { sound: isAutoReconnectRef.current ? 'geminiReconnect' : 'geminiConnect' } }))
@@ -365,7 +365,9 @@ export default function useGeminiVoice() {
       let binary = ''
       for (let j = 0; j < bytes.length; j++) binary += String.fromCharCode(bytes[j])
       const b64 = btoa(binary)
-      const msg = JSON.stringify({ realtimeInput: { mediaChunks: [{ mimeType: 'audio/pcm;rate=16000', data: b64 }] } })
+      // Gemini Live API: snake_case field names per docs
+      const msg = JSON.stringify({ realtime_input: { media_chunks: [{ mime_type: 'audio/pcm;rate=16000', data: b64 }] } })
+      // Alt (camelCase): { realtimeInput: { mediaChunks: [{ mimeType: 'audio/pcm;rate=16000', data: b64 }] } }
       ws.send(msg)
       audioFrameCount++
       if (audioFrameCount <= 3) console.log('[Gemini] Sent audio frame', audioFrameCount, 'size:', msg.length)
