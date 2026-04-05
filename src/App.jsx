@@ -357,6 +357,16 @@ function App() {
     console.log('BOOT COMPLETE: Gemini Live voice ready')
     // Start ambient sound
     try { play('boot') } catch { /* ok */ }
+    // Auto-connect Gemini and speak briefing
+    try {
+      const weekly = JSON.parse(localStorage.getItem('jos-weekly') || '{}')
+      const briefingText = weekly.briefing?.text || weekly.lastBriefing?.text
+      if (briefingText) {
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('jarvis-boot-briefing', { detail: { text: briefingText } }))
+        }, 1500) // Wait for app to settle
+      }
+    } catch { /* ok */ }
     // Show boot briefing dashboard after 1s
     setTimeout(() => showDashboard('boot-briefing'), 1000)
     // JARVIS self-diagnostics — tests ALL systems on every boot

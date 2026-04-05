@@ -306,6 +306,22 @@ export default function useGeminiVoice() {
 
   function logGeminiCall() { const d=startTimeRef.current?Math.round((Date.now()-startTimeRef.current)/1000):0; logAPICall({model:'gemini-3.1-flash-live',mode:'gemini-voice',inputTokens:0,outputTokens:0,latencyMs:d*1000,estimatedCost:0,reason:`Voice: ${d}s`}) }
 
+  // Boot briefing injection: Gemini speaks the morning briefing
+  useEffect(() => {
+    const h = (e) => {
+      const text = e.detail?.text
+      if (!text || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+      wsRef.current.send(JSON.stringify({
+        clientContent: {
+          turns: [{ role: 'user', parts: [{ text: `[SYSTEM: Read this morning briefing aloud to Sir. Speak it naturally in your JARVIS voice, do not add commentary — just deliver the briefing:]\n\n${text}` }] }],
+          turnComplete: true
+        }
+      }))
+    }
+    window.addEventListener('gemini-inject-briefing', h)
+    return () => window.removeEventListener('gemini-inject-briefing', h)
+  }, [])
+
   // Piece 4: Handoff disconnect listener
   useEffect(() => {
     const h = () => { reconnectAttemptRef.current = maxReconnects; disconnectFromJarvis() }
