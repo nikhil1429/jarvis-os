@@ -229,10 +229,28 @@ export default function useGeminiVoice() {
 
       ws.onopen = async () => {
         console.log('[Gemini] WebSocket connected, sending setup...')
-        const instruction = await buildSystemInstruction()
-        const setupMsg = { setup: { model: 'models/gemini-3.1-flash-live-preview', systemInstruction: { parts: [{ text: instruction }] }, generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: getVoiceName() } } } }, tools: GEMINI_TOOLS } }
+        // DIAGNOSTIC: Bare minimum setup to isolate 1007 cause
+        // Try 'models/gemini-2.0-flash-exp' first. If that works, problem is model name.
+        // Then try 'models/gemini-3.1-flash-live-preview'.
+        const setupMsg = {
+          setup: {
+            model: 'models/gemini-2.0-flash-exp',
+            generationConfig: {
+              responseModalities: ['AUDIO'],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: { voiceName: 'Charon' }
+                }
+              }
+            }
+          }
+        }
+        // FULL setup (commented out for diagnostic):
+        // const instruction = await buildSystemInstruction()
+        // const setupMsg = { setup: { model: 'models/gemini-3.1-flash-live-preview', systemInstruction: { parts: [{ text: instruction }] }, generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: getVoiceName() } } } }, tools: GEMINI_TOOLS } }
         console.log('[Gemini] Setup message size:', JSON.stringify(setupMsg).length)
         ws.send(JSON.stringify(setupMsg))
+        console.log('[Gemini] Setup sent, waiting for setupComplete...')
       }
 
       ws.onmessage = async (event) => {
