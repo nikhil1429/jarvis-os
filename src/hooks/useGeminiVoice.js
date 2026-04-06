@@ -253,7 +253,7 @@ export default function useGeminiVoice() {
       ws.onopen = async () => {
         console.log('[Gemini] WebSocket connected, sending setup...')
         const instruction = await buildSystemInstruction()
-        const setupMsg = { setup: { model: 'models/gemini-3.1-flash-live-preview', systemInstruction: { parts: [{ text: instruction }] }, generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: getVoiceName() } } }, thinkingConfig: { thinkingLevel: 'high' }, outputAudioTranscription: {}, inputAudioTranscription: {} }, tools: GEMINI_TOOLS } }
+        const setupMsg = { setup: { model: 'models/gemini-3.1-flash-live-preview', systemInstruction: { parts: [{ text: instruction }] }, generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: getVoiceName() } } }, thinkingConfig: { thinkingLevel: 'high' } }, tools: GEMINI_TOOLS } }
         console.log('[Gemini] Setup message size:', JSON.stringify(setupMsg).length)
         ws.send(JSON.stringify(setupMsg))
         console.log('[Gemini] Setup sent, waiting for setupComplete...')
@@ -317,14 +317,6 @@ export default function useGeminiVoice() {
               if (part.inlineData?.data) { setVoiceState('SPEAKING'); console.log('[Gemini] Audio chunk, b64 length:', part.inlineData.data.length); playAudioChunk(part.inlineData.data) }
               if (part.text) { console.log('[Gemini] Text:', part.text.slice(0, 80)); saveTranscript({ role: 'assistant', text: part.text, timestamp: new Date().toISOString() }) }
             }
-          }
-          // Transcription: output (JARVIS speech as text) + input (user speech as text)
-          if (msg.serverContent?.outputTranscription?.text) {
-            saveTranscript({ role: 'assistant', text: msg.serverContent.outputTranscription.text, timestamp: new Date().toISOString() })
-          }
-          if (msg.serverContent?.inputTranscription?.text) {
-            const text = msg.serverContent.inputTranscription.text.trim()
-            if (text) saveTranscript({ role: 'user', text, timestamp: new Date().toISOString() })
           }
           if (msg.toolCall?.functionCalls) {
             for (const fc of msg.toolCall.functionCalls) {
