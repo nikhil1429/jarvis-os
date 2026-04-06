@@ -7,7 +7,7 @@ import { X, Download, Upload, Trash2, Volume2, VolumeX, Eye, EyeOff, Mic, AlertT
 import useStorage from '../../hooks/useStorage.js'
 import { getDataHealth, runSystemDiagnostics } from '../../utils/dataIntegrity.js'
 
-export default function Settings({ isOpen, onClose }) {
+export default function Settings({ isOpen, onClose, gemini }) {
   const { get, set } = useStorage()
   const [confirmReset, setConfirmReset] = useState(false)
   const [importStatus, setImportStatus] = useState(null)
@@ -132,9 +132,13 @@ export default function Settings({ isOpen, onClose }) {
             <ToggleRow
               icon={<Mic size={16} />}
               label="GEMINI VOICE"
-              sublabel="Real-time voice via Gemini Live"
+              sublabel={gemini?.isConnected ? 'Connected — Gemini Live' : 'Real-time voice via Gemini Live'}
               value={settings.geminiVoice !== false}
-              onChange={v => updateSetting('geminiVoice', v)}
+              onChange={v => {
+                updateSetting('geminiVoice', v)
+                if (v && gemini && !gemini.isConnected) gemini.connect()
+                if (!v && gemini && gemini.isConnected) gemini.disconnect()
+              }}
             />
 
             <div>

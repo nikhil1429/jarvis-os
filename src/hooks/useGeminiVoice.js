@@ -221,6 +221,11 @@ export default function useGeminiVoice() {
   const isReconnectRef = useRef(false)
   const sessionWarningRef = useRef(false)
   const disconnectingRef = useRef(false)
+  // WHY: React StrictMode double-mounts components. Without this guard,
+  // first mount opens WS, StrictMode unmount closes it, remount finds
+  // state=CONNECTING and silently returns. mountedRef lets WS handlers
+  // survive the unmount/remount cycle.
+  const mountedRef = useRef(true)
 
   // ── Elapsed Timer ──────────────────────────────────────────────────────
   const startElapsedTimer = useCallback(() => {
@@ -397,6 +402,7 @@ export default function useGeminiVoice() {
     wsRef.current = ws
 
     ws.onopen = () => {
+      if (!mountedRef.current) return
       // Send setup message immediately
       const setup = {
         setup: {
@@ -428,6 +434,7 @@ export default function useGeminiVoice() {
     }
 
     ws.onmessage = async (event) => {
+      if (!mountedRef.current) return
       let text
       if (event.data instanceof Blob) {
         text = await event.data.text()
@@ -543,6 +550,7 @@ export default function useGeminiVoice() {
     }
 
     ws.onerror = (err) => {
+      if (!mountedRef.current) return
       console.error('[GeminiVoice] WebSocket error')
       if (!disconnectingRef.current) {
         setError('Connection error')
@@ -551,6 +559,7 @@ export default function useGeminiVoice() {
     }
 
     ws.onclose = (e) => {
+      if (!mountedRef.current) return
       if (disconnectingRef.current) {
         setState(STATES.DISCONNECTED)
         return
@@ -629,9 +638,13 @@ export default function useGeminiVoice() {
     }
   }, [flushPlayback])
 
-  // ── Cleanup on unmount ─────────────────────────────────────────────────
+  // ── Mount/unmount tracking ──────────────────────────────────────────────
   useEffect(() => {
+    mountedRef.current = true
     return () => {
+      mountedRef.current = false
+      // Reset state so remount can call connect() again
+      setState(STATES.DISCONNECTED)
       disconnectingRef.current = true
       clearTimeout(reconnectTimerRef.current)
       cleanupConnection()

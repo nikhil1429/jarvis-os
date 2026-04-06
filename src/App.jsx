@@ -247,8 +247,22 @@ function App() {
   }, [])
 
   // Auto-connect Gemini voice on boot complete
+  // WHY: Delay 3s to let Supabase sync finish first, then ensure geminiVoice
+  // setting exists (Supabase may overwrite jos-settings without this key).
   useEffect(() => {
-    if (appState === 'main') gemini.connect()
+    if (appState === 'main') {
+      const timer = setTimeout(() => {
+        try {
+          const s = JSON.parse(localStorage.getItem('jos-settings') || '{}')
+          if (s.geminiVoice === undefined) {
+            s.geminiVoice = true
+            localStorage.setItem('jos-settings', JSON.stringify(s))
+          }
+        } catch { /* ok */ }
+        gemini.connect()
+      }, 3000)
+      return () => clearTimeout(timer)
+    }
   }, [appState])
 
   // Supabase boot sync
@@ -462,7 +476,7 @@ function App() {
         onTabChange={handleTabChange}
         hasPulse={hasPulse}
       />
-      <Settings isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <Settings isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} gemini={gemini} />
 
       {/* Gemini Voice */}
       <JarvisVoiceButton gemini={gemini} />
