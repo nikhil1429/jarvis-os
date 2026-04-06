@@ -8,7 +8,7 @@ import { Play, X, Send, Mic, Clock } from 'lucide-react'
 import useAI from '../../hooks/useAI.js'
 import useStorage from '../../hooks/useStorage.js'
 import useSound from '../../hooks/useSound.js'
-import useJarvisVoice from '../../hooks/useJarvisVoice.js'
+const jarvisSpeak = (text) => { if (text) window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text } })) }
 
 const GHOST_MESSAGES = [
   "Sir, what did you just write?",
@@ -34,7 +34,6 @@ export default function BodyDoubleTimer() {
   const { sendMessage } = useAI()
   const { get, update } = useStorage()
   const { play } = useSound()
-  const voice = useJarvisVoice()
 
   const [duration, setDuration] = useState(25)
   const [remaining, setRemaining] = useState(0)
@@ -67,7 +66,7 @@ export default function BodyDoubleTimer() {
     // JARVIS greeting
     const greeting = `Focus session initiated, Sir. ${duration} minutes on the clock.${taskText ? ` Target: ${taskText}.` : ' What shall we focus on?'} I will check in periodically.`
     addMessage('assistant', greeting)
-    voice.speak(greeting, { isVoiceCommand: true })
+    jarvisSpeak(greeting, { isVoiceCommand: true })
 
     // Countdown timer
     timerRef.current = setInterval(() => {
@@ -86,16 +85,16 @@ export default function BodyDoubleTimer() {
     ghostRef.current = setInterval(() => {
       const msg = GHOST_MESSAGES[Math.floor(Math.random() * GHOST_MESSAGES.length)]
       addMessage('assistant', msg)
-      voice.speak(msg, { isVoiceCommand: true })
+      jarvisSpeak(msg, { isVoiceCommand: true })
     }, 10 * 60 * 1000)
-  }, [duration, taskText, play, voice, addMessage])
+  }, [duration, taskText, play, addMessage])
 
   const handleSessionEnd = useCallback(() => {
     setIsRunning(false)
     play('milestone')
     const endMsg = `Time, Sir. ${duration}-minute session complete. What did you accomplish?`
     addMessage('assistant', endMsg)
-    voice.speak(endMsg, { isVoiceCommand: true })
+    jarvisSpeak(endMsg, { isVoiceCommand: true })
 
     // Save session
     update('session-timer', prev => ({
@@ -109,7 +108,7 @@ export default function BodyDoubleTimer() {
         completed: true,
       }
     }))
-  }, [duration, taskText, play, voice, update, addMessage])
+  }, [duration, taskText, play, update, addMessage])
 
   const stopSession = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current)
@@ -118,8 +117,8 @@ export default function BodyDoubleTimer() {
     const elapsed = Math.round((Date.now() - (startTimeRef.current || Date.now())) / 60000)
     const msg = `Session ended early at ${elapsed} minutes. Sometimes knowing when to stop is wisdom, Sir.`
     addMessage('assistant', msg)
-    voice.speak(msg, { isVoiceCommand: true })
-  }, [voice, addMessage])
+    jarvisSpeak(msg, { isVoiceCommand: true })
+  }, [addMessage])
 
   const handleChat = useCallback(async (text) => {
     const trimmed = text?.trim()
@@ -130,33 +129,20 @@ export default function BodyDoubleTimer() {
       const result = await sendMessage(trimmed, 'body-double', {})
       if (result?.text) {
         addMessage('assistant', result.text)
-        voice.speak(result.text)
+        jarvisSpeak(result.text)
       }
     } catch (err) {
       console.error('[BodyDouble] Chat failed:', err)
     }
-  }, [sendMessage, voice, addMessage])
+  }, [sendMessage, addMessage])
 
   const handleMicClick = useCallback(() => {
-    if (voice.voiceState === 'SPEAKING') voice.stopSpeaking()
-    else if (voice.voiceState === 'LISTENING') voice.stopListening()
-    else voice.startListening()
-  }, [voice])
+    window.dispatchEvent(new CustomEvent('jarvis-open-voice'))
+  }, [])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
-
-  useEffect(() => {
-    const onSend = (e) => { if (isRunning) handleChat(e.detail.text) }
-    const onInterim = (e) => setInput(e.detail.text)
-    window.addEventListener('jarvis-voice-send', onSend)
-    window.addEventListener('jarvis-voice-interim', onInterim)
-    return () => {
-      window.removeEventListener('jarvis-voice-send', onSend)
-      window.removeEventListener('jarvis-voice-interim', onInterim)
-    }
-  }, [isRunning, handleChat])
 
   useEffect(() => {
     return () => {
@@ -246,16 +232,14 @@ export default function BodyDoubleTimer() {
         <div className="flex gap-2 p-3 border-t border-border" style={{ flexShrink: 0 }}>
           <input type="text" value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { handleChat(input); setInput('') } }}
-            placeholder={voice.voiceState === 'LISTENING' ? 'Listening...' : 'Chat with JARVIS...'}
+            placeholder="Chat with JARVIS..."
             className={`flex-1 bg-void border rounded-lg px-3 py-2 font-body text-xs text-text
               placeholder:text-text-muted focus:outline-none transition-all ${
-              voice.voiceState === 'LISTENING' ? 'border-cyan shadow-[0_0_12px_rgba(0,180,216,0.3)]' : 'border-border focus:border-cyan'
+              'border-border focus:border-cyan'
             }`} />
           <button onClick={handleMicClick}
             className={`p-2 rounded-lg border transition-all ${
-              voice.voiceState === 'LISTENING' ? 'bg-cyan/15 border-cyan text-cyan animate-pulse'
-              : voice.voiceState === 'SPEAKING' ? 'bg-gold/10 border-gold/40 text-gold'
-              : 'border-border text-text-muted hover:border-cyan/40 hover:text-cyan'
+              'border-border text-text-muted hover:border-cyan/40 hover:text-cyan'
             }`}>
             <Mic size={16} />
           </button>

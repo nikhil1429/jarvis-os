@@ -5,7 +5,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Mic, SkipForward } from 'lucide-react'
-import useJarvisVoice from '../hooks/useJarvisVoice.js'
 // jarvisSpeaker removed — speech dispatches jarvis-speak → Gemini Live
 const jarvisSpeak = (text) => {
   if (!text) return
@@ -63,8 +62,6 @@ function speakBrowserAck(text) {
 }
 
 export default function Onboarding({ onComplete }) {
-  const voice = useJarvisVoice()
-
   const [sectionIdx, setSectionIdx] = useState(0)
   const [questionIdx, setQuestionIdx] = useState(0)
   const [displayText, setDisplayText] = useState('')
@@ -130,7 +127,7 @@ export default function Onboarding({ onComplete }) {
     typeText(question, () => {
       // After typewriter + speech, activate mic
       setPhase('listening')
-      setTimeout(() => voice.startListening(), 300)
+      // Voice input via Gemini Live overlay
       // 20s fallback timer — show text input if no speech
       fallbackTimerRef.current = setTimeout(() => {
         setShowTextFallback(true)
@@ -143,7 +140,6 @@ export default function Onboarding({ onComplete }) {
   const handleAnswer = useCallback((answerText) => {
     if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
     setShowTextFallback(false)
-    voice.stopListening()
 
     const section = SECTIONS[sectionIdx]
     const question = section.questions[questionIdx]
@@ -324,18 +320,8 @@ Structure:
     return () => {
       if (typewriterRef.current) clearInterval(typewriterRef.current)
       if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
-      voice.stopListening()
-      voice.stopSpeaking()
-    }
+      }
   }, [])
-
-  useEffect(() => {
-    const onSend = (e) => {
-      if (phase === 'listening') handleAnswer(e.detail.text)
-    }
-    window.addEventListener('jarvis-voice-send', onSend)
-    return () => window.removeEventListener('jarvis-voice-send', onSend)
-  }, [phase, sectionIdx, questionIdx])
 
   useEffect(() => {
     const timer = setTimeout(() => startIntro(), 800)
@@ -419,16 +405,10 @@ Structure:
         <div className="flex flex-col items-center gap-4 mt-8">
           {/* Mic indicator */}
           <div className={`w-16 h-16 rounded-full border-2 flex items-center justify-center transition-all ${
-            voice.voiceState === 'LISTENING'
-              ? 'border-cyan bg-cyan/15 animate-pulse shadow-[0_0_20px_rgba(0,180,216,0.3)]'
-              : 'border-border bg-void'
+            'border-border bg-void'
           }`}>
-            <Mic size={24} className={voice.voiceState === 'LISTENING' ? 'text-cyan' : 'text-text-muted'} />
+            <Mic size={24} className="text-text-muted" />
           </div>
-
-          {voice.silenceCountdown && (
-            <p className="font-mono text-[10px] text-text-muted">{voice.silenceCountdown}</p>
-          )}
 
           {/* Text fallback */}
           {showTextFallback && (

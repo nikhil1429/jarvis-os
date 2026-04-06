@@ -4,11 +4,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { X, Clock, AlertTriangle } from 'lucide-react'
 import useAI from '../../hooks/useAI.js'
-import useJarvisVoice from '../../hooks/useJarvisVoice.js'
+
+const jarvisSpeak = (text) => { if (text) window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text } })) }
 
 export default function PhantomMode({ onClose }) {
   const { sendMessage } = useAI()
-  const voice = useJarvisVoice()
 
   const [company, setCompany] = useState('')
   const [role, setRole] = useState('')
@@ -21,23 +21,12 @@ export default function PhantomMode({ onClose }) {
   const [scoring, setScoring] = useState(false)
   const timerRef = useRef(null)
 
-  // Voice events
-  useEffect(() => {
-    const onSend = (e) => setAnswer(e.detail.text)
-    const onInterim = (e) => setAnswer(e.detail.text)
-    window.addEventListener('jarvis-voice-send', onSend)
-    window.addEventListener('jarvis-voice-interim', onInterim)
-    return () => {
-      window.removeEventListener('jarvis-voice-send', onSend)
-      window.removeEventListener('jarvis-voice-interim', onInterim)
-      if (timerRef.current) clearInterval(timerRef.current)
-    }
-  }, [])
+  useEffect(() => { return () => { if (timerRef.current) clearInterval(timerRef.current) } }, [])
 
   const generateQuestions = async () => {
     if (!company.trim() || !role.trim()) return
     setGenerating(true)
-    voice.speak('Phantom Mode engaged. Activating emergency protocols, Sir.', { isVoiceCommand: true })
+    jarvisSpeak('Phantom Mode engaged. Activating emergency protocols, Sir.')
     try {
       const result = await sendMessage(
         `Emergency interview prep. Generate 15 interview questions for: Company: ${company}, Role: ${role}. Candidate: AI Product Engineer, FinOps background, LLM experience. Mix: 5 technical, 3 behavioral, 3 system design, 2 product, 2 situational. Return ONLY a JSON array of 15 strings.`,
@@ -87,7 +76,7 @@ export default function PhantomMode({ onClose }) {
     setCurrentQ(next)
     setAnswer('')
     startTimer()
-    voice.startListening()
+    // Voice input handled by Gemini Live overlay
   }
 
   const readiness = scores.length > 0 ? Math.round((scores.reduce((a, b) => a + b, 0) / (scores.length * 10)) * 100) : 0

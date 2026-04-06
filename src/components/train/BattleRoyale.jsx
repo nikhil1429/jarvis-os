@@ -5,15 +5,13 @@ import { useState, useEffect, useCallback } from 'react'
 import { X, Swords } from 'lucide-react'
 import useAI from '../../hooks/useAI.js'
 import useStorage from '../../hooks/useStorage.js'
-import useJarvisVoice from '../../hooks/useJarvisVoice.js'
 import CONCEPTS from '../../data/concepts.js'
+const jarvisSpeak = (text) => { if (text) window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text } })) }
 import { updateConceptStrength } from '../../utils/quizScoring.js'
 
 export default function BattleRoyale({ onClose }) {
   const { sendMessage } = useAI()
   const { get } = useStorage()
-  const voice = useJarvisVoice()
-
   const [phase, setPhase] = useState('intro') // intro | round | between | complete
   const [weakest, setWeakest] = useState([])
   const [round, setRound] = useState(0)
@@ -31,7 +29,7 @@ export default function BattleRoyale({ onClose }) {
     setAnswer('')
     setLoading(true)
     const concept = weakest[idx]
-    voice.speak(`Round ${idx + 1}. ${concept.name}. Prepare yourself, Sir.`, { isVoiceCommand: true })
+    jarvisSpeak(`Round ${idx + 1}. ${concept.name}. Prepare yourself, Sir.`, { isVoiceCommand: true })
 
     try {
       const result = await sendMessage(
@@ -48,7 +46,7 @@ export default function BattleRoyale({ onClose }) {
     } catch (err) { console.error('[BattleRoyale]', err) }
     setLoading(false)
     setPhase('round')
-  }, [weakest, sendMessage, voice])
+  }, [weakest, sendMessage])
 
   const submitAnswer = useCallback(async () => {
     const q = questions[currentQ]
@@ -69,14 +67,14 @@ export default function BattleRoyale({ onClose }) {
       // Round complete
       if (round < weakest.length - 1) {
         setPhase('between')
-        voice.speak(`Round ${round + 1} complete. Moving to next concept.`, { isVoiceCommand: true })
+        jarvisSpeak(`Round ${round + 1} complete. Moving to next concept.`, { isVoiceCommand: true })
       } else {
         setPhase('complete')
         const totalGain = results.length * 5
-        voice.speak(`Battle Royale complete. ${weakest.length} concepts engaged. Well fought, Sir.`, { isVoiceCommand: true })
+        jarvisSpeak(`Battle Royale complete. ${weakest.length} concepts engaged. Well fought, Sir.`, { isVoiceCommand: true })
       }
     }
-  }, [answer, currentQ, questions, round, weakest, results, voice])
+  }, [answer, currentQ, questions, round, weakest, results])
 
   useEffect(() => {
     const saved = get('concepts') || []
@@ -86,9 +84,6 @@ export default function BattleRoyale({ onClose }) {
     }).sort((a, b) => a.strength - b.strength).slice(0, 5)
     setWeakest(sorted)
 
-    const onSend = (e) => setAnswer(e.detail.text)
-    window.addEventListener('jarvis-voice-send', onSend)
-    return () => window.removeEventListener('jarvis-voice-send', onSend)
   }, [get])
 
 

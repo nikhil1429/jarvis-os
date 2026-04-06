@@ -30,7 +30,6 @@ import WinsTab from './components/wins/WinsTab.jsx'
 import Settings from './components/settings/Settings.jsx'
 import QuickCapture from './components/QuickCapture.jsx'
 import BackgroundCanvas from './components/BackgroundCanvas.jsx'
-import VoiceMode from './components/VoiceMode.jsx'
 import Onboarding from './components/Onboarding.jsx'
 import ShutdownSequence from './components/ShutdownSequence.jsx'
 import CommandLine from './components/CommandLine.jsx'
@@ -49,12 +48,11 @@ import useReportGenerator from './hooks/useReportGenerator.js'
 import DashboardOverlay from './components/viz/DashboardOverlay.jsx'
 import VizDependencyTree from './components/viz/VizDependencyTree.jsx'
 import { getDayNumber, getWeekNumber } from './utils/dateUtils.js'
-// TTS removed — all speech through Gemini Live voice
 import useSessionContinuity from './hooks/useSessionContinuity.js'
 import TASKS from './data/tasks.js'
 import useGeminiVoice from './hooks/useGeminiVoice.js'
-import useTranscriptProcessor from './hooks/useTranscriptProcessor.js'
-import GeminiVoiceButton from './components/GeminiVoiceButton.jsx'
+import JarvisVoiceButton from './components/JarvisVoiceButton.jsx'
+import VoiceOverlay from './components/VoiceOverlay.jsx'
 import { startInitiator, stopInitiator } from './utils/jarvisInitiator.js'
 
 const DEFAULT_KEYS = {
@@ -150,10 +148,9 @@ function App() {
   const [rankUpOverlay, setRankUpOverlay] = useState(null)
   // Pulse notification dot for CMD tab
   const [hasPulse, setHasPulse] = useState(false)
-  // Voice: single Gemini instance shared across GeminiVoiceButton + VoiceMode
+  // Voice: single Gemini instance
   const gemini = useGeminiVoice()
-  const transcriptProcessor = useTranscriptProcessor()
-  const [voiceModeOpen, setVoiceModeOpen] = useState(false)
+  const [voiceOverlayOpen, setVoiceOverlayOpen] = useState(false)
   const [requestedMode, setRequestedMode] = useState(null)
   const [isAmbient, setIsAmbient] = useState(false)
   const [focusMode, setFocusMode] = useState(null)
@@ -417,17 +414,15 @@ function App() {
     return () => window.removeEventListener('jarvis-navigate', h)
   }, [handleTabChange])
 
-  // Global listener for jarvis-activate-mic — works from ANY tab (Bug 1 fix)
+  // Open voice overlay when Gemini connects or jarvis-open-voice event
   useEffect(() => {
-    const handler = () => setVoiceModeOpen(true)
-    window.addEventListener('jarvis-activate-mic', handler)
-    return () => window.removeEventListener('jarvis-activate-mic', handler)
-  }, [])
+    if (gemini.isConnected) setVoiceOverlayOpen(true)
+  }, [gemini.isConnected])
 
-  // Voice mode close: just close the overlay, Gemini stays connected
-  // Gemini lifecycle owned by GeminiVoiceButton + 30s silence timer
-  const handleVoiceModeClose = useCallback(() => {
-    setVoiceModeOpen(false)
+  useEffect(() => {
+    const handler = () => setVoiceOverlayOpen(true)
+    window.addEventListener('jarvis-open-voice', handler)
+    return () => window.removeEventListener('jarvis-open-voice', handler)
   }, [])
 
   const handleModeOpened = useCallback(() => {
@@ -490,7 +485,7 @@ function App() {
       </main>
 
       <QuickCapture />
-      <GeminiVoiceButton gemini={gemini} transcriptProcessor={transcriptProcessor} />
+      <JarvisVoiceButton gemini={gemini} />
       <BottomNav
         activeTab={activeTab}
         onTabChange={handleTabChange}
@@ -498,14 +493,9 @@ function App() {
       />
       <Settings isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
-      {/* Full-screen Voice Mode overlay */}
-      {voiceModeOpen && (
-        <VoiceMode
-          gemini={gemini}
-          onClose={handleVoiceModeClose}
-          initialMode="chat"
-          weekNumber={weekNumber}
-        />
+      {/* Voice overlay */}
+      {voiceOverlayOpen && (
+        <VoiceOverlay gemini={gemini} onClose={() => setVoiceOverlayOpen(false)} />
       )}
 
       {/* Command Line */}

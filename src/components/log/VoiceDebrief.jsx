@@ -7,8 +7,7 @@ import useAI from '../../hooks/useAI.js'
 import useStorage from '../../hooks/useStorage.js'
 import useSound from '../../hooks/useSound.js'
 import useEventBus from '../../hooks/useEventBus.js'
-import useJarvisVoice from '../../hooks/useJarvisVoice.js'
-// Voice removed — Gemini Live handles speech
+// Voice handled by Gemini Live
 import { getDaySummary } from '../../hooks/useAutoCapture.js'
 import { saveConcern, savePromise } from '../../utils/emotionalMemory.js'
 import { bridgeCheckinToBiometrics } from '../../utils/gadgetSchemas.js'
@@ -38,7 +37,6 @@ export default function VoiceDebrief({ onComplete }) {
   const { update } = useStorage()
   const { play } = useSound()
   const eventBus = useEventBus()
-  const voice = useJarvisVoice()
 
   const [phase, setPhase] = useState('ready') // ready | recording | extracting | confirm | saved
   const [transcript, setTranscript] = useState('')
@@ -48,20 +46,11 @@ export default function VoiceDebrief({ onComplete }) {
   const today = new Date().toISOString().split('T')[0]
   const greeting = buildGreeting()
 
-  // Start voice recording via Web Speech API
+  // Start voice recording — text-based fallback (Gemini overlay handles real voice)
   const handleStartRecording = useCallback(() => {
     setPhase('recording')
-    voice.startListening()
-
-    const onSend = (e) => {
-      const text = e.detail.text
-      setTranscript(text)
-      setPhase('extracting')
-      window.removeEventListener('jarvis-voice-send', onSend)
-      extractFromTranscript(text)
-    }
-    window.addEventListener('jarvis-voice-send', onSend)
-  }, [voice])
+    // Voice input via Gemini Live overlay or text
+  }, [])
 
   const extractFromTranscript = useCallback(async (text) => {
     try {
@@ -230,9 +219,6 @@ Transcript: "${text}"`,
               <Mic size={28} className="text-cyan" />
             </div>
             <p className="font-mono text-xs text-cyan tracking-wider animate-pulse">LISTENING...</p>
-            {voice.silenceCountdown && (
-              <p className="font-mono text-[10px] text-text-muted mt-2">{voice.silenceCountdown}</p>
-            )}
           </div>
         )}
 

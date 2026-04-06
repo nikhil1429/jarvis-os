@@ -1,5 +1,5 @@
-// ChatView.jsx — Voice-first chat interface powered by useJarvisVoice hook
-// All voice logic lives in the hook. ChatView handles UI + message flow only.
+// ChatView.jsx — Chat interface for training modes
+// Text input + Claude API. Voice handled by Gemini Live overlay.
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { ArrowLeft, Send, Mic, Zap, Image as ImageIcon } from 'lucide-react'
@@ -7,8 +7,6 @@ import useAI from '../../hooks/useAI.js'
 import useStorage from '../../hooks/useStorage.js'
 import useSound from '../../hooks/useSound.js'
 import useEventBus from '../../hooks/useEventBus.js'
-import useVoiceCheckIn from '../../hooks/useVoiceCheckIn.js'
-import useJarvisVoice from '../../hooks/useJarvisVoice.js'
 import { processVoiceCommand } from '../../utils/voiceCommands.js'
 import TASKS from '../../data/tasks.js'
 import { extractQuizScores, stripQuizTags, updateConceptStrength } from '../../utils/quizScoring.js'
@@ -45,8 +43,6 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
   const { get } = useStorage()
   const { play, startThinking, stopThinking, startThinkingHum } = useSound()
   const eventBus = useEventBus()
-  const checkIn = useVoiceCheckIn()
-  const voice = useJarvisVoice()
   const modeEnterTime = useRef(Date.now())
 
   const [input, setInput] = useState('')
@@ -77,36 +73,25 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
     if (!trimmed) return
     setInput('')
 
-    // Voice check-in
-    if (checkIn.active) {
-      const result = checkIn.processAnswer(trimmed)
-      if (result) {
-        setMessages(prev => [...prev, { role: 'assistant', content: result.nextPrompt, timestamp: new Date().toISOString() }])
-        voice.speak(result.nextPrompt, { isVoiceCommand: true })
-      }
-      return
-    }
-
     // Voice commands
     const cmd = processVoiceCommand(trimmed)
     if (cmd) {
       setMessages(prev => [...prev, { role: 'user', content: trimmed, timestamp: new Date().toISOString() }])
-      if (cmd.type === 'stop') { voice.stopSpeaking(); return }
+      if (cmd.type === 'stop') return
       if (cmd.type === 'shutdown') {
         setMessages(prev => [...prev, { role: 'assistant', content: cmd.response, timestamp: new Date().toISOString() }])
-        voice.speak(cmd.response, { isVoiceCommand: true })
+        jarvisSpeak(cmd.response)
         setTimeout(() => window.dispatchEvent(new CustomEvent('jarvis-request-shutdown')), 2000)
         return
       }
       if (cmd.type === 'checkin') {
-        checkIn.start()
         setMessages(prev => [...prev, { role: 'assistant', content: cmd.response, timestamp: new Date().toISOString() }])
-        voice.speak(cmd.response, { isVoiceCommand: true })
+        jarvisSpeak(cmd.response)
         return
       }
       if (cmd.type === 'task') {
         setMessages(prev => [...prev, { role: 'assistant', content: cmd.response, timestamp: new Date().toISOString() }])
-        voice.speak(cmd.response, { isVoiceCommand: true })
+        jarvisSpeak(cmd.response)
         eventBus.emit('task:complete', { taskId: cmd.taskId })
         // Auto-question pipeline: queue interview question for completed task
         try {
@@ -123,12 +108,12 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
       }
       if (cmd.type === 'mode' && onModeSwitch) {
         setMessages(prev => [...prev, { role: 'assistant', content: cmd.response, timestamp: new Date().toISOString() }])
-        voice.speak(cmd.response, { isVoiceCommand: true })
+        jarvisSpeak(cmd.response)
         setTimeout(() => onModeSwitch(cmd.mode), 1500)
         return
       }
       setMessages(prev => [...prev, { role: 'assistant', content: cmd.response, timestamp: new Date().toISOString() }])
-      voice.speak(cmd.response, { isVoiceCommand: true })
+      jarvisSpeak(cmd.response)
       return
     }
 
@@ -151,7 +136,7 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
       const moodTrend = lastFew.length >= 2
         ? (lastFew[lastFew.length - 1]?.confidence || 3) > (lastFew[0]?.confidence || 3) ? 'improving' : 'declining'
         : 'unknown'
-      analyzeSubtext(trimmed, { timeOfDay: temporal.timeLabel, inputMode: voice.lastInputMethodRef?.current || 'typed', moodTrend }, sendMessage).catch(() => {})
+      analyzeSubtext(trimmed, { timeOfDay: temporal.timeLabel, inputMode: 'typed', moodTrend }, sendMessage).catch(() => {})
     }
     // Passive people map building
     detectPeopleMentions(trimmed)
@@ -174,9 +159,8 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
         }])
         setLastTier(result.tier)
         play('receive')
-        // Pass raw tagged text to voice — emotion tags drive vocal tone
-        // Pass options so JarvisVoice can detect pause type (tier, milestone, etc.)
-        voice.speak(quizClean, { tier: result.tier })
+        // Speak response via Gemini if connected
+        jarvisSpeak(quizClean)
 
         // Communication tracker: classify JARVIS response style
         lastJarvisStyleRef.current = classifyStyle(displayText)
@@ -224,7 +208,7 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
         const crash = detectInSessionCrash(sessionMessages)
         if (crash) {
           setMessages(prev => [...prev, { role: 'assistant', content: crash.text, timestamp: new Date().toISOString(), isSupport: true }])
-          voice.speak(crash.text, { isVoiceCommand: true })
+          jarvisSpeak(crash.text)
         }
 
         // Trigger conversation compression if needed (fire-and-forget)
@@ -242,9 +226,9 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
       stopTick(); stopThinking()
       // Reset voice state on API error — prevent stuck PROCESSING
       setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${err.message || 'Request failed'}. Try again, Sir.`, timestamp: new Date().toISOString() }])
-      voice.speak('I encountered an error, Sir. Please try again.', { isVoiceCommand: true })
+      jarvisSpeak('I encountered an error, Sir. Please try again.')
     }
-  }, [sendMessage, mode.id, weekNumber, play, voice, checkIn, onModeSwitch, stopThinking, startThinking])
+  }, [sendMessage, mode.id, weekNumber, play, onModeSwitch, stopThinking, startThinking])
 
   const handleSendDirectRef = useRef(handleSendDirect)
   handleSendDirectRef.current = handleSendDirect
@@ -285,31 +269,13 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
     const text = input.trim()
     if (!text || isStreaming) return
     checkIdentityUpdate(text)
-    voice.stopListening()
-    voice.setTypedInput()
     handleSendDirect(text)
-  }, [input, isStreaming, voice, handleSendDirect])
+  }, [input, isStreaming, handleSendDirect])
 
+  // Mic button opens VoiceOverlay via event
   const handleMicClick = useCallback(() => {
-    // When Gemini is connected, open full VoiceMode instead of legacy STT
-    if (window.__geminiConnected) {
-      window.dispatchEvent(new CustomEvent('jarvis-activate-mic'))
-      return
-    }
-    if (voice.voiceState === 'SPEAKING') {
-      voice.stopSpeaking()
-    } else if (voice.voiceState === 'LISTENING') {
-      const text = input.trim()
-      if (text && voice.silenceCountdown) {
-        window.dispatchEvent(new CustomEvent('jarvis-voice-send', { detail: { text } }))
-        voice.stopListening()
-      } else {
-        voice.stopListening()
-      }
-    } else {
-      voice.startListening()
-    }
-  }, [voice, input])
+    window.dispatchEvent(new CustomEvent('jarvis-open-voice'))
+  }, [])
 
   useEffect(() => {
     setTimeout(() => {
@@ -327,36 +293,11 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
     return () => {
       const dur = Math.round((Date.now() - modeEnterTime.current) / 1000)
       eventBus.emit('mode:exit', { mode: mode.id, durationSeconds: dur })
-      voice.stopListening()
-      voice.stopSpeaking()
     }
   }, [mode.id])
 
   useEffect(() => {
     inputRef.current?.focus()
-    if (autoMic) setTimeout(() => voice.startListening(), 400)
-  }, [])
-
-  useEffect(() => {
-    const h = () => { if (voice.voiceState === 'IDLE') voice.startListening() }
-    window.addEventListener('jarvis-activate-mic', h)
-    return () => window.removeEventListener('jarvis-activate-mic', h)
-  }, [voice.voiceState])
-
-  useEffect(() => {
-    const onSend = (e) => handleSendDirectRef.current(e.detail.text)
-    const onInterrupt = (e) => {
-      setInput(e.detail.text)
-    }
-    const onInterim = (e) => setInput(e.detail.text)
-    window.addEventListener('jarvis-voice-send', onSend)
-    window.addEventListener('jarvis-voice-interrupt', onInterrupt)
-    window.addEventListener('jarvis-voice-interim', onInterim)
-    return () => {
-      window.removeEventListener('jarvis-voice-send', onSend)
-      window.removeEventListener('jarvis-voice-interrupt', onInterrupt)
-      window.removeEventListener('jarvis-voice-interim', onInterim)
-    }
   }, [])
 
   // Layer 8: Voice activation/deactivation sounds + thinking pause hum
@@ -405,11 +346,11 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
         role: 'assistant', content: displayText, timestamp: new Date().toISOString(),
         isMilestone: true
       }])
-      voice.speak(speech.text, { isMilestone: true })
+      jarvisSpeak(speech.text)
     }
     const unsub = eventBus.subscribe('milestone:speech', handleMilestone)
     return () => unsub()
-  }, [voice, eventBus])
+  }, [eventBus])
 
 
   const handleKeyDown = (e) => {
@@ -417,7 +358,6 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
   }
 
   const isOpusTier = lastTier >= 2
-  const vs = voice.voiceState
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)' }} className="max-w-2xl mx-auto">
@@ -481,49 +421,8 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
         )}
       </div>
 
-      {/* Voice state indicator */}
-      <div style={{ flexShrink: 0 }}>
-        {vs === 'LISTENING' && (
-          <div className="flex items-center justify-between mb-1.5 mx-1">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs animate-pulse">&#127908;</span>
-              <span className="font-mono text-[10px] text-cyan tracking-wider animate-pulse">
-                {voice.isWaitMode ? 'Standing by...' : 'Listening...'}
-              </span>
-            </div>
-            {voice.silenceCountdown && (
-              <span className="font-mono text-[10px] text-text-muted tracking-wider">{voice.silenceCountdown}</span>
-            )}
-          </div>
-        )}
-        {vs === 'PROCESSING' && (
-          <div className="flex items-center gap-1.5 mb-1.5 ml-1">
-            <span className="text-xs">&#9203;</span>
-            <span className="font-mono text-[10px] text-gold tracking-wider animate-pulse">Thinking...</span>
-          </div>
-        )}
-        {vs === 'SPEAKING' && isThinking && (
-          <div className="flex items-center gap-2 mb-1.5 mx-1">
-            <div className="flex gap-1">
-              <span className="w-1.5 h-1.5 bg-gold rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
-              <span className="w-1.5 h-1.5 bg-gold rounded-full animate-pulse" style={{ animationDelay: '200ms' }} />
-              <span className="w-1.5 h-1.5 bg-gold rounded-full animate-pulse" style={{ animationDelay: '400ms' }} />
-            </div>
-          </div>
-        )}
-        {vs === 'SPEAKING' && !isThinking && (
-          <div className="flex items-center mb-1.5 mx-1">
-            <span className="font-mono text-[10px] text-gold tracking-wider animate-pulse">
-              &#128266; Speaking... <span className="text-text-muted">(say "stop" to interrupt)</span>
-            </span>
-          </div>
-        )}
-        {checkIn.active && (
-          <div className="flex items-center gap-1.5 mb-1.5 ml-1">
-            <span className="font-mono text-[10px] text-gold/60 tracking-wider">CHECK-IN: {checkIn.fieldIndex + 1} / {checkIn.totalFields}</span>
-          </div>
-        )}
-      </div>
+      {/* Status area */}
+      <div style={{ flexShrink: 0 }} />
 
       {/* Image preview */}
       {pendingImage && (

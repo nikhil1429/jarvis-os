@@ -4,6 +4,37 @@
 
 ---
 
+### Session 63 — Voice System: Delete Everything, Rebuild Clean (2026-04-06)
+Nuclear rebuild. Deleted 15 voice files, stripped voice from 10 components, built 3 clean files from scratch. ONE voice pipeline: Gemini Live.
+
+**Phase 1: Deleted 15 files**
+- Hooks: useJarvisVoice, useGeminiStatus, useTranscriptProcessor, useVoiceCheckIn, useVoiceVerification
+- Components: GeminiVoiceButton, VoiceMode, VoiceEnrollment, GlobalMic
+- Utils: micManager, geminiStateSync, transcriptShadow, voiceFingerprint
+- Tests: gemini-phase2.test, gemini-phase3.test
+
+**Phase 2: Stripped voice from 10 components**
+- App.jsx: removed old imports (VoiceMode, GeminiVoiceButton, useTranscriptProcessor), new imports (JarvisVoiceButton, VoiceOverlay), voice overlay opens when Gemini connects or `jarvis-open-voice` event
+- ChatView.jsx: removed useJarvisVoice + useVoiceCheckIn + all 32 `voice.*` calls + 4 event listeners (jarvis-voice-send/interrupt/interim, jarvis-activate-mic) + voice state UI (LISTENING/SPEAKING/PROCESSING indicators). Mic button dispatches `jarvis-open-voice`. Text input still works.
+- BodyDoubleTimer.jsx: removed useJarvisVoice, replaced voice.speak → jarvisSpeak dispatch, mic button → jarvis-open-voice
+- BattleRoyale.jsx: same pattern
+- PhantomMode.jsx: same pattern
+- Onboarding.jsx: removed useJarvisVoice, stripped voice event listeners + voice state UI, text fallback still works
+- VoiceDebrief.jsx: removed useJarvisVoice, text-based fallback for recording
+- Briefing.jsx: changed jarvis-activate-mic → jarvis-open-voice
+- Boot.jsx: speakQ was already fixed in 61B
+
+**Phase 3: Built 3 clean files**
+1. `useGeminiVoice.js` (~300 lines) — Clean hook. Dual AudioContext (micCtx 16kHz, playCtx native), echo cancellation, gapless time-scheduled playback, 15 tools + deep reasoning, auto-reconnect (5 attempts), session timer (13min warn, 14.5min disconnect), greeting on connect, jarvis-speak listener, jarvis-stop-audio listener, window.jarvisStop for Escape key.
+2. `JarvisVoiceButton.jsx` (~68 lines) — Floating mic. Connect/disconnect toggle, LIVE badge, elapsed timer, error tooltip.
+3. `VoiceOverlay.jsx` (~150 lines) — Full-screen reactor canvas with voice waveform, transcript display, close without disconnect.
+
+**Architecture:** One hook (useGeminiVoice) → one button (JarvisVoiceButton) → one overlay (VoiceOverlay). Any component can speak via `window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text } }))`. No competing systems.
+
+**Files deleted (15), created (3), modified (10)**
+
+---
+
 ### Session 62 — Complete Voice System Overhaul — 7 Critical Bugs (2026-04-06)
 Nuclear-level voice fix. 7 bugs, 2 new files, 6 files modified. Unified Gemini pipeline with echo cancellation, dual AudioContext, shared mic, and global coordination.
 

@@ -26,7 +26,7 @@ export default function Briefing() {
   }
 
   const handleMic = () => {
-    window.dispatchEvent(new CustomEvent('jarvis-activate-mic'))
+    window.dispatchEvent(new CustomEvent('jarvis-open-voice'))
   }
 
   if (!briefing?.text) {
