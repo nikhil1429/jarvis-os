@@ -6,7 +6,6 @@ import { Lock, Unlock, Plus } from 'lucide-react'
 import useAI from '../../hooks/useAI.js'
 import useStorage from '../../hooks/useStorage.js'
 import { compileSummary } from '../../utils/strategicCompiler.js'
-// Voice removed — Gemini Live handles speech
 import { getDayNumber } from '../../utils/dateUtils.js'
 
 export default function TimeCapsule() {

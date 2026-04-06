@@ -189,40 +189,6 @@ export default function useSound() {
           break
         }
 
-        // ========== PIECE 10: GEMINI ACOUSTIC CUES ==========
-        case 'geminiConnect': {
-          const gc = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.05, decay: 0.3, sustain: 0, release: 0.5 } }).toDestination()
-          gc.volume.value = -22
-          gc.triggerAttackRelease('C5', '0.15', now)
-          gc.triggerAttackRelease('E5', '0.15', now + 0.1)
-          gc.triggerAttackRelease('G5', '0.2', now + 0.2)
-          setTimeout(() => { try { gc.dispose() } catch {} }, 1000)
-          break
-        }
-        case 'geminiReconnect': {
-          const gr = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.1, decay: 0.4, sustain: 0.1, release: 0.3 } }).toDestination()
-          gr.volume.value = -26
-          gr.triggerAttackRelease('G3', '0.3', now)
-          gr.triggerAttackRelease('B3', '0.3', now + 0.15)
-          setTimeout(() => { try { gr.dispose() } catch {} }, 1000)
-          break
-        }
-        case 'geminiHandoff': {
-          const gh = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.05, decay: 0.2, sustain: 0.1, release: 0.4 } }).toDestination()
-          gh.volume.value = -24
-          gh.triggerAttackRelease('G5', '0.15', now); gh.triggerAttackRelease('D5', '0.15', now + 0.15); gh.triggerAttackRelease('G4', '0.2', now + 0.3)
-          gh.triggerAttackRelease('A4', '0.15', now + 0.6); gh.triggerAttackRelease('D5', '0.15', now + 0.75); gh.triggerAttackRelease('A5', '0.2', now + 0.9)
-          setTimeout(() => { try { gh.dispose() } catch {} }, 2000)
-          break
-        }
-        case 'geminiDisconnect': {
-          const gd = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.05, decay: 0.5, sustain: 0, release: 0.3 } }).toDestination()
-          gd.volume.value = -26
-          gd.triggerAttackRelease('E4', '0.3', now)
-          setTimeout(() => { try { gd.dispose() } catch {} }, 1000)
-          break
-        }
-
         default:
           synth.triggerAttackRelease('C5', '32n', now)
       }

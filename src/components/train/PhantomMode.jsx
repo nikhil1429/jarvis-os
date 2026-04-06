@@ -73,7 +73,6 @@ export default function PhantomMode({ onClose }) {
     setCurrentQ(next)
     setAnswer('')
     startTimer()
-    // Voice input handled by Gemini Live overlay
   }
 
   const readiness = scores.length > 0 ? Math.round((scores.reduce((a, b) => a + b, 0) / (scores.length * 10)) * 100) : 0

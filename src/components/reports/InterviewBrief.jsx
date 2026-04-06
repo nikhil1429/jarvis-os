@@ -5,7 +5,6 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import useAI from '../../hooks/useAI.js'
 import { compileSummary } from '../../utils/strategicCompiler.js'
-// Voice removed — Gemini Live handles speech
 
 export default function InterviewBrief({ onClose }) {
   const { sendMessage } = useAI()

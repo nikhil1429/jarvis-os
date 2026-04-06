@@ -6,7 +6,6 @@ import { X, Download } from 'lucide-react'
 import jsPDF from 'jspdf'
 import useAI from '../../hooks/useAI.js'
 import { compileSummary } from '../../utils/strategicCompiler.js'
-// Voice removed — Gemini Live handles speech
 
 export default function QuarterlyReport({ onClose }) {
   const { sendMessage, isStreaming } = useAI()

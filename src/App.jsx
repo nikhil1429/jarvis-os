@@ -102,13 +102,6 @@ function App() {
   // JARVIS initiator — proactive check every 60s
   useEffect(() => { const id = startInitiator(); return () => stopInitiator(id) }, [])
 
-  // Gemini acoustic cues listener
-  useEffect(() => {
-    const h = (e) => { const s = e.detail?.sound; if (s) play(s) }
-    window.addEventListener('jarvis-sound', h)
-    return () => window.removeEventListener('jarvis-sound', h)
-  }, [play])
-
   // Global toast system
   useEffect(() => {
     const handler = (e) => {
@@ -246,8 +239,6 @@ function App() {
     if (isSupabaseConfigured()) syncOnBoot()
   }, [])
 
-  // Voice init removed — Gemini Live handles all speech
-
   const core = get('core') || DEFAULT_KEYS.core
   const dayNumber = getDayNumber(core.startDate)
   const weekNumber = getWeekNumber(core.startDate)
@@ -321,10 +312,7 @@ function App() {
       localStorage.setItem('jos-core', JSON.stringify(core))
     } catch { /* ok */ }
     setAppState('main')
-    console.log('BOOT COMPLETE: Gemini Live voice ready')
     try { play('boot') } catch { /* ok */ }
-    // Do NOT auto-connect Gemini on boot — user taps mic button to connect
-    // Briefing speech happens naturally via Gemini greeting when user connects
     // Show boot briefing dashboard after 1s
     setTimeout(() => showDashboard('boot-briefing'), 1000)
     // JARVIS self-diagnostics — tests ALL systems on every boot
@@ -380,7 +368,7 @@ function App() {
     window.dispatchEvent(new CustomEvent('jarvis-tab-changed', { detail: { tab } }))
   }, [play, captureTab])
 
-  // Gemini voice navigation listener (must be after handleTabChange)
+  // Navigation listener (must be after handleTabChange)
   useEffect(() => {
     const h = (e) => {
       const { tab, mode } = e.detail || {}

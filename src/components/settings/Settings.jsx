@@ -109,7 +109,7 @@ export default function Settings({ isOpen, onClose }) {
           </div>
 
           <div className="space-y-5">
-            {/* Gemini Voice section — primary voice system */}
+            {/* Gemini Voice — settings preserved for Session 62B rebuild */}
             <div>
               <p className="font-mono text-[9px] text-text-muted tracking-widest mb-3">GEMINI VOICE</p>
             </div>

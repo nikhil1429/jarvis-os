@@ -8,7 +8,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import useStorage from '../hooks/useStorage.js'
 import { getDayNumber, getWeekNumber, getTimeOfDay } from '../utils/dateUtils.js'
-// TTS removed — Gemini Live handles speech
 import BootReactor from './BootReactor.jsx'
 import TASKS from '../data/tasks.js'
 
@@ -340,8 +339,6 @@ export default function Boot({ onComplete }) {
         setTimeout(() => { setPhase(6); setShowEnterBtn(true) }, 500)
       }
     }, charDelay)
-
-    // Briefing speech removed — Gemini Live handles voice
 
   }, [energy, focus, blockers, morningBet, update, fetchBriefing, get])
 

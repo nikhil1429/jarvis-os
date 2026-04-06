@@ -4,7 +4,7 @@
 // structured data saved to jos-onboarding. Runs ONCE ever.
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Mic, SkipForward } from 'lucide-react'
+import { SkipForward } from 'lucide-react'
 
 const SECTIONS = [
   {
@@ -114,10 +114,8 @@ export default function Onboarding({ onComplete }) {
     const question = section.questions[qIdx]
 
     typeText(question, () => {
-      // After typewriter + speech, activate mic
       setPhase('listening')
-      // Voice input via Gemini Live overlay
-      // 20s fallback timer — show text input if no speech
+      // 20s fallback timer — show text input if no answer
       fallbackTimerRef.current = setTimeout(() => {
         setShowTextFallback(true)
       }, 20000)
@@ -388,14 +386,7 @@ Structure:
       {/* Controls */}
       {phase === 'listening' && (
         <div className="flex flex-col items-center gap-4 mt-8">
-          {/* Mic indicator */}
-          <div className={`w-16 h-16 rounded-full border-2 flex items-center justify-center transition-all ${
-            'border-border bg-void'
-          }`}>
-            <Mic size={24} className="text-text-muted" />
-          </div>
-
-          {/* Text fallback */}
+          {/* Text input */}
           {showTextFallback && (
             <form onSubmit={handleTextSubmit} className="flex gap-2 w-full max-w-sm">
               <input type="text" value={textInput} onChange={e => setTextInput(e.target.value)}

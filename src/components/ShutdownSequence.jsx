@@ -2,7 +2,6 @@
 // WHY: Graceful close, not just closing the tab. JARVIS says goodbye.
 
 import { useState, useEffect } from 'react'
-// Voice removed — Gemini Live handles speech
 import { saveSessionState } from '../utils/sessionContinuity.js'
 
 const BOOT_LINES_REVERSE = [

@@ -1,5 +1,5 @@
 // ChatView.jsx — Chat interface for training modes
-// Text input + Claude API. Voice handled by Gemini Live overlay.
+// Text chat interface for training modes
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { ArrowLeft, Send, Zap, Image as ImageIcon } from 'lucide-react'
@@ -45,18 +45,6 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
   const inputRef = useRef(null)
   const lastJarvisStyleRef = useRef([])
   const sessionStartIndexRef = useRef(0)
-
-  // Scroll on new messages
-
-  // Load history + mode events
-  // Auto-mic on mount
-  // External mic activation (from GlobalMic)
-  // Listen for voice hook events
-  // ============================================================
-  // SEND
-  // ============================================================
-  // Typed send
-  // Mic button
 
   const handleSendDirect = useCallback(async (text) => {
     const trimmed = text?.trim()
@@ -144,8 +132,6 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
         }])
         setLastTier(result.tier)
         play('receive')
-        // Speak response via Gemini if connected
-
         // Communication tracker: classify JARVIS response style
         lastJarvisStyleRef.current = classifyStyle(displayText)
 
@@ -293,14 +279,11 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
         }, dur)
       }
     }
-    const onSpeaking = () => { setIsThinking(false) }
     window.addEventListener('jarvis-play-sound', onPlaySound)
     window.addEventListener('jarvis-thinking-pause', onThinkingPause)
-    window.addEventListener('jarvis-voice-speaking', onSpeaking)
     return () => {
       window.removeEventListener('jarvis-play-sound', onPlaySound)
       window.removeEventListener('jarvis-thinking-pause', onThinkingPause)
-      window.removeEventListener('jarvis-voice-speaking', onSpeaking)
       if (stopHum) stopHum()
       stopOpusAmbient()
     }

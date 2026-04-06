@@ -45,9 +45,7 @@ export default function TrainTab({ weekNumber, requestedMode, onModeOpened }) {
   const { get } = useStorage()
   const antiCrutch = getAntiCrutchLevel(weekNumber)
 
-  // External navigation request (from GlobalMic / voice command)
-
-  // Listen for jarvis-open-mode events (from GlobalMic)
+  // Listen for jarvis-open-mode events
   // WHY: Auto-quiz trigger — find concepts that need urgent review.
   // Criteria: strength < 60% OR overdue for spaced repetition.
   // Show max 2, sorted by urgency (most overdue first).

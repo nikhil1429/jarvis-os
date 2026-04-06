@@ -321,20 +321,6 @@ export async function runSystemDiagnostics() {
     report.checks.push({ name: 'Cloud', status: 'failed', detail: 'Supabase unreachable', icon: '❌' })
   }
 
-  // CHECK 4: Voice System (mic permission)
-  try {
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      const permStatus = await navigator.permissions.query({ name: 'microphone' })
-      const map = { granted: ['ok', '✅', 'Mic granted'], prompt: ['warning', '⚠️', 'Mic not yet granted'], denied: ['failed', '❌', 'Mic denied'] }
-      const [s, i, d] = map[permStatus.state] || ['warning', '⚠️', permStatus.state]
-      report.checks.push({ name: 'Voice', status: s, detail: d, icon: i })
-    } else {
-      report.checks.push({ name: 'Voice', status: 'failed', detail: 'No mic API', icon: '❌' })
-    }
-  } catch {
-    report.checks.push({ name: 'Voice', status: 'warning', detail: 'Cannot check mic', icon: '⚠️' })
-  }
-
   // CHECK 5: localStorage Quota
   try {
     let totalBytes = 0
@@ -350,19 +336,6 @@ export async function runSystemDiagnostics() {
     })
   } catch {
     report.checks.push({ name: 'Storage', status: 'failed', detail: 'Cannot read', icon: '❌' })
-  }
-
-  // CHECK 6: Gemini Voice
-  try {
-    const gKey = import.meta.env.VITE_GEMINI_API_KEY
-      || JSON.parse(localStorage.getItem('jos-settings') || '{}').geminiApiKey
-    report.checks.push({
-      name: 'Gemini Voice', icon: gKey ? '✅' : '⏭️',
-      status: gKey ? 'ok' : 'skipped',
-      detail: gKey ? 'API key configured' : 'No API key — voice unavailable',
-    })
-  } catch {
-    report.checks.push({ name: 'Gemini Voice', status: 'skipped', detail: 'Not configured', icon: '⏭️' })
   }
 
   // CHECK 8: Sentry

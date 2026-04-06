@@ -301,14 +301,6 @@ export default function useAI() {
           const selfLearnCtx = getSelfLearningPrompt()
           if (selfLearnCtx) systemPrompt += '\n\n' + selfLearnCtx
         }
-        // Gemini voice handoff (always if present)
-        try {
-          const handoff = JSON.parse(localStorage.getItem('jos-handoff-context') || 'null')
-          if (handoff?.fromGeminiSession && (Date.now() - new Date(handoff.timestamp).getTime()) < 30 * 60000) {
-            systemPrompt += `\n\nVOICE HANDOFF: Sir was discussing "${handoff.topic}" in voice. Continue from where voice left off.`
-            localStorage.removeItem('jos-handoff-context')
-          }
-        } catch {}
         console.log('[useAI] System prompt length:', systemPrompt.length, 'chars')
       } catch { /* ok — intelligence prompts optional */ }
 

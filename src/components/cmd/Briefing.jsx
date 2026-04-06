@@ -4,7 +4,6 @@
 
 import { Volume2 } from 'lucide-react'
 import useStorage from '../../hooks/useStorage.js'
-// Voice removed — Gemini Live handles speech
 import renderMd from '../../utils/renderMd.js'
 import { getLastSession, generateContinuityBriefing } from '../../utils/sessionContinuity.js'
 
@@ -17,7 +16,7 @@ export default function Briefing() {
   const briefing = weekly.briefing || weekly.lastBriefing
 
   const handleReplay = async () => {
-    // Voice replay removed — was jarvis-speak dispatch
+    // Replay not yet implemented
   }
 
   if (!briefing?.text) {
