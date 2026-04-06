@@ -221,10 +221,11 @@ export default function useGeminiVoice() {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 })
       await ctx.resume(); audioCtxRef.current = ctx
+      console.log('[Gemini] AudioContext created, sampleRate:', ctx.sampleRate, 'state:', ctx.state)
       const stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1 } })
       streamRef.current = stream
 
-      const ws = new WebSocket(`wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`)
+      const ws = new WebSocket(`wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`)
       wsRef.current = ws
 
       ws.onopen = async () => {
@@ -258,18 +259,18 @@ export default function useGeminiVoice() {
             window.dispatchEvent(new CustomEvent('jarvis-sound', { detail: { sound: isAutoReconnectRef.current ? 'geminiReconnect' : 'geminiConnect' } }))
             if (isAutoReconnectRef.current && conversationSummaryRef.current) {
               const ctx2 = conversationSummaryRef.current
-              setTimeout(() => { if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: `[SYSTEM: Session auto-renewed. Continuation ${ctx2.sessionNumber}. We were discussing: ${ctx2.lastTopic}. Recent:\n${ctx2.summary}\n\nResume naturally. Do NOT mention reconnection.]` }] }], turnComplete: true } })) }, 500)
+              setTimeout(() => { if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: `[SYSTEM: Session auto-renewed. Continuation ${ctx2.sessionNumber}. Topic: ${ctx2.lastTopic}. Resume naturally.]` }] }], turnComplete: true } })) }, 500)
               isAutoReconnectRef.current = false
             }
             if (pendingSpeechRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
               const queued = pendingSpeechRef.current
               pendingSpeechRef.current = null
-              setTimeout(() => { if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: `[SYSTEM: Speak this aloud to Sir naturally in your JARVIS voice. Do not add commentary, just deliver it:]\n\n${queued}` }] }], turnComplete: true } })) }, 800)
+              setTimeout(() => { if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: `Speak this aloud: ${queued}` }] }], turnComplete: true } })) }, 800)
             }
             sessionWarningRef.current = false
             sessionTimerRef.current = setTimeout(() => {
               if (wsRef.current?.readyState !== WebSocket.OPEN) return; sessionWarningRef.current = true
-              let att = 0; const trySend = () => { att++; if (att >= 30 || wsRef.current?.readyState === WebSocket.OPEN) { if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: '[SYSTEM: Session approaching 15-minute limit. Inform Sir naturally.]' }] }], turnComplete: true } })); return }; setTimeout(trySend, 500) }; trySend()
+              let att = 0; const trySend = () => { att++; if (att >= 30 || wsRef.current?.readyState === WebSocket.OPEN) { if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: 'Session approaching 15-minute limit. Let Sir know naturally.' }] }], turnComplete: true } })); return }; setTimeout(trySend, 500) }; trySend()
             }, 13 * 60 * 1000)
             autoDisconnectRef.current = setTimeout(() => { if (wsRef.current?.readyState === WebSocket.OPEN) disconnectFromJarvis() }, 14.5 * 60 * 1000)
             return
@@ -321,7 +322,7 @@ export default function useGeminiVoice() {
 
       // Piece 1: Auto-reconnect on close
       ws.onclose = (event) => {
-        console.log('[Gemini] Closed, code:', event.code)
+        console.log('[Gemini] Closed, code:', event.code, 'reason:', event.reason, 'clean:', event.wasClean)
         logGeminiCall()
         window.dispatchEvent(new CustomEvent('gemini-session-ended'))
         const wasManual = event.code === 1000 && !sessionWarningRef.current
@@ -404,7 +405,7 @@ export default function useGeminiVoice() {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({
           clientContent: {
-            turns: [{ role: 'user', parts: [{ text: `[SYSTEM: Speak this aloud to Sir naturally in your JARVIS voice. Do not add commentary, just deliver it:]\n\n${clean}` }] }],
+            turns: [{ role: 'user', parts: [{ text: `Speak this aloud: ${clean}` }] }],
             turnComplete: true
           }
         }))

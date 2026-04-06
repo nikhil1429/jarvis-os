@@ -74,16 +74,10 @@ export function getModel(mode, context = {}) {
     }
   }
 
-  // Rule 4: Sunday = war council day → OPUS
-  if (dayOfWeek === 0) {
-    return {
-      model: OPUS,
-      tier: 2,
-      reason: 'Sunday war council',
-      estimatedCost: 0.10,
-      autoUpgraded: true,
-    }
-  }
+  // Rule 4: Sunday war council — DISABLED (War Council runs manually via claude.ai)
+  // if (dayOfWeek === 0) {
+  //   return { model: OPUS, tier: 2, reason: 'Sunday war council', estimatedCost: 0.10, autoUpgraded: true }
+  // }
 
   // Rule 5: Weak concept being discussed (strength < 40%) → OPUS
   if (activeConcept && activeConcept.strength < 40) {

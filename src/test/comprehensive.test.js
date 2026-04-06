@@ -60,9 +60,9 @@ describe('Model Router — Complete Coverage', () => {
     const r = getModel('quiz', { lastQuizScore: 3, dayOfWeek: 1 })
     expect(r.model).toContain('opus')
   })
-  it('Sunday (dayOfWeek 0) → Opus', () => {
+  it('Sunday (dayOfWeek 0) → Sonnet (war council disabled)', () => {
     const r = getModel('chat', { dayOfWeek: 0 })
-    expect(r.model).toContain('opus')
+    expect(r.model).toContain('sonnet')
   })
   it('intent keyword "samjhao" → Opus', () => {
     const r = getModel('chat', { userIntent: 'samjhao ye concept' })
