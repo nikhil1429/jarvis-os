@@ -259,18 +259,18 @@ export default function useGeminiVoice() {
             window.dispatchEvent(new CustomEvent('jarvis-sound', { detail: { sound: isAutoReconnectRef.current ? 'geminiReconnect' : 'geminiConnect' } }))
             if (isAutoReconnectRef.current && conversationSummaryRef.current) {
               const ctx2 = conversationSummaryRef.current
-              setTimeout(() => { if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: `[SYSTEM: Session auto-renewed. Continuation ${ctx2.sessionNumber}. Topic: ${ctx2.lastTopic}. Resume naturally.]` }] }], turnComplete: true } })) }, 500)
+              setTimeout(() => { if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ realtimeInput: { text: `Session auto-renewed. Continuation ${ctx2.sessionNumber}. Topic: ${ctx2.lastTopic}. Resume naturally.` } })) }, 500)
               isAutoReconnectRef.current = false
             }
             if (pendingSpeechRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
               const queued = pendingSpeechRef.current
               pendingSpeechRef.current = null
-              setTimeout(() => { if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: `Speak this aloud: ${queued}` }] }], turnComplete: true } })) }, 800)
+              setTimeout(() => { if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ realtimeInput: { text: `Speak this aloud: ${queued}` } })) }, 800)
             }
             sessionWarningRef.current = false
             sessionTimerRef.current = setTimeout(() => {
               if (wsRef.current?.readyState !== WebSocket.OPEN) return; sessionWarningRef.current = true
-              let att = 0; const trySend = () => { att++; if (att >= 30 || wsRef.current?.readyState === WebSocket.OPEN) { if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: 'Session approaching 15-minute limit. Let Sir know naturally.' }] }], turnComplete: true } })); return }; setTimeout(trySend, 500) }; trySend()
+              let att = 0; const trySend = () => { att++; if (att >= 30 || wsRef.current?.readyState === WebSocket.OPEN) { if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ realtimeInput: { text: 'Session approaching 15-minute limit. Let Sir know naturally.' } })); return }; setTimeout(trySend, 500) }; trySend()
             }, 13 * 60 * 1000)
             autoDisconnectRef.current = setTimeout(() => { if (wsRef.current?.readyState === WebSocket.OPEN) disconnectFromJarvis() }, 14.5 * 60 * 1000)
             return
@@ -374,7 +374,7 @@ export default function useGeminiVoice() {
       let binary = ''
       for (let j = 0; j < bytes.length; j++) binary += String.fromCharCode(bytes[j])
       const b64 = btoa(binary)
-      const msg = JSON.stringify({ realtimeInput: { mediaChunks: [{ mimeType: 'audio/pcm;rate=16000', data: b64 }] } })
+      const msg = JSON.stringify({ realtimeInput: { audio: { data: b64, mimeType: 'audio/pcm;rate=16000' } } })
       ws.send(msg)
       audioFrameCount++
       if (audioFrameCount <= 3) console.log('[Gemini] Sent audio frame', audioFrameCount, 'size:', msg.length)
@@ -403,12 +403,7 @@ export default function useGeminiVoice() {
       const clean = text.replace(/\[.*?\]\s*/g, '').replace(/[*_~`#]/g, '').trim()
       if (!clean) return
       if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({
-          clientContent: {
-            turns: [{ role: 'user', parts: [{ text: `Speak this aloud: ${clean}` }] }],
-            turnComplete: true
-          }
-        }))
+        wsRef.current.send(JSON.stringify({ realtimeInput: { text: `Speak this aloud: ${clean}` } }))
       } else {
         // Queue for delivery once connected
         pendingSpeechRef.current = clean
