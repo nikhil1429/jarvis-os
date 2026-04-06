@@ -412,9 +412,6 @@ export default function useGeminiVoice() {
                 prebuiltVoiceConfig: { voiceName }
               }
             },
-            contextWindowCompression: {
-              slidingWindow: {}
-            },
             realtimeInputConfig: {
               automaticActivityDetection: { disabled: false }
             },
@@ -564,6 +561,14 @@ export default function useGeminiVoice() {
       console.log('[GeminiVoice] WebSocket closed:', e.code, e.reason)
       if (disconnectingRef.current) {
         setState(STATES.DISCONNECTED)
+        return
+      }
+
+      // Protocol error (1007) — don't retry, same error every time
+      if (e.code === 1007) {
+        console.error('[GeminiVoice] Protocol error 1007, not retrying:', e.reason)
+        setError(`Protocol error: ${e.reason || 'invalid payload'}`)
+        setState(STATES.ERROR)
         return
       }
 
