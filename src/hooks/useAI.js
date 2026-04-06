@@ -274,34 +274,42 @@ export default function useAI() {
         console.warn('[useAI] Behavioral engine failed:', err)
       }
 
-      // Intelligence layer prompts: patterns, communication, mood, continuity, proactive, difficulty, momentum
+      // Intelligence layer prompts — high priority first, drop low priority if prompt > 8000 chars
       try {
-        const patternCtx = getPatternPrompt()
-        if (patternCtx) systemPrompt += '\n\n' + patternCtx
-        const commCtx = getCommunicationPrompt()
-        if (commCtx) systemPrompt += '\n\n' + commCtx
-        const moodCtx = getMoodPredictionPrompt()
-        if (moodCtx) systemPrompt += '\n\n' + moodCtx
+        // High priority (always include)
         const continuityCtx = getSessionContinuityPrompt()
         if (continuityCtx) systemPrompt += '\n\n' + continuityCtx
-        const proactiveCtx = getProactiveSuggestionPrompt()
-        if (proactiveCtx) systemPrompt += '\n\n' + proactiveCtx
-        const difficultyCtx = getDifficultyPrompt(mode, options.activeConcept || null)
-        if (difficultyCtx) systemPrompt += '\n\n' + difficultyCtx
-        const momentumCtx = getMomentumPrompt()
-        if (momentumCtx) systemPrompt += '\n\n' + momentumCtx
         const avoidanceCtx = getAvoidancePrompt()
         if (avoidanceCtx) systemPrompt += '\n\n' + avoidanceCtx
-        const selfLearnCtx = getSelfLearningPrompt()
-        if (selfLearnCtx) systemPrompt += '\n\n' + selfLearnCtx
-        // Gemini voice handoff context
+        const momentumCtx = getMomentumPrompt()
+        if (momentumCtx) systemPrompt += '\n\n' + momentumCtx
+        const difficultyCtx = getDifficultyPrompt(mode, options.activeConcept || null)
+        if (difficultyCtx) systemPrompt += '\n\n' + difficultyCtx
+        // Medium priority (include if under budget)
+        if (systemPrompt.length < 8000) {
+          const proactiveCtx = getProactiveSuggestionPrompt()
+          if (proactiveCtx) systemPrompt += '\n\n' + proactiveCtx
+        }
+        // Low priority (drop if prompt already large)
+        if (systemPrompt.length < 7000) {
+          const patternCtx = getPatternPrompt()
+          if (patternCtx) systemPrompt += '\n\n' + patternCtx
+          const commCtx = getCommunicationPrompt()
+          if (commCtx) systemPrompt += '\n\n' + commCtx
+          const moodCtx = getMoodPredictionPrompt()
+          if (moodCtx) systemPrompt += '\n\n' + moodCtx
+          const selfLearnCtx = getSelfLearningPrompt()
+          if (selfLearnCtx) systemPrompt += '\n\n' + selfLearnCtx
+        }
+        // Gemini voice handoff (always if present)
         try {
           const handoff = JSON.parse(localStorage.getItem('jos-handoff-context') || 'null')
           if (handoff?.fromGeminiSession && (Date.now() - new Date(handoff.timestamp).getTime()) < 30 * 60000) {
-            systemPrompt += `\n\nVOICE HANDOFF: Sir was discussing "${handoff.topic}" in voice. Reason: ${handoff.reason}.\nRecent voice conversation:\n${handoff.conversationContext}\n\nContinue from where voice left off. Go deeper. Acknowledge: "Picking up from your voice session, Sir."`
+            systemPrompt += `\n\nVOICE HANDOFF: Sir was discussing "${handoff.topic}" in voice. Continue from where voice left off.`
             localStorage.removeItem('jos-handoff-context')
           }
         } catch {}
+        console.log('[useAI] System prompt length:', systemPrompt.length, 'chars')
       } catch { /* ok — intelligence prompts optional */ }
 
       // Load conversation history for this mode (last 50 messages)
@@ -361,7 +369,10 @@ export default function useAI() {
           body: JSON.stringify(requestBody),
           signal: abortController.signal,
         })
-        if (!resp.ok) throw new Error(`API error ${resp.status}`)
+        if (!resp.ok) {
+          if (resp.status === 429) { console.warn('[useAI] 429 rate limited, retrying in 3s...'); await new Promise(r => setTimeout(r, 3000)); throw new Error('Rate limited — retry') }
+          throw new Error(`API error ${resp.status}`)
+        }
         const data = await resp.json()
 
         // Handle tool use
@@ -405,6 +416,11 @@ export default function useAI() {
         signal: abortController.signal,
       })
 
+      if (response.status === 429) {
+        console.warn('[useAI] 429 rate limited on stream, retrying in 3s...')
+        await new Promise(r => setTimeout(r, 3000))
+        throw new Error('Rate limited — please try again')
+      }
       if (!response.ok) {
         const errBody = await response.text()
         throw new Error(`API error ${response.status}: ${errBody}`)

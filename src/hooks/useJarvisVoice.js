@@ -82,13 +82,10 @@ export default function useJarvisVoice() {
   }, [updateState])
 
   // speak() — dispatches jarvis-speak event for Gemini to vocalize
+  // Always dispatches — Gemini handler silently ignores if not connected
   const speak = useCallback(async (text, options = {}) => {
     lastResponseRef.current = text
     if (!text || text.length < 5) { window.dispatchEvent(new CustomEvent('jarvis-done-speaking')); return }
-    // Only speak for voice-initiated or explicit voice commands
-    if (lastInputMethodRef.current !== 'voice' && !options.isVoiceCommand && !options.isMilestone) {
-      window.dispatchEvent(new CustomEvent('jarvis-done-speaking')); return
-    }
     const clean = text.replace(/\[.*?\]\s*/g, '').replace(/[*_~`#]/g, '').trim()
     if (clean) window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: clean } }))
     window.dispatchEvent(new CustomEvent('jarvis-done-speaking'))
