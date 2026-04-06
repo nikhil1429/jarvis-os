@@ -112,8 +112,12 @@ export default function Boot({ onComplete }) {
 
   const VOICE_QS = ['', 'Energy level, Sir?', 'Primary focus today?', 'Any blockers?', 'Morning bet — what will you accomplish today?']
 
-  // Voice removed — Gemini Live handles speech
-  const speakQ = () => {}
+  // Voice dispatches jarvis-speak → Gemini Live speaks if connected
+  const speakQ = (text) => {
+    if (!text) return
+    const clean = text.replace(/\[.*?\]\s*/g, '').replace(/[*_~`#]/g, '').trim()
+    if (clean) window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: clean } }))
+  }
 
   // Check if returning user (compressed boot)
   const isReturning = useRef(false)

@@ -162,7 +162,6 @@ export default function useGeminiVoice() {
   const playCtxRef = useRef(null)  // native rate — plays Gemini 24kHz audio (browser upsamples)
   const streamRef = useRef(null)
   const processorRef = useRef(null)
-  const playQueueRef = useRef(Promise.resolve())
   const silenceTimerRef = useRef(null)
   const recognitionRef = useRef(null)
   const startTimeRef = useRef(null)
@@ -187,32 +186,37 @@ export default function useGeminiVoice() {
   // Audio stop flag — set by jarvis-stop-audio event, checked by playAudioChunk
   const audioStoppedRef = useRef(false)
   const activeSourceRef = useRef(null)
+  const nextPlayTimeRef = useRef(0) // Time-based scheduling for zero-gap playback
 
   const playAudioChunk = useCallback((base64Audio) => {
-    if (!playCtxRef.current) { console.warn('[Gemini] No playback AudioContext'); return }
-    if (audioStoppedRef.current) return
     const pctx = playCtxRef.current
-    playQueueRef.current = playQueueRef.current.then(() => new Promise(async (resolve) => {
-      if (audioStoppedRef.current) { resolve(); return }
-      try {
-        if (pctx.state === 'suspended') await pctx.resume()
-        const raw = atob(base64Audio)
-        const bytes = new Uint8Array(raw.length)
-        for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
-        const int16 = new Int16Array(bytes.buffer)
-        const float32 = new Float32Array(int16.length)
-        for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768
-        // Gemini outputs 24kHz PCM — create buffer at 24kHz, browser upsamples to native rate
-        const buffer = pctx.createBuffer(1, float32.length, 24000)
-        buffer.getChannelData(0).set(float32)
-        const source = pctx.createBufferSource()
-        source.buffer = buffer
-        source.connect(pctx.destination)
-        source.onended = () => { activeSourceRef.current = null; resolve() }
-        activeSourceRef.current = source
-        source.start()
-      } catch (err) { console.warn('[Gemini] Playback error:', err); resolve() }
-    }))
+    if (!pctx) { console.warn('[Gemini] No playback AudioContext'); return }
+    if (audioStoppedRef.current) return
+
+    try {
+      if (pctx.state === 'suspended') pctx.resume()
+      const raw = atob(base64Audio)
+      const bytes = new Uint8Array(raw.length)
+      for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
+      const int16 = new Int16Array(bytes.buffer)
+      const float32 = new Float32Array(int16.length)
+      for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768
+
+      const buffer = pctx.createBuffer(1, float32.length, 24000)
+      buffer.getChannelData(0).set(float32)
+      const source = pctx.createBufferSource()
+      source.buffer = buffer
+      source.connect(pctx.destination)
+
+      // Schedule with zero gaps: each chunk starts exactly when the previous one ends
+      const now = pctx.currentTime
+      const startAt = Math.max(now, nextPlayTimeRef.current)
+      source.start(startAt)
+      nextPlayTimeRef.current = startAt + buffer.duration
+
+      activeSourceRef.current = source
+      source.onended = () => { activeSourceRef.current = null }
+    } catch (err) { console.warn('[Gemini] Playback error:', err) }
   }, [])
 
   const disconnectRef = useRef(null)
@@ -249,7 +253,7 @@ export default function useGeminiVoice() {
       ws.onopen = async () => {
         console.log('[Gemini] WebSocket connected, sending setup...')
         const instruction = await buildSystemInstruction()
-        const setupMsg = { setup: { model: 'models/gemini-3.1-flash-live-preview', systemInstruction: { parts: [{ text: instruction }] }, generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: getVoiceName() } } }, thinkingConfig: { thinkingLevel: 'high' } }, tools: GEMINI_TOOLS } }
+        const setupMsg = { setup: { model: 'models/gemini-3.1-flash-live-preview', systemInstruction: { parts: [{ text: instruction }] }, generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: getVoiceName() } } }, thinkingConfig: { thinkingLevel: 'high' }, outputAudioTranscription: {}, inputAudioTranscription: {} }, tools: GEMINI_TOOLS } }
         console.log('[Gemini] Setup message size:', JSON.stringify(setupMsg).length)
         ws.send(JSON.stringify(setupMsg))
         console.log('[Gemini] Setup sent, waiting for setupComplete...')
@@ -308,11 +312,19 @@ export default function useGeminiVoice() {
 
           // Audio (base64 in inlineData) + text responses
           if (msg.serverContent?.modelTurn?.parts) {
-            resetSilenceTimer(); audioStoppedRef.current = false // Reset stop flag on new turn
+            resetSilenceTimer(); audioStoppedRef.current = false; nextPlayTimeRef.current = 0 // Reset for new turn
             for (const part of msg.serverContent.modelTurn.parts) {
               if (part.inlineData?.data) { setVoiceState('SPEAKING'); console.log('[Gemini] Audio chunk, b64 length:', part.inlineData.data.length); playAudioChunk(part.inlineData.data) }
               if (part.text) { console.log('[Gemini] Text:', part.text.slice(0, 80)); saveTranscript({ role: 'assistant', text: part.text, timestamp: new Date().toISOString() }) }
             }
+          }
+          // Transcription: output (JARVIS speech as text) + input (user speech as text)
+          if (msg.serverContent?.outputTranscription?.text) {
+            saveTranscript({ role: 'assistant', text: msg.serverContent.outputTranscription.text, timestamp: new Date().toISOString() })
+          }
+          if (msg.serverContent?.inputTranscription?.text) {
+            const text = msg.serverContent.inputTranscription.text.trim()
+            if (text) saveTranscript({ role: 'user', text, timestamp: new Date().toISOString() })
           }
           if (msg.toolCall?.functionCalls) {
             for (const fc of msg.toolCall.functionCalls) {
@@ -362,8 +374,7 @@ export default function useGeminiVoice() {
           }
           if (msg.serverContent?.interrupted) {
             console.log('[Gemini] Server interrupted — stopping audio')
-            audioStoppedRef.current = true
-            playQueueRef.current = Promise.resolve()
+            audioStoppedRef.current = true; nextPlayTimeRef.current = 0
             if (activeSourceRef.current) { try { activeSourceRef.current.stop() } catch {} activeSourceRef.current = null }
             setVoiceState('LISTENING'); resetSilenceTimer()
           }
@@ -476,8 +487,7 @@ export default function useGeminiVoice() {
   // Stop Gemini audio playback (called by jarvisStopAll via event)
   useEffect(() => {
     const h = () => {
-      audioStoppedRef.current = true
-      playQueueRef.current = Promise.resolve() // Flush queued chunks
+      audioStoppedRef.current = true; nextPlayTimeRef.current = 0
       if (activeSourceRef.current) { try { activeSourceRef.current.stop() } catch {} activeSourceRef.current = null }
       setVoiceState(prev => prev === 'SPEAKING' ? 'LISTENING' : prev)
     }
