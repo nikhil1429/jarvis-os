@@ -437,12 +437,9 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
         <div className="flex-1">
           <input ref={inputRef} type="text" value={input}
             onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown}
-            placeholder={vs === 'LISTENING' ? (voice.isWaitMode ? 'Say "go" to send...' : 'Listening...') : vs === 'PROCESSING' ? 'Processing...' : `Message JARVIS (${mode.name})...`}
+            placeholder={`Message JARVIS (${mode.name})...`}
             disabled={isStreaming}
-            className={`w-full bg-void border rounded-lg px-4 py-3 font-body text-sm text-text placeholder:text-text-muted focus:outline-none transition-all duration-200 disabled:opacity-50 ${
-              vs === 'LISTENING' ? 'border-cyan shadow-[0_0_12px_rgba(0,180,216,0.3)]'
-              : vs === 'SPEAKING' ? 'border-gold/40' : 'border-border focus:border-cyan'
-            }`}
+            className="w-full bg-void border border-border rounded-lg px-4 py-3 font-body text-sm text-text placeholder:text-text-muted focus:outline-none focus:border-cyan transition-all duration-200 disabled:opacity-50"
           />
         </div>
 
@@ -459,12 +456,8 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
 
         {SpeechRecognition && (JSON.parse(localStorage.getItem('jos-settings') || '{}').voiceInput !== false) && (
           <button onClick={handleMicClick}
-            className={`p-3 rounded-lg border transition-all duration-200 ${
-              vs === 'LISTENING' ? 'bg-cyan/15 border-cyan text-cyan animate-pulse shadow-[0_0_12px_rgba(0,180,216,0.3)]'
-              : vs === 'SPEAKING' ? 'bg-gold/10 border-gold/40 text-gold animate-pulse'
-              : 'border-border text-text-muted hover:border-cyan/40 hover:text-cyan'
-            }`}
-            aria-label={vs === 'LISTENING' ? (voice.silenceCountdown ? 'Send now' : 'Stop') : vs === 'SPEAKING' ? 'Stop' : 'Speak'}>
+            className="p-3 rounded-lg border border-border text-text-muted hover:border-cyan/40 hover:text-cyan transition-all duration-200"
+            aria-label="Voice">
             <Mic size={18} />
           </button>
         )}
