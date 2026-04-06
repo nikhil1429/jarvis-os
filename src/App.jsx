@@ -42,6 +42,9 @@ import FocusMode from './components/FocusMode.jsx'
 import ShutdownCeremony from './components/ShutdownCeremony.jsx'
 import { syncOnBoot } from './utils/supabaseSync.js'
 import { isSupabaseConfigured } from './utils/supabase.js'
+import useGeminiVoice from './hooks/useGeminiVoice.js'
+import JarvisVoiceButton from './components/JarvisVoiceButton.jsx'
+import VoiceOverlay from './components/VoiceOverlay.jsx'
 import useVizEngine from './hooks/useVizEngine.js'
 import useWeaknessDetector from './hooks/useWeaknessDetector.js'
 import useReportGenerator from './hooks/useReportGenerator.js'
@@ -98,6 +101,8 @@ function App() {
   const eventBus = useEventBus()
   const { captureTab } = useAutoCapture()
   useSessionContinuity() // Auto-saves session state for inter-session memory
+  const gemini = useGeminiVoice()
+  const [voiceOverlayOpen, setVoiceOverlayOpen] = useState(false)
 
   // JARVIS initiator — proactive check every 60s
   useEffect(() => { const id = startInitiator(); return () => stopInitiator(id) }, [])
@@ -233,6 +238,18 @@ function App() {
     window.addEventListener('jarvis-request-shutdown', h)
     return () => window.removeEventListener('jarvis-request-shutdown', h)
   }, [])
+
+  // Voice overlay open event
+  useEffect(() => {
+    const handler = () => setVoiceOverlayOpen(true)
+    window.addEventListener('jarvis-open-voice', handler)
+    return () => window.removeEventListener('jarvis-open-voice', handler)
+  }, [])
+
+  // Auto-connect Gemini voice on boot complete
+  useEffect(() => {
+    if (appState === 'main') gemini.connect()
+  }, [appState])
 
   // Supabase boot sync
   useEffect(() => {
@@ -446,6 +463,12 @@ function App() {
         hasPulse={hasPulse}
       />
       <Settings isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+      {/* Gemini Voice */}
+      <JarvisVoiceButton gemini={gemini} />
+      {voiceOverlayOpen && (
+        <VoiceOverlay gemini={gemini} onClose={() => setVoiceOverlayOpen(false)} />
+      )}
 
       {/* Command Line */}
       {showCommandLine && <CommandLine onClose={() => setShowCommandLine(false)} />}
