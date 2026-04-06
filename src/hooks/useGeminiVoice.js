@@ -234,7 +234,7 @@ export default function useGeminiVoice() {
         // Then try 'models/gemini-3.1-flash-live-preview'.
         const setupMsg = {
           setup: {
-            model: 'models/gemini-2.0-flash-exp',
+            model: 'models/gemini-3.1-flash-live-preview',
             generationConfig: {
               responseModalities: ['AUDIO'],
               speechConfig: {
