@@ -57,7 +57,6 @@ JARVIS voice. Formal, data-driven. Under 600 words. Section headers in CAPS. No 
         }))
         // Speak first section
         const firstPara = result.text.split('\n\n')[0]
-        if (firstPara) window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: firstPara } }))
         // Save
         try {
           const weekly = JSON.parse(localStorage.getItem('jos-weekly') || '{}')

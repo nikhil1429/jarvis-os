@@ -2,7 +2,7 @@
 // Text input + Claude API. Voice handled by Gemini Live overlay.
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { ArrowLeft, Send, Mic, Zap, Image as ImageIcon } from 'lucide-react'
+import { ArrowLeft, Send, Zap, Image as ImageIcon } from 'lucide-react'
 import useAI from '../../hooks/useAI.js'
 import useStorage from '../../hooks/useStorage.js'
 import useSound from '../../hooks/useSound.js'
@@ -25,20 +25,10 @@ import { classifyStyle, trackResponse } from '../../utils/communicationTracker.j
 import { recordQuizScore } from '../../utils/adaptiveDifficulty.js'
 import { checkMicroCelebration, buildTaskContext, buildConceptContext } from '../../utils/microCelebrations.js'
 import { recordActivity } from '../../utils/momentumTracker.js'
-// jarvisSpeaker removed — micro-celebrations dispatch jarvis-speak → Gemini
-const jarvisSpeak = (text) => {
-  if (!text) return
-  const clean = text.replace(/\[.*?\]\s*/g, '').replace(/[*_~`#]/g, '').trim()
-  if (clean) window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: clean } }))
-}
 import { autoDetectDismissal } from '../../utils/selfLearning.js'
 import { logInteraction } from '../../utils/auditTrail.js'
 
-const SpeechRecognition = typeof window !== 'undefined'
-  ? window.SpeechRecognition || window.webkitSpeechRecognition
-  : null
-
-export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoMic }) {
+export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
   const { sendMessage, isStreaming, streamingText, error } = useAI()
   const { get } = useStorage()
   const { play, startThinking, stopThinking, startThinkingHum } = useSound()
@@ -80,18 +70,15 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
       if (cmd.type === 'stop') return
       if (cmd.type === 'shutdown') {
         setMessages(prev => [...prev, { role: 'assistant', content: cmd.response, timestamp: new Date().toISOString() }])
-        jarvisSpeak(cmd.response)
         setTimeout(() => window.dispatchEvent(new CustomEvent('jarvis-request-shutdown')), 2000)
         return
       }
       if (cmd.type === 'checkin') {
         setMessages(prev => [...prev, { role: 'assistant', content: cmd.response, timestamp: new Date().toISOString() }])
-        jarvisSpeak(cmd.response)
         return
       }
       if (cmd.type === 'task') {
         setMessages(prev => [...prev, { role: 'assistant', content: cmd.response, timestamp: new Date().toISOString() }])
-        jarvisSpeak(cmd.response)
         eventBus.emit('task:complete', { taskId: cmd.taskId })
         // Auto-question pipeline: queue interview question for completed task
         try {
@@ -108,12 +95,10 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
       }
       if (cmd.type === 'mode' && onModeSwitch) {
         setMessages(prev => [...prev, { role: 'assistant', content: cmd.response, timestamp: new Date().toISOString() }])
-        jarvisSpeak(cmd.response)
         setTimeout(() => onModeSwitch(cmd.mode), 1500)
         return
       }
       setMessages(prev => [...prev, { role: 'assistant', content: cmd.response, timestamp: new Date().toISOString() }])
-      jarvisSpeak(cmd.response)
       return
     }
 
@@ -160,7 +145,6 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
         setLastTier(result.tier)
         play('receive')
         // Speak response via Gemini if connected
-        jarvisSpeak(quizClean)
 
         // Communication tracker: classify JARVIS response style
         lastJarvisStyleRef.current = classifyStyle(displayText)
@@ -189,7 +173,6 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
                 buildConceptContext(concept, change.oldStrength, change.newStrength))
               if (celebration) {
                 play(celebration.sound)
-                if (celebration.speak) jarvisSpeak(celebration.message)
                 logInteraction({ type: 'celebration', content: celebration.message, mode: mode.id })
               }
 
@@ -197,7 +180,6 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
               const quizCeleb = checkMicroCelebration('quiz:score', { score, improvement: score - (change.oldStrength > 60 ? 7 : 4) })
               if (quizCeleb && !celebration) {
                 play(quizCeleb.sound)
-                if (quizCeleb.speak) jarvisSpeak(quizCeleb.message)
               }
             }
           })
@@ -208,7 +190,6 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
         const crash = detectInSessionCrash(sessionMessages)
         if (crash) {
           setMessages(prev => [...prev, { role: 'assistant', content: crash.text, timestamp: new Date().toISOString(), isSupport: true }])
-          jarvisSpeak(crash.text)
         }
 
         // Trigger conversation compression if needed (fire-and-forget)
@@ -226,7 +207,6 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
       stopTick(); stopThinking()
       // Reset voice state on API error — prevent stuck PROCESSING
       setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${err.message || 'Request failed'}. Try again, Sir.`, timestamp: new Date().toISOString() }])
-      jarvisSpeak('I encountered an error, Sir. Please try again.')
     }
   }, [sendMessage, mode.id, weekNumber, play, onModeSwitch, stopThinking, startThinking])
 
@@ -272,10 +252,6 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
     handleSendDirect(text)
   }, [input, isStreaming, handleSendDirect])
 
-  // Mic button opens VoiceOverlay via event
-  const handleMicClick = useCallback(() => {
-    window.dispatchEvent(new CustomEvent('jarvis-open-voice'))
-  }, [])
 
   useEffect(() => {
     setTimeout(() => {
@@ -318,16 +294,13 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
       }
     }
     const onSpeaking = () => { setIsThinking(false) }
-    const onDoneSpeaking = () => { stopOpusAmbient() }
     window.addEventListener('jarvis-play-sound', onPlaySound)
     window.addEventListener('jarvis-thinking-pause', onThinkingPause)
     window.addEventListener('jarvis-voice-speaking', onSpeaking)
-    window.addEventListener('jarvis-done-speaking', onDoneSpeaking)
     return () => {
       window.removeEventListener('jarvis-play-sound', onPlaySound)
       window.removeEventListener('jarvis-thinking-pause', onThinkingPause)
       window.removeEventListener('jarvis-voice-speaking', onSpeaking)
-      window.removeEventListener('jarvis-done-speaking', onDoneSpeaking)
       if (stopHum) stopHum()
       stopOpusAmbient()
     }
@@ -346,7 +319,6 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
         role: 'assistant', content: displayText, timestamp: new Date().toISOString(),
         isMilestone: true
       }])
-      jarvisSpeak(speech.text)
     }
     const unsub = eventBus.subscribe('milestone:speech', handleMilestone)
     return () => unsub()
@@ -453,14 +425,6 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
             reader.readAsDataURL(file); e.target.value = ''
           }} />
         </label>
-
-        {SpeechRecognition && (JSON.parse(localStorage.getItem('jos-settings') || '{}').voiceInput !== false) && (
-          <button onClick={handleMicClick}
-            className="p-3 rounded-lg border border-border text-text-muted hover:border-cyan/40 hover:text-cyan transition-all duration-200"
-            aria-label="Voice">
-            <Mic size={18} />
-          </button>
-        )}
 
         <button onClick={handleSend} disabled={!input.trim() || isStreaming}
           className={`p-3 rounded-lg border transition-all duration-200 ${

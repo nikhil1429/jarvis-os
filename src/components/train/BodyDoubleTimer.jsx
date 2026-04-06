@@ -4,12 +4,10 @@
 // color shift cyan→gold→red. Full chat available during session.
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Play, X, Send, Mic, Clock } from 'lucide-react'
+import { Play, X, Send, Clock } from 'lucide-react'
 import useAI from '../../hooks/useAI.js'
 import useStorage from '../../hooks/useStorage.js'
 import useSound from '../../hooks/useSound.js'
-const jarvisSpeak = (text) => { if (text) window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text } })) }
-
 const GHOST_MESSAGES = [
   "Sir, what did you just write?",
   "Status check. Still on target?",
@@ -66,7 +64,6 @@ export default function BodyDoubleTimer() {
     // JARVIS greeting
     const greeting = `Focus session initiated, Sir. ${duration} minutes on the clock.${taskText ? ` Target: ${taskText}.` : ' What shall we focus on?'} I will check in periodically.`
     addMessage('assistant', greeting)
-    jarvisSpeak(greeting, { isVoiceCommand: true })
 
     // Countdown timer
     timerRef.current = setInterval(() => {
@@ -85,7 +82,6 @@ export default function BodyDoubleTimer() {
     ghostRef.current = setInterval(() => {
       const msg = GHOST_MESSAGES[Math.floor(Math.random() * GHOST_MESSAGES.length)]
       addMessage('assistant', msg)
-      jarvisSpeak(msg, { isVoiceCommand: true })
     }, 10 * 60 * 1000)
   }, [duration, taskText, play, addMessage])
 
@@ -94,7 +90,6 @@ export default function BodyDoubleTimer() {
     play('milestone')
     const endMsg = `Time, Sir. ${duration}-minute session complete. What did you accomplish?`
     addMessage('assistant', endMsg)
-    jarvisSpeak(endMsg, { isVoiceCommand: true })
 
     // Save session
     update('session-timer', prev => ({
@@ -117,7 +112,6 @@ export default function BodyDoubleTimer() {
     const elapsed = Math.round((Date.now() - (startTimeRef.current || Date.now())) / 60000)
     const msg = `Session ended early at ${elapsed} minutes. Sometimes knowing when to stop is wisdom, Sir.`
     addMessage('assistant', msg)
-    jarvisSpeak(msg, { isVoiceCommand: true })
   }, [addMessage])
 
   const handleChat = useCallback(async (text) => {
@@ -129,16 +123,11 @@ export default function BodyDoubleTimer() {
       const result = await sendMessage(trimmed, 'body-double', {})
       if (result?.text) {
         addMessage('assistant', result.text)
-        jarvisSpeak(result.text)
       }
     } catch (err) {
       console.error('[BodyDouble] Chat failed:', err)
     }
   }, [sendMessage, addMessage])
-
-  const handleMicClick = useCallback(() => {
-    window.dispatchEvent(new CustomEvent('jarvis-open-voice'))
-  }, [])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -237,12 +226,6 @@ export default function BodyDoubleTimer() {
               placeholder:text-text-muted focus:outline-none transition-all ${
               'border-border focus:border-cyan'
             }`} />
-          <button onClick={handleMicClick}
-            className={`p-2 rounded-lg border transition-all ${
-              'border-border text-text-muted hover:border-cyan/40 hover:text-cyan'
-            }`}>
-            <Mic size={16} />
-          </button>
           <button onClick={() => { handleChat(input); setInput('') }}
             disabled={!input.trim()}
             className="p-2 rounded-lg border border-border text-text-muted hover:border-cyan/40 hover:text-cyan disabled:opacity-30">

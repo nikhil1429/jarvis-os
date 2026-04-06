@@ -50,9 +50,6 @@ import VizDependencyTree from './components/viz/VizDependencyTree.jsx'
 import { getDayNumber, getWeekNumber } from './utils/dateUtils.js'
 import useSessionContinuity from './hooks/useSessionContinuity.js'
 import TASKS from './data/tasks.js'
-import useGeminiVoice from './hooks/useGeminiVoice.js'
-import JarvisVoiceButton from './components/JarvisVoiceButton.jsx'
-import VoiceOverlay from './components/VoiceOverlay.jsx'
 import { startInitiator, stopInitiator } from './utils/jarvisInitiator.js'
 
 const DEFAULT_KEYS = {
@@ -148,9 +145,6 @@ function App() {
   const [rankUpOverlay, setRankUpOverlay] = useState(null)
   // Pulse notification dot for CMD tab
   const [hasPulse, setHasPulse] = useState(false)
-  // Voice: single Gemini instance
-  const gemini = useGeminiVoice()
-  const [voiceOverlayOpen, setVoiceOverlayOpen] = useState(false)
   const [requestedMode, setRequestedMode] = useState(null)
   const [isAmbient, setIsAmbient] = useState(false)
   const [focusMode, setFocusMode] = useState(null)
@@ -232,16 +226,6 @@ function App() {
     })
   }, [get, set])
 
-  // Global Escape key → stop all JARVIS audio
-  useEffect(() => {
-    const handler = (e) => {
-      if (e.key === 'Escape' && window.jarvisStop) {
-        window.jarvisStop()
-      }
-    }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [])
 
   // Backtick toggles CommandLine
   useEffect(() => {
@@ -287,9 +271,6 @@ function App() {
       setRankUpOverlay({ from: currentRank, to: newRank })
       play('milestone')
 
-      // Rank-up speech via Gemini voice
-      window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: `Rank up. You are now ${newRank} Panwar.` } }))
-
       setTimeout(() => setRankUpOverlay(null), 7000)
     }
   }, [appState, core.rank, weekNumber, update, play])
@@ -322,9 +303,6 @@ function App() {
         // Cinematic! Theatrical speech with pauses for milestones
         setMilestoneOverlay(ms)
         play('milestone')
-
-        // Milestone speech via Gemini voice
-        window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: ms.speech } }))
 
         // Dismiss after longer duration for theatrical
         const duration = ms.pct === 100 ? 10000 : ms.pct >= 50 ? 5000 : 3500
@@ -387,7 +365,6 @@ function App() {
   }, [update, eventBus])
 
   const handleTabChange = useCallback((tab) => {
-    if (window.jarvisStop) window.jarvisStop()
     // Glitch transition
     if (contentRef.current) {
       contentRef.current.classList.add('glitch-transition')
@@ -414,16 +391,6 @@ function App() {
     return () => window.removeEventListener('jarvis-navigate', h)
   }, [handleTabChange])
 
-  // Open voice overlay when Gemini connects or jarvis-open-voice event
-  useEffect(() => {
-    if (gemini.isConnected) setVoiceOverlayOpen(true)
-  }, [gemini.isConnected])
-
-  useEffect(() => {
-    const handler = () => setVoiceOverlayOpen(true)
-    window.addEventListener('jarvis-open-voice', handler)
-    return () => window.removeEventListener('jarvis-open-voice', handler)
-  }, [])
 
   const handleModeOpened = useCallback(() => {
     setRequestedMode(null)
@@ -485,18 +452,12 @@ function App() {
       </main>
 
       <QuickCapture />
-      <JarvisVoiceButton gemini={gemini} />
       <BottomNav
         activeTab={activeTab}
         onTabChange={handleTabChange}
         hasPulse={hasPulse}
       />
       <Settings isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
-
-      {/* Voice overlay */}
-      {voiceOverlayOpen && (
-        <VoiceOverlay gemini={gemini} onClose={() => setVoiceOverlayOpen(false)} />
-      )}
 
       {/* Command Line */}
       {showCommandLine && <CommandLine onClose={() => setShowCommandLine(false)} />}

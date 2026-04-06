@@ -2,7 +2,7 @@
 // WHY: Boot briefing disappears after entering the app. This card shows it
 // on the CMD tab so Nikhil can re-read or replay it anytime.
 
-import { Mic, Volume2 } from 'lucide-react'
+import { Volume2 } from 'lucide-react'
 import useStorage from '../../hooks/useStorage.js'
 // Voice removed — Gemini Live handles speech
 import renderMd from '../../utils/renderMd.js'
@@ -17,16 +17,7 @@ export default function Briefing() {
   const briefing = weekly.briefing || weekly.lastBriefing
 
   const handleReplay = async () => {
-    if (briefing?.text) {
-      const settings = JSON.parse(localStorage.getItem('jos-settings') || '{}')
-      if (settings.voice !== false) {
-        window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: briefing.text } }))
-      }
-    }
-  }
-
-  const handleMic = () => {
-    window.dispatchEvent(new CustomEvent('jarvis-open-voice'))
+    // Voice replay removed — was jarvis-speak dispatch
   }
 
   if (!briefing?.text) {
@@ -40,10 +31,6 @@ export default function Briefing() {
               Complete the boot sequence to generate today's briefing.
             </p>
           </div>
-          <button onClick={handleMic}
-            className="p-2 rounded-lg border border-border text-text-muted hover:border-cyan/40 hover:text-cyan transition-all">
-            <Mic size={16} />
-          </button>
         </div>
       </div>
     )
@@ -61,11 +48,6 @@ export default function Briefing() {
               className="p-1.5 rounded border border-border text-text-muted hover:border-cyan/40 hover:text-cyan transition-all"
               title="Replay briefing">
               <Volume2 size={14} />
-            </button>
-            <button onClick={handleMic}
-              className="p-1.5 rounded border border-border text-text-muted hover:border-cyan/40 hover:text-cyan transition-all"
-              title="Talk to JARVIS">
-              <Mic size={14} />
             </button>
           </div>
         </div>

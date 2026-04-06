@@ -69,7 +69,6 @@ Warm JARVIS voice, like a mentor. Under 150 words. No markdown.`
       return updated
     })
     const capsule = capsules[idx]
-    if (capsule?.content) window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: capsule.content } }))
   }
 
   return (

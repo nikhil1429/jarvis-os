@@ -6,7 +6,6 @@ import { X, Swords } from 'lucide-react'
 import useAI from '../../hooks/useAI.js'
 import useStorage from '../../hooks/useStorage.js'
 import CONCEPTS from '../../data/concepts.js'
-const jarvisSpeak = (text) => { if (text) window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text } })) }
 import { updateConceptStrength } from '../../utils/quizScoring.js'
 
 export default function BattleRoyale({ onClose }) {
@@ -29,8 +28,6 @@ export default function BattleRoyale({ onClose }) {
     setAnswer('')
     setLoading(true)
     const concept = weakest[idx]
-    jarvisSpeak(`Round ${idx + 1}. ${concept.name}. Prepare yourself, Sir.`, { isVoiceCommand: true })
-
     try {
       const result = await sendMessage(
         `Generate 3 questions about "${concept.name}" at escalating difficulty: 1 EASY (definition), 2 MEDIUM (application), 3 HARD (edge case). For each provide correct answer (2-3 sentences). Format as JSON: [{ "difficulty":"EASY", "question":"...", "answer":"..." }]`,
@@ -67,11 +64,8 @@ export default function BattleRoyale({ onClose }) {
       // Round complete
       if (round < weakest.length - 1) {
         setPhase('between')
-        jarvisSpeak(`Round ${round + 1} complete. Moving to next concept.`, { isVoiceCommand: true })
       } else {
         setPhase('complete')
-        const totalGain = results.length * 5
-        jarvisSpeak(`Battle Royale complete. ${weakest.length} concepts engaged. Well fought, Sir.`, { isVoiceCommand: true })
       }
     }
   }, [answer, currentQ, questions, round, weakest, results])

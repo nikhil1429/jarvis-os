@@ -32,7 +32,6 @@ export default function ShutdownSequence({ onComplete }) {
 
     // Phase 1: JARVIS speaks + "SYSTEMS ENTERING STANDBY" types (500-2000ms)
     setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: 'Shutting down, Sir. Rest well. I will be here when you return.' } }))
       let i = 0
       const text = 'SYSTEMS ENTERING STANDBY'
       const interval = setInterval(() => {

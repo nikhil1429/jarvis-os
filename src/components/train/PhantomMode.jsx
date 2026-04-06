@@ -5,8 +5,6 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { X, Clock, AlertTriangle } from 'lucide-react'
 import useAI from '../../hooks/useAI.js'
 
-const jarvisSpeak = (text) => { if (text) window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text } })) }
-
 export default function PhantomMode({ onClose }) {
   const { sendMessage } = useAI()
 
@@ -26,7 +24,6 @@ export default function PhantomMode({ onClose }) {
   const generateQuestions = async () => {
     if (!company.trim() || !role.trim()) return
     setGenerating(true)
-    jarvisSpeak('Phantom Mode engaged. Activating emergency protocols, Sir.')
     try {
       const result = await sendMessage(
         `Emergency interview prep. Generate 15 interview questions for: Company: ${company}, Role: ${role}. Candidate: AI Product Engineer, FinOps background, LLM experience. Mix: 5 technical, 3 behavioral, 3 system design, 2 product, 2 situational. Return ONLY a JSON array of 15 strings.`,

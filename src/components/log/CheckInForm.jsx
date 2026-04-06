@@ -173,9 +173,6 @@ Tone: JARVIS formal British, call him Sir. Keep under 150 words. No markdown.`
       setDebrief(debriefEntry)
       setDebriefExpanded(true)
 
-      // Speak the debrief if voice enabled
-      const settings = JSON.parse(localStorage.getItem('jos-settings') || '{}')
-      window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text } }))
     } catch (err) {
       console.error('[CheckInForm] Debrief generation failed:', err)
     } finally {

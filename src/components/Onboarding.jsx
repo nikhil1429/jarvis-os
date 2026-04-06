@@ -5,12 +5,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Mic, SkipForward } from 'lucide-react'
-// jarvisSpeaker removed — speech dispatches jarvis-speak → Gemini Live
-const jarvisSpeak = (text) => {
-  if (!text) return
-  const clean = text.replace(/\[.*?\]\s*/g, '').replace(/[*_~`#]/g, '').trim()
-  if (clean) window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: clean } }))
-}
 
 const SECTIONS = [
   {
@@ -57,10 +51,6 @@ const SECTIONS = [
 const TOTAL_QUESTIONS = SECTIONS.reduce((sum, s) => sum + s.questions.length, 0)
 const ACKS = ['Noted, Sir.', 'Understood.', 'Very good.', "That's helpful, Sir.", 'Acknowledged.']
 
-function speakBrowserAck(text) {
-  jarvisSpeak(text, { force: true })
-}
-
 export default function Onboarding({ onComplete }) {
   const [sectionIdx, setSectionIdx] = useState(0)
   const [questionIdx, setQuestionIdx] = useState(0)
@@ -102,7 +92,6 @@ export default function Onboarding({ onComplete }) {
     typeText(intro, () => {
       setTimeout(() => showSectionTransition(0), 1000)
     })
-    await jarvisSpeak(intro)
   }, [typeText])
 
   const showSectionTransition = useCallback((idx) => {
@@ -134,8 +123,7 @@ export default function Onboarding({ onComplete }) {
       }, 20000)
     })
 
-    await jarvisSpeak(question)
-  }, [typeText, voice])
+  }, [typeText])
 
   const handleAnswer = useCallback((answerText) => {
     if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
@@ -154,11 +142,9 @@ export default function Onboarding({ onComplete }) {
     let ackIdx = Math.floor(Math.random() * ACKS.length)
     while (ackIdx === lastAckIdx.current) ackIdx = Math.floor(Math.random() * ACKS.length)
     lastAckIdx.current = ackIdx
-    speakBrowserAck(ACKS[ackIdx])
-
     // Next question after 500ms
     setTimeout(() => advanceToNext(), 800)
-  }, [sectionIdx, questionIdx, voice])
+  }, [sectionIdx, questionIdx])
 
   const handleSkip = useCallback(() => {
     handleAnswer(null)
@@ -312,7 +298,6 @@ Structure:
     setPhase('complete')
     const msg = 'Initial calibration complete, Sir. I now have a foundational understanding of your patterns, preferences, and objectives. Shall we begin?'
     typeText(msg)
-    await jarvisSpeak(msg)
     setTimeout(() => onComplete(), 3000)
   }, [onComplete, typeText])
 

@@ -270,7 +270,7 @@ export default function useSound() {
         thinkingRef.current = null
         window._thinkingStop = null
       }
-      // Register globally so jarvisStop() can kill it
+      // Register globally so external callers can kill it
       window._thinkingStop = stop
       return stop
     } catch {
