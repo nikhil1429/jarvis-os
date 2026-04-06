@@ -265,9 +265,13 @@ function App() {
     }
   }, [appState])
 
-  // Supabase boot sync
+  // Supabase boot sync — ref guard prevents StrictMode double-fire
+  const syncedRef = useRef(false)
   useEffect(() => {
-    if (isSupabaseConfigured()) syncOnBoot()
+    if (isSupabaseConfigured() && !syncedRef.current) {
+      syncedRef.current = true
+      syncOnBoot()
+    }
   }, [])
 
   const core = get('core') || DEFAULT_KEYS.core

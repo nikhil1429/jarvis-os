@@ -175,7 +175,7 @@ export default function Boot({ onComplete }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-6',
           max_tokens: 256,
           system: `You are JARVIS OS — Nikhil Panwar's AI operating system. Speak like Paul Bettany's JARVIS: formal, British, precise, dry wit. Call him "Sir". Never use casual slang. Be concise and data-driven.`,
           messages: [{ role: 'user', content: prompt }],
@@ -292,6 +292,7 @@ export default function Boot({ onComplete }) {
 
     // WHY: Fetch real AI briefing from Sonnet. If it fails, use a static fallback.
     // We start the fetch immediately and type the response character by character.
+    await new Promise(r => setTimeout(r, 2000))  // Let rate limit breathe
     const aiBriefing = await fetchBriefing()
     const core = get('core') || {}
     const dayNumber = getDayNumber(core.startDate || new Date().toISOString())

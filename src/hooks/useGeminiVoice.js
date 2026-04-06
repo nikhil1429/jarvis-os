@@ -454,11 +454,26 @@ export default function useGeminiVoice() {
         // Start mic
         await startMic()
 
-        // Greet on first connect (not reconnect)
+        // On first connect: speak boot briefing if available, else greet
         if (!isReconnectRef.current && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({
-            clientContent: { turnComplete: true, turns: [{ role: 'user', parts: [{ text: 'Greet Sir briefly. One sentence. Note the time of day.' }] }] }
-          }))
+          let spokenBriefing = false
+          try {
+            const weekly = JSON.parse(localStorage.getItem('jos-weekly') || '{}')
+            const briefing = weekly.briefing?.text
+            if (briefing) {
+              ws.send(JSON.stringify({
+                clientContent: { turnComplete: true, turns: [{ role: 'user', parts: [{
+                  text: `Read this briefing aloud naturally (don't say "here is your briefing", just speak it as if you're delivering it): ${briefing}`
+                }] }] }
+              }))
+              spokenBriefing = true
+            }
+          } catch { /* ok */ }
+          if (!spokenBriefing) {
+            ws.send(JSON.stringify({
+              clientContent: { turnComplete: true, turns: [{ role: 'user', parts: [{ text: 'Greet Sir briefly. One sentence. Note the time of day.' }] }] }
+            }))
+          }
         }
         isReconnectRef.current = false
         return

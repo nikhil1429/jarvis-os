@@ -2,7 +2,7 @@
 // Text chat interface for training modes
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { ArrowLeft, Send, Zap, Image as ImageIcon } from 'lucide-react'
+import { ArrowLeft, Send, Zap, Image as ImageIcon, Mic } from 'lucide-react'
 import useAI from '../../hooks/useAI.js'
 import useStorage from '../../hooks/useStorage.js'
 import useSound from '../../hooks/useSound.js'
@@ -40,11 +40,13 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
   const [pendingImage, setPendingImage] = useState(null)
   const [lastTier, setLastTier] = useState(1)
   const [isThinking, setIsThinking] = useState(false)
+  const [isListening, setIsListening] = useState(false)
 
   const messagesContainerRef = useRef(null)
   const inputRef = useRef(null)
   const lastJarvisStyleRef = useRef([])
   const sessionStartIndexRef = useRef(0)
+  const recognitionRef = useRef(null)
 
   const handleSendDirect = useCallback(async (text) => {
     const trimmed = text?.trim()
@@ -132,6 +134,8 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
         }])
         setLastTier(result.tier)
         play('receive')
+        // Voice-first: speak JARVIS response through Gemini
+        window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: displayText } }))
         // Communication tracker: classify JARVIS response style
         lastJarvisStyleRef.current = classifyStyle(displayText)
 
@@ -262,6 +266,36 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
     inputRef.current?.focus()
   }, [])
 
+  // Web Speech API for voice input in training modes
+  useEffect(() => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SR) return
+    const recognition = new SR()
+    recognition.continuous = false
+    recognition.interimResults = false
+    recognition.lang = 'en-IN'
+    recognition.onresult = (event) => {
+      const text = event.results[0][0].transcript
+      setInput(text)
+      setIsListening(false)
+      handleSendDirectRef.current(text)
+    }
+    recognition.onerror = () => setIsListening(false)
+    recognition.onend = () => setIsListening(false)
+    recognitionRef.current = recognition
+    return () => { try { recognition.abort() } catch {} }
+  }, [])
+
+  const toggleMic = useCallback(() => {
+    if (isListening) {
+      recognitionRef.current?.stop()
+      setIsListening(false)
+    } else {
+      recognitionRef.current?.start()
+      setIsListening(true)
+    }
+  }, [isListening])
+
   // Layer 8: Voice activation/deactivation sounds + thinking pause hum
   // Layer 10: Stop opus ambient when JARVIS finishes speaking
   // Behavioral engine: ThinkingIndicator + milestone speeches
@@ -302,6 +336,8 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
         role: 'assistant', content: displayText, timestamp: new Date().toISOString(),
         isMilestone: true
       }])
+      // Voice-first: speak milestone through Gemini
+      window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: displayText } }))
     }
     const unsub = eventBus.subscribe('milestone:speech', handleMilestone)
     return () => unsub()
@@ -408,6 +444,15 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
             reader.readAsDataURL(file); e.target.value = ''
           }} />
         </label>
+
+        {/* Voice input */}
+        <button onClick={toggleMic} disabled={isStreaming}
+          className={`p-3 rounded-lg border transition-all duration-200 ${
+            isListening ? 'bg-red-500/20 border-red-500/40 text-red-400 animate-pulse'
+            : 'border-border text-text-muted hover:border-cyan/30 hover:text-cyan'
+          }`} aria-label="Voice input">
+          <Mic size={18} />
+        </button>
 
         <button onClick={handleSend} disabled={!input.trim() || isStreaming}
           className={`p-3 rounded-lg border transition-all duration-200 ${

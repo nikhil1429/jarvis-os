@@ -141,7 +141,7 @@ Tone: JARVIS formal British, call him Sir. Keep under 150 words. No markdown.`
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-6',
           max_tokens: 512,
           system: 'You are JARVIS OS. Speak like Paul Bettany\'s JARVIS: formal, British, precise. Call him "Sir". Generate a concise daily debrief.',
           messages: [{ role: 'user', content: prompt }],
@@ -170,6 +170,8 @@ Tone: JARVIS formal British, call him Sir. Keep under 150 words. No markdown.`
 
       setDebrief(debriefEntry)
       setDebriefExpanded(true)
+      // Voice-first: speak debrief through Gemini
+      window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text } }))
 
     } catch (err) {
       console.error('[CheckInForm] Debrief generation failed:', err)
