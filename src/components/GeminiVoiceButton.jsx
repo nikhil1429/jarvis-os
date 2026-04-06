@@ -42,7 +42,10 @@ export default function GeminiVoiceButton() {
   }, [])
 
   if (!enabled) return null
-  const handleClick = () => { if (isConnected) disconnectFromJarvis(); else { setIsGlowing(false); setInitiateMessage(null); connectToJarvis() } }
+  const handleClick = () => {
+    if (isConnected) { disconnectFromJarvis() }
+    else { setIsGlowing(false); setInitiateMessage(null); window.dispatchEvent(new CustomEvent('jarvis-activate-mic')); connectToJarvis() }
+  }
   const fmt = (s) => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`
 
   return (
