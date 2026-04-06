@@ -6,8 +6,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Mic, SkipForward } from 'lucide-react'
 import useJarvisVoice from '../hooks/useJarvisVoice.js'
-// jarvisSpeaker removed — speech through Gemini Live
-const jarvisSpeak = () => {}
+// jarvisSpeaker removed — speech dispatches jarvis-speak → Gemini Live
+const jarvisSpeak = (text) => {
+  if (!text) return
+  const clean = text.replace(/\[.*?\]\s*/g, '').replace(/[*_~`#]/g, '').trim()
+  if (clean) window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: clean } }))
+}
 
 const SECTIONS = [
   {

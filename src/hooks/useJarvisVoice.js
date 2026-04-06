@@ -33,7 +33,9 @@ function getSilenceDelay(wordCount) {
 }
 
 function jarvisStopAll() {
-  window._jarvisStopped = true
+  // Stop Gemini Live audio playback
+  window.dispatchEvent(new CustomEvent('jarvis-stop-audio'))
+  // Stop any <audio> elements (legacy safety)
   document.querySelectorAll('audio').forEach(a => { try { a.pause(); a.currentTime = 0 } catch {} })
   if (window._thinkingStop) { try { window._thinkingStop() } catch {}; window._thinkingStop = null }
 }
@@ -122,6 +124,11 @@ export default function useJarvisVoice() {
 
   const startListening = useCallback(() => {
     if (!SpeechRecognition) return
+    // When Gemini is connected, it handles all voice I/O natively — skip STT
+    if (window.__geminiConnected) {
+      console.log('[JarvisVoice] Gemini active, skipping STT')
+      return
+    }
     if (recognitionRef.current) try { recognitionRef.current.stop() } catch {}
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
     if (countdownRef.current) clearInterval(countdownRef.current)
@@ -130,7 +137,9 @@ export default function useJarvisVoice() {
     userStopTimestampRef.current = 0; jarvisStopAll()
 
     setTimeout(() => {
-      navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+      navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+      }).then((stream) => {
         stream.getTracks().forEach(t => t.stop())
         const recognition = new SpeechRecognition()
         recognition.lang = 'en-IN'; recognition.continuous = true; recognition.interimResults = true; recognition.maxAlternatives = 1

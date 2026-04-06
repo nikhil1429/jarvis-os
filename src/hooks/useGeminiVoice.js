@@ -6,6 +6,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { logAPICall } from '../utils/apiLogger.js'
 import { startShadowProcessing, stopShadowProcessing } from '../utils/transcriptShadow.js'
 import { startStateSync, stopStateSync } from '../utils/geminiStateSync.js'
+import { getSharedMicStream, releaseMicStream } from '../utils/micManager.js'
 
 function safeGet(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) || fallback } catch { return fallback }
@@ -73,7 +74,7 @@ Call him "Sir" or rank title. NEVER "bro"/"bhai"/"dude". Understand Hinglish, re
 
 STATE: ${sp.join(' ')}
 
-14 TOOLS: complete tasks, stats, concept strength, search knowledge/decisions, weak concepts, recent feelings, quick capture, log journal/decision, commitments, navigate app, handoff to Claude, look at screen. Use proactively.
+15 TOOLS: complete tasks, stats, concept strength, search knowledge/decisions, weak concepts, recent feelings, quick capture, log journal/decision, commitments, navigate app, handoff to Claude, look at screen, deep reasoning. Use proactively. For complex questions, use engage_deep_reasoning for Pro-level analysis.
 
 PROACTIVE: Check concept strength when discussed. Acknowledge fatigue. ASK before logging decisions/captures/journal — WAIT for explicit yes. One offer per topic. Max 1 proactive per 5 min.
 CRITICAL: For log_decision, quick_capture, log_voice_journal — ask permission first, call tool ONLY after "yes"/"haan"/"sure" in next turn.
@@ -93,7 +94,7 @@ CURRENT VIEW: Sir is on ${currentTab}. Acknowledge what he's viewing on first me
 }
 
 // ============================================================
-// 14 TOOLS
+// 15 TOOLS
 // ============================================================
 const GEMINI_TOOLS = [{ functionDeclarations: [
   { name: 'complete_task', description: 'Mark a build task as complete.', parameters: { type: 'OBJECT', properties: { taskId: { type: 'NUMBER' } }, required: ['taskId'] } },
@@ -110,6 +111,7 @@ const GEMINI_TOOLS = [{ functionDeclarations: [
   { name: 'navigate_app', description: 'Switch tabs or open training modes. Use for "open", "show me", "quiz me", "go to".', parameters: { type: 'OBJECT', properties: { tab: { type: 'STRING', description: 'cmd|train|log|dna|stats|wins' }, mode: { type: 'STRING', description: 'Training mode if tab=train' }, context: { type: 'STRING' } }, required: ['tab'] } },
   { name: 'handoff_to_claude', description: 'Transfer to Claude deep analysis. For "go deep", "teach me", "samjhao properly".', parameters: { type: 'OBJECT', properties: { mode: { type: 'STRING', description: 'quiz|teach|presser|battle' }, topic: { type: 'STRING' }, reason: { type: 'STRING' } }, required: ['topic'] } },
   { name: 'look_at_screen', description: 'Capture and analyze current screen. For "look at this", "see this error".', parameters: { type: 'OBJECT', properties: { focus: { type: 'STRING' } } } },
+  { name: 'engage_deep_reasoning', description: 'For complex logic, coding, strategy, or deep analysis. Triggers background deep thinking.', parameters: { type: 'OBJECT', properties: { query: { type: 'STRING' } }, required: ['query'] } },
 ] }]
 
 function executeGeminiTool(name, args, wsRef) {
@@ -127,6 +129,7 @@ function executeGeminiTool(name, args, wsRef) {
   if (name === 'navigate_app') { try { window.dispatchEvent(new CustomEvent('jarvis-navigate',{detail:{tab:args.tab,mode:args.mode,context:args.context}})); return{success:true,message:`Navigated to ${args.tab}${args.mode?' '+args.mode:''}`}} catch(e){return{error:e.message}} }
   if (name === 'handoff_to_claude') { try { const t=JSON.parse(localStorage.getItem('jos-gemini-transcript')||'[]'); localStorage.setItem('jos-handoff-context',JSON.stringify({timestamp:new Date().toISOString(),topic:args.topic,reason:args.reason||'Depth needed',targetMode:args.mode||'teach',conversationContext:t.slice(-30).map(m=>`${m.role==='user'?'Nikhil':'JARVIS'}: ${m.text}`).join('\n'),fromGeminiSession:true})); window.dispatchEvent(new CustomEvent('jarvis-navigate',{detail:{tab:'train',mode:args.mode||'teach',context:args.topic}})); setTimeout(()=>window.dispatchEvent(new CustomEvent('jarvis-handoff-disconnect')),3000); return{success:true}} catch(e){return{error:e.message}} }
   if (name === 'look_at_screen') { (async()=>{ try { const h=(await import('html2canvas')).default; const el=document.querySelector('[data-main-content]')||document.body; const cv=await h(el,{scale:0.5,useCORS:true,logging:false,width:Math.min(el.scrollWidth,1200),height:Math.min(el.scrollHeight,800)}); const b64=cv.toDataURL('image/jpeg',0.7).split(',')[1]; if(wsRef?.current?.readyState===WebSocket.OPEN){wsRef.current.send(JSON.stringify({clientContent:{turns:[{role:'user',parts:[{inlineData:{mimeType:'image/jpeg',data:b64}},{text:`[VISION: Screen capture. Focus: ${args.focus||'full screen'}. Describe what you see.]`}]}],turnComplete:true}}))} } catch(e){console.warn('[Vision]',e)} })(); return{success:true,message:'Screen captured.'} }
+  if (name === 'engage_deep_reasoning') { return '__ASYNC__' } // Handled separately — see toolCall handler
   return { error: `Unknown tool: ${name}` }
 }
 
@@ -150,11 +153,13 @@ function buildConversationSummary(reconnectCount) {
 export default function useGeminiVoice() {
   const [isConnected, setIsConnected] = useState(false)
   const [isListening, setIsListening] = useState(false)
+  const [voiceState, setVoiceState] = useState('IDLE') // IDLE | LISTENING | SPEAKING
   const [transcript, setTranscript] = useState([])
   const [error, setError] = useState(null)
 
   const wsRef = useRef(null)
-  const audioCtxRef = useRef(null)
+  const micCtxRef = useRef(null)   // 16kHz — mic capture + send to Gemini
+  const playCtxRef = useRef(null)  // native rate — plays Gemini 24kHz audio (browser upsamples)
   const streamRef = useRef(null)
   const processorRef = useRef(null)
   const playQueueRef = useRef(Promise.resolve())
@@ -168,7 +173,7 @@ export default function useGeminiVoice() {
   const reconnectAttemptRef = useRef(0)
   const isAutoReconnectRef = useRef(false)
   const conversationSummaryRef = useRef(null)
-  const pendingSpeechRef = useRef(null) // Queue text to speak once connected
+  const pendingSpeechRef = useRef(null) // { text, timestamp } — Queue text to speak once connected
   const maxReconnects = 10
 
   const saveTranscript = useCallback((entry) => {
@@ -179,32 +184,41 @@ export default function useGeminiVoice() {
     })
   }, [])
 
+  // Audio stop flag — set by jarvis-stop-audio event, checked by playAudioChunk
+  const audioStoppedRef = useRef(false)
+  const activeSourceRef = useRef(null)
+
   const playAudioChunk = useCallback((base64Audio) => {
-    if (!audioCtxRef.current) { console.warn('[Gemini] No AudioContext for playback'); return }
-    const ctx = audioCtxRef.current
-    playQueueRef.current = playQueueRef.current.then(() => new Promise((resolve) => {
+    if (!playCtxRef.current) { console.warn('[Gemini] No playback AudioContext'); return }
+    if (audioStoppedRef.current) return
+    const pctx = playCtxRef.current
+    playQueueRef.current = playQueueRef.current.then(() => new Promise(async (resolve) => {
+      if (audioStoppedRef.current) { resolve(); return }
       try {
+        if (pctx.state === 'suspended') await pctx.resume()
         const raw = atob(base64Audio)
         const bytes = new Uint8Array(raw.length)
         for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
         const int16 = new Int16Array(bytes.buffer)
         const float32 = new Float32Array(int16.length)
         for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768
-        console.log('[Gemini] Playing audio chunk, samples:', float32.length, 'ctx state:', ctx.state)
-        const buffer = ctx.createBuffer(1, float32.length, 24000)
+        // Gemini outputs 24kHz PCM — create buffer at 24kHz, browser upsamples to native rate
+        const buffer = pctx.createBuffer(1, float32.length, 24000)
         buffer.getChannelData(0).set(float32)
-        const source = ctx.createBufferSource()
+        const source = pctx.createBufferSource()
         source.buffer = buffer
-        source.connect(ctx.destination)
-        source.onended = resolve
+        source.connect(pctx.destination)
+        source.onended = () => { activeSourceRef.current = null; resolve() }
+        activeSourceRef.current = source
         source.start()
       } catch (err) { console.warn('[Gemini] Playback error:', err); resolve() }
     }))
   }, [])
 
+  const disconnectRef = useRef(null)
   const resetSilenceTimer = useCallback(() => {
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
-    silenceTimerRef.current = setTimeout(() => { console.log('[Gemini] 30s silence'); disconnectFromJarvis() }, 30000)
+    silenceTimerRef.current = setTimeout(() => { console.log('[Gemini] 30s silence'); if (disconnectRef.current) disconnectRef.current() }, 30000)
   }, [])
 
   const connectToJarvis = useCallback(async () => {
@@ -219,10 +233,14 @@ export default function useGeminiVoice() {
     if (!isAutoReconnectRef.current) reconnectAttemptRef.current = 0
 
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 })
-      await ctx.resume(); audioCtxRef.current = ctx
-      console.log('[Gemini] AudioContext created, sampleRate:', ctx.sampleRate, 'state:', ctx.state)
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1 } })
+      // Dual AudioContext: micCtx at 16kHz for capture, playCtx at native rate for playback
+      const micCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 })
+      const playCtx = new (window.AudioContext || window.webkitAudioContext)() // native OS rate — upsamples 24kHz
+      await micCtx.resume(); await playCtx.resume()
+      micCtxRef.current = micCtx; playCtxRef.current = playCtx
+      console.log('[Gemini] micCtx:', micCtx.sampleRate, 'Hz | playCtx:', playCtx.sampleRate, 'Hz')
+      // Shared mic stream with echo cancellation
+      const stream = await getSharedMicStream()
       streamRef.current = stream
 
       const ws = new WebSocket(`wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`)
@@ -231,7 +249,7 @@ export default function useGeminiVoice() {
       ws.onopen = async () => {
         console.log('[Gemini] WebSocket connected, sending setup...')
         const instruction = await buildSystemInstruction()
-        const setupMsg = { setup: { model: 'models/gemini-3.1-flash-live-preview', systemInstruction: { parts: [{ text: instruction }] }, generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: getVoiceName() } } } }, tools: GEMINI_TOOLS } }
+        const setupMsg = { setup: { model: 'models/gemini-3.1-flash-live-preview', systemInstruction: { parts: [{ text: instruction }] }, generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: getVoiceName() } } }, thinkingConfig: { thinkingLevel: 'high' } }, tools: GEMINI_TOOLS } }
         console.log('[Gemini] Setup message size:', JSON.stringify(setupMsg).length)
         ws.send(JSON.stringify(setupMsg))
         console.log('[Gemini] Setup sent, waiting for setupComplete...')
@@ -252,8 +270,10 @@ export default function useGeminiVoice() {
 
           if (msg.setupComplete) {
             console.log('[Gemini] setupComplete received')
-            setIsConnected(true); setIsListening(true); startTimeRef.current = Date.now()
-            setTimeout(() => startAudioCapture(ctx, stream, ws), 500); startTranscriptionCapture(); resetSilenceTimer()
+            setIsConnected(true); setIsListening(true); setVoiceState('LISTENING'); startTimeRef.current = Date.now()
+            window.__geminiConnected = true
+            window.dispatchEvent(new CustomEvent('gemini-connected'))
+            setTimeout(() => startAudioCapture(micCtx, stream, ws), 500); startTranscriptionCapture(); resetSilenceTimer()
             startShadowProcessing(() => { try { return JSON.parse(localStorage.getItem('jos-gemini-transcript')||'[]') } catch { return [] } })
             startStateSync(() => wsRef.current)
             window.dispatchEvent(new CustomEvent('jarvis-sound', { detail: { sound: isAutoReconnectRef.current ? 'geminiReconnect' : 'geminiConnect' } }))
@@ -262,10 +282,20 @@ export default function useGeminiVoice() {
               setTimeout(() => { if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ realtimeInput: { text: `Session auto-renewed. Continuation ${ctx2.sessionNumber}. Topic: ${ctx2.lastTopic}. Resume naturally.` } })) }, 500)
               isAutoReconnectRef.current = false
             }
+            // Speak queued text or send greeting
+            let spokeQueued = false
             if (pendingSpeechRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
               const queued = pendingSpeechRef.current
               pendingSpeechRef.current = null
-              setTimeout(() => { if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ realtimeInput: { text: `Speak this aloud: ${queued}` } })) }, 800)
+              const age = Date.now() - (queued.timestamp || 0)
+              if (age < 10000) {
+                spokeQueued = true
+                setTimeout(() => { if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ realtimeInput: { text: `Speak this aloud: ${queued.text}` } })) }, 800)
+              }
+            }
+            // Greeting: if not auto-reconnect and no queued speech, JARVIS speaks first
+            if (!isAutoReconnectRef.current && !spokeQueued && wsRef.current?.readyState === WebSocket.OPEN) {
+              setTimeout(() => { if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ realtimeInput: { text: 'Greet Sir briefly. One sentence.' } })) }, 1000)
             }
             sessionWarningRef.current = false
             sessionTimerRef.current = setTimeout(() => {
@@ -278,43 +308,69 @@ export default function useGeminiVoice() {
 
           // Audio (base64 in inlineData) + text responses
           if (msg.serverContent?.modelTurn?.parts) {
-            resetSilenceTimer()
+            resetSilenceTimer(); audioStoppedRef.current = false // Reset stop flag on new turn
             for (const part of msg.serverContent.modelTurn.parts) {
-              if (part.inlineData?.data) { console.log('[Gemini] Audio chunk, b64 length:', part.inlineData.data.length); playAudioChunk(part.inlineData.data) }
+              if (part.inlineData?.data) { setVoiceState('SPEAKING'); console.log('[Gemini] Audio chunk, b64 length:', part.inlineData.data.length); playAudioChunk(part.inlineData.data) }
               if (part.text) { console.log('[Gemini] Text:', part.text.slice(0, 80)); saveTranscript({ role: 'assistant', text: part.text, timestamp: new Date().toISOString() }) }
             }
           }
-          if (msg.toolCall?.functionCalls) { for (const fc of msg.toolCall.functionCalls) { console.log('[Gemini] Tool:', fc.name); const result = executeGeminiTool(fc.name, fc.args || {}, wsRef); ws.send(JSON.stringify({ toolResponse: { functionResponses: [{ id: fc.id, response: result }] } })) } }
-          if (msg.serverContent?.turnComplete) resetSilenceTimer()
+          if (msg.toolCall?.functionCalls) {
+            for (const fc of msg.toolCall.functionCalls) {
+              console.log('[Gemini] Tool:', fc.name)
+              if (fc.name === 'engage_deep_reasoning') {
+                // Async: fire REST call to Gemini Pro, send toolResponse when done
+                setVoiceState('PROCESSING')
+                window.dispatchEvent(new CustomEvent('jarvis-sound', { detail: { sound: 'send' } }));
+                (async () => {
+                  const apiKey = getApiKey()
+                  const query = fc.args?.query || ''
+                  try {
+                    console.log('[Gemini] Deep reasoning — calling gemini-2.5-pro for:', query.slice(0, 80))
+                    const startMs = Date.now()
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        contents: [{ role: 'user', parts: [{ text: query }] }],
+                        generationConfig: { thinkingConfig: { thinkingLevel: 'high' } }
+                      })
+                    })
+                    const data = await res.json()
+                    const latencyMs = Date.now() - startMs
+                    // Extract final text parts (skip thinking parts)
+                    const parts = data.candidates?.[0]?.content?.parts || []
+                    const textParts = parts.filter(p => p.text && !p.thought).map(p => p.text)
+                    const answer = textParts.join('\n') || 'Analysis complete but no text returned.'
+                    console.log('[Gemini] Deep reasoning done in', latencyMs, 'ms, answer length:', answer.length)
+                    logAPICall({ model: 'gemini-2.5-pro', mode: 'deep-reasoning', inputTokens: data.usageMetadata?.promptTokenCount || 0, outputTokens: data.usageMetadata?.candidatesTokenCount || 0, latencyMs, estimatedCost: 0, reason: `Deep: ${query.slice(0, 60)}` })
+                    // Send result back to Live session — JARVIS will speak it
+                    if (ws.readyState === WebSocket.OPEN) {
+                      ws.send(JSON.stringify({ toolResponse: { functionResponses: [{ id: fc.id, name: fc.name, response: { result: { analysis: answer } } }] } }))
+                    }
+                  } catch (err) {
+                    console.error('[Gemini] Deep reasoning failed:', err)
+                    if (ws.readyState === WebSocket.OPEN) {
+                      ws.send(JSON.stringify({ toolResponse: { functionResponses: [{ id: fc.id, name: fc.name, response: { result: { error: err.message } } }] } }))
+                    }
+                  }
+                })()
+              } else {
+                const result = executeGeminiTool(fc.name, fc.args || {}, wsRef)
+                ws.send(JSON.stringify({ toolResponse: { functionResponses: [{ id: fc.id, name: fc.name, response: { result } }] } }))
+              }
+            }
+          }
+          if (msg.serverContent?.interrupted) {
+            console.log('[Gemini] Server interrupted — stopping audio')
+            audioStoppedRef.current = true
+            playQueueRef.current = Promise.resolve()
+            if (activeSourceRef.current) { try { activeSourceRef.current.stop() } catch {} activeSourceRef.current = null }
+            setVoiceState('LISTENING'); resetSilenceTimer()
+          }
+          if (msg.serverContent?.turnComplete) { setVoiceState('LISTENING'); resetSilenceTimer() }
           return
         } catch (parseErr) {
-          // Not JSON — raw binary audio
-        }
-
-        // Raw binary audio fallback (PCM data that isn't JSON-wrapped)
-        if (event.data instanceof Blob) {
-          try {
-            const ab = await event.data.arrayBuffer()
-            if (ab.byteLength < 100) return
-            console.log('[Gemini] Raw audio, bytes:', ab.byteLength)
-            resetSilenceTimer()
-            const int16 = new Int16Array(ab)
-            const float32 = new Float32Array(int16.length)
-            for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768
-            if (audioCtxRef.current && float32.length > 0) {
-              const actx = audioCtxRef.current
-              if (actx.state === 'suspended') await actx.resume()
-              playQueueRef.current = playQueueRef.current.then(() => new Promise((resolve) => {
-                try {
-                  const buffer = actx.createBuffer(1, float32.length, 24000)
-                  buffer.getChannelData(0).set(float32)
-                  const source = actx.createBufferSource()
-                  source.buffer = buffer; source.connect(actx.destination)
-                  source.onended = resolve; source.start()
-                } catch (err) { console.warn('[Gemini] Playback error:', err); resolve() }
-              }))
-            }
-          } catch (err) { console.warn('[Gemini] Binary audio error:', err) }
+          console.warn('[Gemini] Non-JSON message received, ignoring')
         }
       }
 
@@ -346,6 +402,7 @@ export default function useGeminiVoice() {
     if (wsRef.current) try { wsRef.current.close(1000, 'manual') } catch {}
     cleanup()
   }, [])
+  disconnectRef.current = disconnectFromJarvis
 
   function cleanup() {
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
@@ -354,10 +411,13 @@ export default function useGeminiVoice() {
     sessionWarningRef.current = false
     stopShadowProcessing(); stopStateSync()
     if (processorRef.current) { try { processorRef.current.disconnect() } catch {} processorRef.current = null }
-    if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null }
-    if (audioCtxRef.current) { try { audioCtxRef.current.close() } catch {} audioCtxRef.current = null }
+    if (streamRef.current) { releaseMicStream(); streamRef.current = null }
+    if (micCtxRef.current) { try { micCtxRef.current.close() } catch {} micCtxRef.current = null }
+    if (playCtxRef.current) { try { playCtxRef.current.close() } catch {} playCtxRef.current = null }
     if (recognitionRef.current) { try { recognitionRef.current.stop() } catch {} recognitionRef.current = null }
-    wsRef.current = null; setIsConnected(false); setIsListening(false)
+    window.__geminiConnected = false
+    window.dispatchEvent(new CustomEvent('gemini-disconnected'))
+    wsRef.current = null; setIsConnected(false); setIsListening(false); setVoiceState('IDLE')
   }
 
   function startAudioCapture(ctx, stream, ws) {
@@ -405,12 +465,24 @@ export default function useGeminiVoice() {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ realtimeInput: { text: `Speak this aloud: ${clean}` } }))
       } else {
-        // Queue for delivery once connected
-        pendingSpeechRef.current = clean
+        // Queue for delivery once connected (with timestamp to discard stale speech)
+        pendingSpeechRef.current = { text: clean, timestamp: Date.now() }
       }
     }
     window.addEventListener('jarvis-speak', h)
     return () => window.removeEventListener('jarvis-speak', h)
+  }, [])
+
+  // Stop Gemini audio playback (called by jarvisStopAll via event)
+  useEffect(() => {
+    const h = () => {
+      audioStoppedRef.current = true
+      playQueueRef.current = Promise.resolve() // Flush queued chunks
+      if (activeSourceRef.current) { try { activeSourceRef.current.stop() } catch {} activeSourceRef.current = null }
+      setVoiceState(prev => prev === 'SPEAKING' ? 'LISTENING' : prev)
+    }
+    window.addEventListener('jarvis-stop-audio', h)
+    return () => window.removeEventListener('jarvis-stop-audio', h)
   }, [])
 
   // Auto-connect: triggered by boot completion or other systems
@@ -430,5 +502,5 @@ export default function useGeminiVoice() {
 
   useEffect(() => { return () => { if (wsRef.current) try { wsRef.current.close() } catch {}; cleanup() } }, [])
 
-  return { isConnected, isListening, transcript, error, connectToJarvis, disconnectFromJarvis, startTime: startTimeRef.current }
+  return { isConnected, isListening, voiceState, transcript, error, connectToJarvis, disconnectFromJarvis, startTime: startTimeRef.current }
 }

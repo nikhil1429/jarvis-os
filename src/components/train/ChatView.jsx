@@ -27,8 +27,12 @@ import { classifyStyle, trackResponse } from '../../utils/communicationTracker.j
 import { recordQuizScore } from '../../utils/adaptiveDifficulty.js'
 import { checkMicroCelebration, buildTaskContext, buildConceptContext } from '../../utils/microCelebrations.js'
 import { recordActivity } from '../../utils/momentumTracker.js'
-// jarvisSpeaker removed — Gemini Live handles speech
-const jarvisSpeak = () => {}
+// jarvisSpeaker removed — micro-celebrations dispatch jarvis-speak → Gemini
+const jarvisSpeak = (text) => {
+  if (!text) return
+  const clean = text.replace(/\[.*?\]\s*/g, '').replace(/[*_~`#]/g, '').trim()
+  if (clean) window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: clean } }))
+}
 import { autoDetectDismissal } from '../../utils/selfLearning.js'
 import { logInteraction } from '../../utils/auditTrail.js'
 
@@ -201,7 +205,7 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
                 buildConceptContext(concept, change.oldStrength, change.newStrength))
               if (celebration) {
                 play(celebration.sound)
-                if (celebration.speak) jarvisSpeak(celebration.message, { force: true })
+                if (celebration.speak) jarvisSpeak(celebration.message)
                 logInteraction({ type: 'celebration', content: celebration.message, mode: mode.id })
               }
 
@@ -209,7 +213,7 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
               const quizCeleb = checkMicroCelebration('quiz:score', { score, improvement: score - (change.oldStrength > 60 ? 7 : 4) })
               if (quizCeleb && !celebration) {
                 play(quizCeleb.sound)
-                if (quizCeleb.speak) jarvisSpeak(quizCeleb.message, { force: true })
+                if (quizCeleb.speak) jarvisSpeak(quizCeleb.message)
               }
             }
           })
@@ -287,12 +291,16 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch, autoM
   }, [input, isStreaming, voice, handleSendDirect])
 
   const handleMicClick = useCallback(() => {
+    // When Gemini is connected, open full VoiceMode instead of legacy STT
+    if (window.__geminiConnected) {
+      window.dispatchEvent(new CustomEvent('jarvis-activate-mic'))
+      return
+    }
     if (voice.voiceState === 'SPEAKING') {
       voice.stopSpeaking()
     } else if (voice.voiceState === 'LISTENING') {
       const text = input.trim()
       if (text && voice.silenceCountdown) {
-        // Skip countdown, send now
         window.dispatchEvent(new CustomEvent('jarvis-voice-send', { detail: { text } }))
         voice.stopListening()
       } else {

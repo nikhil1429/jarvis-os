@@ -1,14 +1,13 @@
 // GeminiVoiceButton.jsx — Floating voice button with Phase 3 omnipresence
 // Glow on initiation events, processing indicator, LIVE badge, timer.
+// Now accepts gemini + transcriptProcessor as props from App.jsx (single instance).
 
 import { useState, useEffect } from 'react'
 import { Mic } from 'lucide-react'
-import useGeminiVoice from '../hooks/useGeminiVoice.js'
-import useTranscriptProcessor from '../hooks/useTranscriptProcessor.js'
 
-export default function GeminiVoiceButton() {
-  const { isConnected, error, connectToJarvis, disconnectFromJarvis, startTime } = useGeminiVoice()
-  const { processTranscript, isProcessing } = useTranscriptProcessor()
+export default function GeminiVoiceButton({ gemini, transcriptProcessor }) {
+  const { isConnected, error, startTime } = gemini
+  const { processTranscript, isProcessing } = transcriptProcessor
   const [elapsed, setElapsed] = useState(0)
   const [showError, setShowError] = useState(false)
   const [isGlowing, setIsGlowing] = useState(false)
@@ -43,8 +42,8 @@ export default function GeminiVoiceButton() {
 
   if (!enabled) return null
   const handleClick = () => {
-    if (isConnected) { disconnectFromJarvis() }
-    else { setIsGlowing(false); setInitiateMessage(null); window.dispatchEvent(new CustomEvent('jarvis-activate-mic')); connectToJarvis() }
+    if (isConnected) { gemini.disconnectFromJarvis() }
+    else { setIsGlowing(false); setInitiateMessage(null); window.dispatchEvent(new CustomEvent('jarvis-activate-mic')) }
   }
   const fmt = (s) => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`
 

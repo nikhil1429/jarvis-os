@@ -30,9 +30,7 @@ import WinsTab from './components/wins/WinsTab.jsx'
 import Settings from './components/settings/Settings.jsx'
 import QuickCapture from './components/QuickCapture.jsx'
 import BackgroundCanvas from './components/BackgroundCanvas.jsx'
-import GlobalMic from './components/GlobalMic.jsx'
 import VoiceMode from './components/VoiceMode.jsx'
-// QuickVoiceOverlay deleted — replaced by full-screen VoiceMode
 import Onboarding from './components/Onboarding.jsx'
 import ShutdownSequence from './components/ShutdownSequence.jsx'
 import CommandLine from './components/CommandLine.jsx'
@@ -53,8 +51,9 @@ import VizDependencyTree from './components/viz/VizDependencyTree.jsx'
 import { getDayNumber, getWeekNumber } from './utils/dateUtils.js'
 // TTS removed — all speech through Gemini Live voice
 import useSessionContinuity from './hooks/useSessionContinuity.js'
-// Voice: Gemini Live only
 import TASKS from './data/tasks.js'
+import useGeminiVoice from './hooks/useGeminiVoice.js'
+import useTranscriptProcessor from './hooks/useTranscriptProcessor.js'
 import GeminiVoiceButton from './components/GeminiVoiceButton.jsx'
 import { startInitiator, stopInitiator } from './utils/jarvisInitiator.js'
 
@@ -151,11 +150,11 @@ function App() {
   const [rankUpOverlay, setRankUpOverlay] = useState(null)
   // Pulse notification dot for CMD tab
   const [hasPulse, setHasPulse] = useState(false)
-  // Voice mode state
+  // Voice: single Gemini instance shared across GeminiVoiceButton + VoiceMode
+  const gemini = useGeminiVoice()
+  const transcriptProcessor = useTranscriptProcessor()
   const [voiceModeOpen, setVoiceModeOpen] = useState(false)
-  // quickVoiceOpen removed — VoiceMode is the one voice interface
   const [requestedMode, setRequestedMode] = useState(null)
-  const [globalVoiceState, setGlobalVoiceState] = useState('IDLE')
   const [isAmbient, setIsAmbient] = useState(false)
   const [focusMode, setFocusMode] = useState(null)
   const [showCeremony, setShowCeremony] = useState(false)
@@ -349,16 +348,8 @@ function App() {
     setAppState('main')
     console.log('BOOT COMPLETE: Gemini Live voice ready')
     try { play('boot') } catch { /* ok */ }
-    // Auto-connect Gemini voice, then speak briefing
-    try {
-      const weekly = JSON.parse(localStorage.getItem('jos-weekly') || '{}')
-      const briefingText = weekly.briefing?.text || weekly.lastBriefing?.text
-      // Queue briefing for when user taps mic (spoken once Gemini connects)
-      if (briefingText) {
-        window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: briefingText } }))
-      }
-      // Do NOT auto-connect Gemini on boot — user taps mic button to connect
-    } catch { /* ok */ }
+    // Do NOT auto-connect Gemini on boot — user taps mic button to connect
+    // Briefing speech happens naturally via Gemini greeting when user connects
     // Show boot briefing dashboard after 1s
     setTimeout(() => showDashboard('boot-briefing'), 1000)
     // JARVIS self-diagnostics — tests ALL systems on every boot
@@ -433,14 +424,10 @@ function App() {
     return () => window.removeEventListener('jarvis-activate-mic', handler)
   }, [])
 
-  // GlobalMic tap: always open VoiceMode (full-screen exocortex)
-  const handleGlobalMicTap = useCallback(() => {
-    setVoiceModeOpen(true)
-  }, [])
-
-  // GlobalMic long press: open full-screen VoiceMode
-  const handleGlobalMicLongPress = useCallback(() => {
-    setVoiceModeOpen(true)
+  // Voice mode close: just close the overlay, Gemini stays connected
+  // Gemini lifecycle owned by GeminiVoiceButton + 30s silence timer
+  const handleVoiceModeClose = useCallback(() => {
+    setVoiceModeOpen(false)
   }, [])
 
   const handleModeOpened = useCallback(() => {
@@ -503,7 +490,7 @@ function App() {
       </main>
 
       <QuickCapture />
-      <GeminiVoiceButton />
+      <GeminiVoiceButton gemini={gemini} transcriptProcessor={transcriptProcessor} />
       <BottomNav
         activeTab={activeTab}
         onTabChange={handleTabChange}
@@ -514,13 +501,12 @@ function App() {
       {/* Full-screen Voice Mode overlay */}
       {voiceModeOpen && (
         <VoiceMode
-          onClose={() => setVoiceModeOpen(false)}
+          gemini={gemini}
+          onClose={handleVoiceModeClose}
           initialMode="chat"
           weekNumber={weekNumber}
         />
       )}
-
-      {/* QuickVoiceOverlay removed — VoiceMode is the voice interface */}
 
       {/* Command Line */}
       {showCommandLine && <CommandLine onClose={() => setShowCommandLine(false)} />}

@@ -4,6 +4,87 @@
 
 ---
 
+### Session 62 — Complete Voice System Overhaul — 7 Critical Bugs (2026-04-06)
+Nuclear-level voice fix. 7 bugs, 2 new files, 6 files modified. Unified Gemini pipeline with echo cancellation, dual AudioContext, shared mic, and global coordination.
+
+**Bug 1 — AudioContext sampleRate mismatch (CRITICAL — "broken audio pieces")**
+- Old: Single AudioContext at default rate for both mic capture AND playback. Gemini outputs 24kHz PCM but playback context was at 16kHz or random native rate.
+- Fix: Dual AudioContext. `micCtxRef` at 16000Hz for mic capture/send. `playCtxRef` at native OS rate — browser correctly upsamples 24kHz buffers. Also added `playCtx.resume()` before each playback.
+- WHY dual contexts: Google's own Gemini Live demo repos use this approach. Mic needs 16kHz (what Gemini expects), playback needs native rate (what speakers expect). One context can't serve both.
+
+**Bug 2 — No echo cancellation (CRITICAL — "kabhi sunta hai kabhi nahi")**
+- Old: `getUserMedia({ audio: true })` with no echo/noise constraints. Gemini heard its own audio output → interrupted itself → broken conversation.
+- Fix: Created `src/utils/micManager.js` — singleton shared mic stream with `echoCancellation: true, noiseSuppression: true, autoGainControl: true`. Every mic consumer uses `getSharedMicStream()`.
+- Updated: useGeminiVoice, VoiceMode (canvas analyser), useJarvisVoice (fallback STT).
+
+**Bug 3 — Dual mic capture fights (CRITICAL)**
+- Old: 3 separate `getUserMedia` calls (Gemini capture, VoiceMode analyser, useJarvisVoice STT) fighting over hardware.
+- Fix: `micManager.js` singleton. `getSharedMicStream()` returns same stream, ref-counted via `releaseMicStream()`. One stream, shared by all consumers.
+- Additionally: When Gemini is connected (`window.__geminiConnected = true`), `useJarvisVoice.startListening()` is a no-op — Gemini handles all voice I/O.
+
+**Bug 4 — VoiceMode pipeline conflict (HIGH)**
+- VoiceMode already used Gemini prop correctly (session 61 fix), but `window.__geminiConnected` flag + `gemini-connected`/`gemini-disconnected` events now let any component reactively know Gemini's state.
+- Created `src/hooks/useGeminiStatus.js` — reactive hook that listens for `gemini-connected`/`gemini-disconnected` events.
+
+**Bug 5 — `jarvisSpeak = () => {}` kills speech (HIGH)**
+- Old: No-op stub in ChatView (line 30) and Onboarding (line 10). Micro-celebrations and onboarding questions completely silent.
+- Fix: Both files now have `jarvisSpeak(text)` that strips markdown/emotion tags and dispatches `jarvis-speak` event → picked up by Gemini if connected.
+
+**Bug 6 — VoiceMode close kills Gemini globally (MEDIUM)**
+- Old: `handleVoiceModeClose` called `gemini.disconnectFromJarvis()`. Close overlay → Gemini dies → floating button loses LIVE status.
+- Fix: `handleVoiceModeClose` now only sets `voiceModeOpen = false`. Gemini lifecycle owned by GeminiVoiceButton + 30s silence timer. VoiceMode is just a visual overlay.
+
+**Bug 7 — thinkingConfig for Gemini (MEDIUM)**
+- Added `thinkingConfig: { thinkingLevel: 'high' }` to setup message `generationConfig`. Uses `thinkingLevel` string (not deprecated `thinkingBudget` number). Brief silence before response = dramatically better quality.
+
+**Additional: ChatView mic → Gemini-aware**
+- When Gemini IS connected and user taps mic in ChatView, dispatches `jarvis-activate-mic` to open VoiceMode (full voice experience) instead of starting legacy STT.
+
+**Files created (2):** `src/utils/micManager.js`, `src/hooks/useGeminiStatus.js`
+**Files updated (6):** `useGeminiVoice.js`, `useJarvisVoice.js`, `VoiceMode.jsx`, `App.jsx`, `ChatView.jsx`, `Onboarding.jsx`
+
+---
+
+### Session 61 — Voice Full Audit + Gemini API Deep Fix + Deep Reasoning Tool (2026-04-06)
+Complete voice system audit, Gemini WebSocket protocol fixes, and a new 3-brain architecture where Flash Live can delegate to Pro for deep thinking.
+
+**Part 1: Voice System Full Audit**
+Traced every voice entry point and output path in the app. Mapped the full flow from tap to speech.
+
+- **Entry points verified:** GeminiVoiceButton → `jarvis-activate-mic` → App opens VoiceMode → Gemini connects. ChatView mic → useJarvisVoice STT → `jarvis-speak` → Gemini. Boot.jsx has no speech (correct). Briefing.jsx dispatches `jarvis-speak` + `jarvis-activate-mic`.
+- **Dead code confirmed gone:** `jarvisSpeaker.js`, `elevenLabsSpeak.js` already deleted. Zero `speechSynthesis.speak()` or `SpeechSynthesisUtterance` in any component. Zero Pocket-TTS references.
+- **useJarvisVoice.js still used (correctly):** 6 components (ChatView, Onboarding, VoiceDebrief, PhantomMode, BodyDoubleTimer, BattleRoyale) use it for STT. Its `speak()` forwards to `jarvis-speak` events. Not dead code — it's the STT hook for non-VoiceMode components.
+
+**Bug fixes:**
+1. **No greeting on connect** — After `setupComplete`, if not auto-reconnect and no queued speech, Gemini gets `"Greet Sir briefly. One sentence."` prompt. JARVIS now speaks first when VoiceMode opens.
+2. **Stale boot briefing dispatch** — Removed `jarvis-speak` dispatch in `handleBootComplete` that queued briefing text with 10s expiry (always expired since Gemini isn't connected at boot). Briefing now happens naturally via Gemini greeting.
+3. **`jarvisStop` didn't stop Gemini audio** — `jarvisStopAll()` now dispatches `jarvis-stop-audio` event. `useGeminiVoice` listens: sets `audioStoppedRef` flag, flushes `playQueueRef`, stops active `BufferSource`. Escape key now actually silences Gemini.
+4. **Dead `jarvisSpeak` no-op in ChatView** — Removed stub. Micro-celebrations at lines 204/212 now route through `voice.speak()` → `jarvis-speak` → Gemini.
+5. **`_jarvisStopped` flag** — Removed from `jarvisStopAll()` (nothing read it after ElevenLabs code was deleted).
+
+**Part 2: Gemini API Deep Review Fixes**
+
+1. **Audio speed fix (JARVIS sounded too fast!)** — Changed `new AudioContext({ sampleRate: 16000 })` to `new AudioContext()`. Browser uses native sample rate (typically 48kHz). Playback buffer still creates at 24000Hz (Gemini's output rate), so browser correctly resamples. Mic input stays at 16000Hz via `getUserMedia`.
+2. **Raw binary audio fallback removed** — The catch block after JSON parse now logs warning and returns instead of trying to decode non-JSON blobs as raw PCM audio. All Gemini audio arrives as base64 in JSON `inlineData` — the binary fallback was misinterpreting non-audio data.
+3. **Tool response format fixed** — Added `name: fc.name` and wrapped result: `{ id, name, response: { result } }` per Gemini API spec (was missing `name` and `result` wrapper).
+4. **thinkingConfig removed** — `thinkingConfig: { thinkingLevel: 'high' }` was no-op on Flash Live, removed from `generationConfig`.
+5. **Interruption handler added** — New handler for `msg.serverContent?.interrupted`: stops audio playback, flushes queue, kills active `BufferSource`, sets state to `LISTENING`. Previously server-side interruptions were silently ignored and JARVIS kept speaking.
+
+**Part 3: Deep Reasoning Tool (3-Brain Architecture)**
+
+New tool #15: `engage_deep_reasoning`. When Flash Live detects a complex question (logic, coding, strategy, deep analysis), it calls this tool to delegate to Gemini 2.5 Pro.
+
+- **Flow:** User asks complex question → Flash Live calls `engage_deep_reasoning({ query })` → voiceState set to `PROCESSING` (reactor fragments animate) + `send` sound → REST call to `gemini-2.5-pro:generateContent` with `thinkingConfig: { thinkingLevel: 'high' }` → thinking parts filtered out (`!p.thought`) → final answer sent back as `toolResponse` → Flash reads analysis → JARVIS speaks the smart answer.
+- **Async handling:** `executeGeminiTool` returns `'__ASYNC__'` sentinel for this tool. The synchronous tool handler skips sending a response. The async branch sends its own `toolResponse` when the Pro call completes (or error response on failure).
+- **API logging:** Every deep reasoning call logged with model `gemini-2.5-pro`, mode `deep-reasoning`, token counts, latency, query preview.
+- **Cost:** Uses `$300 free credits for 90 days` — Pro thinking maximized with `thinkingLevel: 'high'`.
+
+**WHY 3-brain architecture:** Flash Live is fast but shallow. Pro with thinking is deep but can't do real-time voice. By using Flash as the conversational layer that delegates to Pro for depth, JARVIS gets both speed AND intelligence. Flash handles 95% of interactions instantly. The 5% that need depth (explain recursion, design a system, analyze a decision) get Pro-level reasoning without leaving the voice session.
+
+**Files updated:** useGeminiVoice.js (all 3 parts), useJarvisVoice.js (stop-audio dispatch), App.jsx (boot briefing removal), ChatView.jsx (micro-celebration fix)
+
+---
+
 ### Session 60H — Avoidance Detection + Self-Learning + Audit Trail (2026-04-05)
 Three meta-intelligence systems: JARVIS watches what you avoid, learns from its own mistakes, and keeps a complete audit trail.
 

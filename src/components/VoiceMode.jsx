@@ -1,18 +1,14 @@
 // VoiceMode.jsx — Full-screen exocortex voice interface with Canvas 2D reactor
 // WHY: THE voice interface. Canvas reactor with waveform driven by Web Audio analyser.
+// Now powered entirely by Gemini Live — no useJarvisVoice or Claude API.
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
-import useAI from '../hooks/useAI.js'
-import useStorage from '../hooks/useStorage.js'
 import useSound from '../hooks/useSound.js'
-import useVoiceCheckIn from '../hooks/useVoiceCheckIn.js'
-import useJarvisVoice from '../hooks/useJarvisVoice.js'
-import { processVoiceCommand } from '../utils/voiceCommands.js'
-import { stripQuizTags } from '../utils/quizScoring.js'
 import { isEnrolled } from '../utils/voiceFingerprint.js'
 import VoiceEnrollment from './VoiceEnrollment.jsx'
 import useVoiceVerification from '../hooks/useVoiceVerification.js'
+import { getSharedMicStream, releaseMicStream } from '../utils/micManager.js'
 import MODES from '../data/modes.js'
 
 const TAU = Math.PI * 2
@@ -32,19 +28,18 @@ function renderMd(text) {
 
 function TranscriptMessage({ msg }) {
   const [expanded, setExpanded] = useState(false)
-  const isUser = msg.role === 'user', isOpus = msg.tier >= 2
-  const isLong = (msg.content?.length || 0) > 200
-  const display = isLong && !expanded ? msg.content.substring(0, 200) : msg.content
+  const isUser = msg.role === 'user'
+  const content = msg.content || msg.text || ''
+  const isLong = content.length > 200
+  const display = isLong && !expanded ? content.substring(0, 200) : content
   return (
     <div style={{ textAlign: isUser ? 'right' : 'left' }}>
       <span onClick={() => isLong && setExpanded(!expanded)} style={{
         display: 'inline-block', maxWidth: '90%', padding: '8px 12px', borderRadius: 8, fontSize: 12,
         fontFamily: 'Exo 2', lineHeight: 1.5, cursor: isLong ? 'pointer' : 'default',
         ...(isUser ? { background: 'rgba(0,180,216,0.1)', color: 'rgba(0,180,216,0.85)', borderLeft: '2px solid rgba(0,180,216,0.3)' }
-          : isOpus ? { background: 'rgba(212,168,83,0.08)', color: 'rgba(212,168,83,0.85)', borderLeft: '2px solid rgba(212,168,83,0.3)' }
           : { background: 'rgba(6,20,34,0.8)', color: '#d0e8f8', borderLeft: '2px solid rgba(0,180,216,0.15)' }),
       }}>
-        {isOpus && !isUser && <span style={{ fontSize: 9, color: '#d4a853', marginRight: 4 }}>&#9889;</span>}
         <span dangerouslySetInnerHTML={{ __html: renderMd(display) }} />
         {isLong && <span style={{ display: 'block', fontSize: 9, color: '#5a7a94', marginTop: 4, fontFamily: 'Share Tech Mono', letterSpacing: '0.1em' }}>
           {expanded ? '\u25B4 COLLAPSE' : 'TAP TO EXPAND \u25BE'}
@@ -54,18 +49,12 @@ function TranscriptMessage({ msg }) {
   )
 }
 
-export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber }) {
-  const { sendMessage } = useAI()
-  const { get } = useStorage()
+export default function VoiceMode({ gemini, onClose, initialMode = 'chat', weekNumber }) {
   const { play } = useSound()
-  const checkIn = useVoiceCheckIn()
-  const voice = useJarvisVoice()
 
   const [currentModeId, setCurrentModeId] = useState(initialMode)
   const [showEnrollment, setShowEnrollment] = useState(!isEnrolled())
   const verification = useVoiceVerification()
-  const [messages, setMessages] = useState([])
-  const messagesLenRef = useRef(0)
   const canvasRef = useRef(null)
   const animRef = useRef(null)
   const analyserRef = useRef(null)
@@ -84,87 +73,61 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
   const voiceEchoRef = useRef(null) // E10: ghost echo
   const voiceSamplesRef = useRef([]) // E10: collect samples for echo
   const voiceStateStrRef = useRef('IDLE') // sync ref for canvas loop (avoids stale closure)
+  const prevTranscriptLenRef = useRef(0) // track new messages for visual effects
 
   const currentMode = MODES.find(m => m.id === currentModeId) || MODES[0]
-  const vs = voice.voiceState
-  voiceStateStrRef.current = vs // keep ref in sync for canvas loop
 
-  useEffect(() => { setMessages((get(`msgs-${currentModeId}`) || []).slice(-10)) }, [currentModeId, get])
-  useEffect(() => { messagesLenRef.current = messages.length }, [messages])
-  useEffect(() => { transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+  // Map Gemini voiceState to canvas states
+  const vs = gemini.voiceState || 'IDLE'
+  voiceStateStrRef.current = vs
 
-  const handleSend = useCallback(async (text) => {
-    const trimmed = text?.trim()
-    if (!trimmed) return
-    if (checkIn.active) {
-      const r = checkIn.processAnswer(trimmed)
-      if (r) { setMessages(prev => [...prev, { role: 'assistant', content: r.nextPrompt, timestamp: new Date().toISOString() }]); voice.speak(r.nextPrompt, { isVoiceCommand: true }) }
+  // Gemini transcript as messages
+  const messages = gemini.transcript || []
+
+  // Auto-scroll on new messages
+  useEffect(() => { transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages.length])
+
+  // Connect Gemini on mount if not already connected
+  useEffect(() => {
+    if (!gemini.isConnected) {
+      gemini.connectToJarvis()
+      play('send')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Visual effects when new assistant messages arrive
+  useEffect(() => {
+    if (messages.length <= prevTranscriptLenRef.current) {
+      prevTranscriptLenRef.current = messages.length
       return
     }
-    const cmd = processVoiceCommand(trimmed)
-    if (cmd) {
-      setMessages(prev => [...prev, { role: 'user', content: trimmed, timestamp: new Date().toISOString() }])
-      if (cmd.type === 'stop') { voice.stopSpeaking(); setTimeout(() => onClose(), 1500); return }
-      if (cmd.type === 'shutdown') { window.dispatchEvent(new CustomEvent('jarvis-request-shutdown')); onClose(); return }
-      if (cmd.type === 'checkin') checkIn.start()
-      if (cmd.type === 'mode') setCurrentModeId(cmd.mode)
-      setMessages(prev => [...prev, { role: 'assistant', content: cmd.response, timestamp: new Date().toISOString() }])
-      voice.speak(cmd.response, { isVoiceCommand: true }); return
-    }
-    setMessages(prev => [...prev, { role: 'user', content: trimmed, timestamp: new Date().toISOString() }])
-    play('send')
-    try {
-      const result = await sendMessage(trimmed, currentModeId, { weekNumber })
-      if (result) {
-        const clean = stripQuizTags(result.text)
-        setMessages(prev => [...prev, { role: 'assistant', content: clean, timestamp: new Date().toISOString(), tier: result.tier }])
-        play('receive'); voice.speak(clean)
-        // E3: trigger word-burst particles
-        const words = clean.split(/\s+/)
-        const special = ['sir','recruit','operative','commander','architect','opus','excellent','data','evidence','warrior']
-        words.forEach((w, wi) => {
-          setTimeout(() => {
-            const isSpecial = special.includes(w.toLowerCase().replace(/[.,!?]/g, ''))
-            const count = isSpecial ? 8 : 3
-            for (let p = 0; p < count; p++) {
-              const angle = Math.random() * TAU
-              wordBurstRef.current.push({ x: 0, y: 0, vx: Math.cos(angle) * (2 + Math.random() * 2), vy: Math.sin(angle) * (2 + Math.random() * 2), life: 30 + Math.random() * 20, maxLife: 50, gold: isSpecial, size: 1 + Math.random() })
-            }
-            if (isSpecial) tierFlashRef.current = Math.max(tierFlashRef.current, 10) // brief reactor flash
-          }, wi * 40)
-        })
-        // E6: energy arc data point
-        energyArcRef.current.push({ energy: 0.5 + (result.tier || 1) * 0.15, role: 'assistant' })
-        if (energyArcRef.current.length > 50) energyArcRef.current.shift()
-        // E7: light trace
-        lightTracesRef.current.push({ progress: 0, color: result.tier >= 2 ? '#d4a853' : '#00b4d8', role: 'assistant' })
-        // E8: tier escalation
-        if (result.tier >= 2) tierFlashRef.current = 30
-      }
-    } catch (err) {
-      console.error('[VoiceMode]', err)
-      // Reset voice state on API error — prevent stuck PROCESSING
-      setMessages(prev => [...prev, { role: 'assistant', content: `I encountered an error, Sir. ${err.message || 'Please try again.'}`, timestamp: new Date().toISOString() }])
-      voice.speak('I encountered an error, Sir. Please try again.', { isVoiceCommand: true })
-    }
-  }, [sendMessage, currentModeId, weekNumber, play, voice, checkIn, onClose])
+    const newMsgs = messages.slice(prevTranscriptLenRef.current)
+    prevTranscriptLenRef.current = messages.length
 
-  useEffect(() => {
-    const onSend = (e) => handleSend(e.detail.text)
-    // V3 fix: interrupt just updates transcript, silence timer in useJarvisVoice handles sending
-    const onInterrupt = (e) => {
-      setMessages(prev => {
-        const last = prev[prev.length - 1]
-        if (last?.role === 'user') {
-          return [...prev.slice(0, -1), { ...last, content: e.detail.text }]
-        }
-        return [...prev, { role: 'user', content: e.detail.text, timestamp: new Date().toISOString() }]
+    for (const msg of newMsgs) {
+      if (msg.role !== 'assistant' || !msg.text) continue
+      // E3: word-burst particles
+      const words = msg.text.split(/\s+/)
+      const special = ['sir','recruit','operative','commander','architect','opus','excellent','data','evidence','warrior']
+      words.forEach((w, wi) => {
+        setTimeout(() => {
+          const isSpecial = special.includes(w.toLowerCase().replace(/[.,!?]/g, ''))
+          const count = isSpecial ? 8 : 3
+          for (let p = 0; p < count; p++) {
+            const angle = Math.random() * TAU
+            wordBurstRef.current.push({ x: 0, y: 0, vx: Math.cos(angle) * (2 + Math.random() * 2), vy: Math.sin(angle) * (2 + Math.random() * 2), life: 30 + Math.random() * 20, maxLife: 50, gold: isSpecial, size: 1 + Math.random() })
+          }
+          if (isSpecial) tierFlashRef.current = Math.max(tierFlashRef.current, 10)
+        }, wi * 40)
       })
+      // E6: energy arc
+      energyArcRef.current.push({ energy: 0.6, role: 'assistant' })
+      if (energyArcRef.current.length > 50) energyArcRef.current.shift()
+      // E7: light trace
+      lightTracesRef.current.push({ progress: 0, color: '#00b4d8', role: 'assistant' })
     }
-    window.addEventListener('jarvis-voice-send', onSend)
-    window.addEventListener('jarvis-voice-interrupt', onInterrupt)
-    return () => { window.removeEventListener('jarvis-voice-send', onSend); window.removeEventListener('jarvis-voice-interrupt', onInterrupt) }
-  }, [handleSend])
+  }, [messages.length, messages])
 
   // Canvas animation + audio analyser
   useEffect(() => {
@@ -177,7 +140,7 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
     ctx.scale(dpr, dpr)
     const C = S / 2
 
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+    getSharedMicStream().then(stream => {
       audioStreamRef.current = stream
       try {
         const actx = new (window.AudioContext || window.webkitAudioContext)()
@@ -340,7 +303,6 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
         tr.progress += 0.025
         if (tr.progress >= 1 && !tr.persistent) { tr.persistent = true; return true }
         if (tr.persistent) {
-          // Faint persistent line from core downward
           ctx.beginPath(); ctx.moveTo(C, C); ctx.lineTo(tr.role === 'user' ? S - 40 : 40, S - 30)
           ctx.strokeStyle = `rgba(0,180,216,0.03)`; ctx.lineWidth = 0.5; ctx.stroke()
           return lightTracesRef.current.filter(x => x.persistent).length <= 10
@@ -382,28 +344,24 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
     }
     draw()
     setTimeout(() => {
-      voice.startListening()
       // Start voice verification if enrolled
       if (isEnrolled() && analyserRef.current) {
         verification.startVerification(analyserRef.current)
-        verification.startContinuousVerification(analyserRef.current) // E5: 30s re-checks
+        verification.startContinuousVerification(analyserRef.current)
       }
     }, 200)
 
     return () => {
       if (animRef.current) cancelAnimationFrame(animRef.current)
       canvas.removeEventListener('pointermove', handleMouse)
-      if (audioStreamRef.current) audioStreamRef.current.getTracks().forEach(t => t.stop())
-      voice.stopListening(); voice.stopSpeaking()
-      // Disconnect Gemini when VoiceMode closes
-      window.dispatchEvent(new CustomEvent('gemini-disconnect'))
+      if (audioStreamRef.current) releaseMicStream()
       // E10: save voice echo for next session
       if (voiceSamplesRef.current.length > 0) {
         try {
           localStorage.setItem('jos-voice-echo', JSON.stringify({
             levels: voiceSamplesRef.current.slice(-64),
             timestamp: new Date().toISOString(),
-            messageCount: messagesLenRef.current,
+            messageCount: messages.length,
           }))
         } catch { /* ok */ }
       }
@@ -415,8 +373,8 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
     return <VoiceEnrollment onComplete={() => setShowEnrollment(false)} onSkip={() => setShowEnrollment(false)} />
   }
 
-  const stateLabel = { IDLE: 'TAP TO SPEAK', LISTENING: 'LISTENING...', PROCESSING: 'PROCESSING...', SPEAKING: 'SPEAKING...' }[vs]
-  const stateColor = vs === 'SPEAKING' || vs === 'PROCESSING' ? '#d4a853' : vs === 'LISTENING' ? '#00b4d8' : '#5a7a94'
+  const stateLabel = { IDLE: 'CONNECTING...', LISTENING: 'LISTENING...', SPEAKING: 'SPEAKING...' }[vs] || 'CONNECTING...'
+  const stateColor = vs === 'SPEAKING' ? '#d4a853' : vs === 'LISTENING' ? '#00b4d8' : '#5a7a94'
 
   return (
     <div className="fixed inset-0 z-[1000] flex flex-col" style={{ backgroundColor: 'rgba(2,10,19,0.98)' }}>
@@ -438,15 +396,15 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
             }}>{m.name}</button> : null
           })}
         </div>
-        <button onClick={() => { voice.stopSpeaking(); voice.stopListening(); window.dispatchEvent(new CustomEvent('gemini-disconnect')); onClose() }} style={{ color: '#5a7a94', padding: 8 }}><X size={22} /></button>
+        <button onClick={onClose} style={{ color: '#5a7a94', padding: 8 }}><X size={22} /></button>
       </div>
 
       {/* Reactor */}
       <div className="flex-1 flex flex-col items-center justify-center" style={{ minHeight: 0 }}>
-        <canvas ref={canvasRef} onClick={() => { if (vs === 'SPEAKING') voice.stopSpeaking(); else if (vs === 'LISTENING') voice.stopListening(); else voice.startListening() }}
+        <canvas ref={canvasRef}
           style={{ width: 'min(80vw, 350px)', height: 'min(80vw, 350px)', cursor: 'pointer' }} />
         <p className={vs !== 'IDLE' ? 'animate-pulse' : ''} style={{ fontFamily: 'Share Tech Mono', fontSize: 13, letterSpacing: '0.15em', color: stateColor, marginTop: 16 }}>
-          {stateLabel}{voice.silenceCountdown && <span style={{ marginLeft: 8, color: '#5a7a94', fontSize: 10 }}>{voice.silenceCountdown}</span>}
+          {stateLabel}
         </p>
         <p style={{ fontFamily: 'Share Tech Mono', fontSize: 9, color: '#2a4a60', marginTop: 8, letterSpacing: '0.2em' }}>{currentMode.emoji} {currentMode.name.toUpperCase()} · EXOCORTEX</p>
 
