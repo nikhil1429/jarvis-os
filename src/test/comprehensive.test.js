@@ -288,27 +288,27 @@ describe('Cost Calculator — Complete Coverage', () => {
   })
 
   it('returns positive number', () => {
-    expect(calculateCost('claude-sonnet-4-20250514', 100, 200)).toBeGreaterThan(0)
+    expect(calculateCost('claude-sonnet-4-6', 100, 200)).toBeGreaterThan(0)
   })
   it('Opus costs more than Sonnet', () => {
-    const sonnet = calculateCost('claude-sonnet-4-20250514', 1000, 1000)
+    const sonnet = calculateCost('claude-sonnet-4-6', 1000, 1000)
     const opus = calculateCost('claude-opus-4-6', 1000, 1000)
     expect(opus).toBeGreaterThan(sonnet)
   })
   it('more tokens = higher cost', () => {
-    const small = calculateCost('claude-sonnet-4-20250514', 100, 100)
-    const large = calculateCost('claude-sonnet-4-20250514', 10000, 10000)
+    const small = calculateCost('claude-sonnet-4-6', 100, 100)
+    const large = calculateCost('claude-sonnet-4-6', 10000, 10000)
     expect(large).toBeGreaterThan(small)
   })
   it('zero tokens = zero cost', () => {
-    expect(calculateCost('claude-sonnet-4-20250514', 0, 0)).toBe(0)
+    expect(calculateCost('claude-sonnet-4-6', 0, 0)).toBe(0)
   })
   it('handles unknown model gracefully (falls back)', () => {
     expect(() => calculateCost('unknown-model', 100, 100)).not.toThrow()
     expect(calculateCost('unknown-model', 100, 100)).toBeGreaterThan(0)
   })
   it('returns number type', () => {
-    expect(typeof calculateCost('claude-sonnet-4-20250514', 500, 500)).toBe('number')
+    expect(typeof calculateCost('claude-sonnet-4-6', 500, 500)).toBe('number')
   })
 })
 
@@ -609,7 +609,7 @@ describe('API Logger — Complete Coverage', () => {
   })
 
   it('logs to localStorage', () => {
-    logAPICall({ model: 'claude-sonnet-4-20250514', mode: 'chat', inputTokens: 100, outputTokens: 200, latencyMs: 500 })
+    logAPICall({ model: 'claude-sonnet-4-6', mode: 'chat', inputTokens: 100, outputTokens: 200, latencyMs: 500 })
     const logs = JSON.parse(localStorage.getItem('jos-api-logs'))
     expect(logs.length).toBe(1)
   })
@@ -630,7 +630,7 @@ describe('API Logger — Complete Coverage', () => {
     expect(() => logAPICall({ model: 'test' })).not.toThrow()
   })
   it('calculates cost', () => {
-    logAPICall({ model: 'claude-sonnet-4-20250514', mode: 'chat', inputTokens: 1000, outputTokens: 1000, latencyMs: 500 })
+    logAPICall({ model: 'claude-sonnet-4-6', mode: 'chat', inputTokens: 1000, outputTokens: 1000, latencyMs: 500 })
     const logs = JSON.parse(localStorage.getItem('jos-api-logs'))
     expect(logs[0].cost).toBeGreaterThanOrEqual(0)
   })

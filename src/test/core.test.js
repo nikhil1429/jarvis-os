@@ -38,9 +38,9 @@ describe('Cost Calculator', () => {
   let calculateCost
   beforeEach(async () => { calculateCost = (await import('../utils/costCalculator.js')).calculateCost })
 
-  it('returns positive number', () => { expect(calculateCost('claude-sonnet-4-20250514', 100, 50)).toBeGreaterThan(0) })
+  it('returns positive number', () => { expect(calculateCost('claude-sonnet-4-6', 100, 50)).toBeGreaterThan(0) })
   it('opus > sonnet', () => {
-    expect(calculateCost('claude-opus-4-6', 1000, 500)).toBeGreaterThan(calculateCost('claude-sonnet-4-20250514', 1000, 500))
+    expect(calculateCost('claude-opus-4-6', 1000, 500)).toBeGreaterThan(calculateCost('claude-sonnet-4-6', 1000, 500))
   })
 })
 
