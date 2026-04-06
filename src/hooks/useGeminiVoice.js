@@ -408,9 +408,9 @@ export default function useGeminiVoice() {
                 prebuiltVoiceConfig: { voiceName }
               }
             },
-            realtimeInputConfig: {
-              automaticActivityDetection: { disabled: false }
-            },
+          },
+          realtimeInputConfig: {
+            automaticActivityDetection: { disabled: false }
           },
           systemInstruction: {
             parts: [{ text: buildSystemPrompt() }]

@@ -355,18 +355,27 @@ export default function useAI() {
 
       // Non-streaming with tool use
       if (useTools) {
-        const resp = await fetch('/api/claude', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestBody),
-          signal: abortController.signal,
-        })
+        let resp, data
+        for (let attempt = 0; attempt < 3; attempt++) {
+          resp = await fetch('/api/claude', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody),
+            signal: abortController.signal,
+          })
+          if (resp.status === 429) {
+            const delay = (attempt + 1) * 3000
+            await new Promise(r => setTimeout(r, delay))
+            if (attempt === 2) throw new Error('Rate limited after 3 retries — please wait a moment')
+            continue
+          }
+          break
+        }
         if (!resp.ok) {
-          if (resp.status === 429) { console.warn('[useAI] 429 rate limited, retrying in 3s...'); await new Promise(r => setTimeout(r, 3000)); throw new Error('Rate limited — retry') }
           console.error('[useAI] Response:', await resp.text())
           throw new Error(`API error ${resp.status}`)
         }
-        const data = await resp.json()
+        data = await resp.json()
 
         // Handle tool use
         const toolBlocks = (data.content || []).filter(b => b.type === 'tool_use')
@@ -402,17 +411,21 @@ export default function useAI() {
       }
 
       // Streaming (no tools) — existing flow
-      const response = await fetch('/api/claude', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
-        signal: abortController.signal,
-      })
-
-      if (response.status === 429) {
-        console.warn('[useAI] 429 rate limited on stream, retrying in 3s...')
-        await new Promise(r => setTimeout(r, 3000))
-        throw new Error('Rate limited — please try again')
+      let response
+      for (let attempt = 0; attempt < 3; attempt++) {
+        response = await fetch('/api/claude', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
+          signal: abortController.signal,
+        })
+        if (response.status === 429) {
+          const delay = (attempt + 1) * 3000
+          await new Promise(r => setTimeout(r, delay))
+          if (attempt === 2) throw new Error('Rate limited after 3 retries — please wait a moment')
+          continue
+        }
+        break
       }
       if (!response.ok) {
         const errBody = await response.text()
