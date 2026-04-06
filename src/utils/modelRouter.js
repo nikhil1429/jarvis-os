@@ -5,7 +5,7 @@
 // strategic days. Priority order means first match wins, preventing double-upgrades.
 // Every routing decision is logged so we can audit cost vs. value.
 
-const SONNET = 'claude-sonnet-4-20250514'
+const SONNET = 'claude-sonnet-4-6'
 const OPUS = 'claude-opus-4-6'
 
 // WHY: Extended modes that need Opus with extended thinking

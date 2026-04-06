@@ -363,6 +363,7 @@ export default function useAI() {
         })
         if (!resp.ok) {
           if (resp.status === 429) { console.warn('[useAI] 429 rate limited, retrying in 3s...'); await new Promise(r => setTimeout(r, 3000)); throw new Error('Rate limited — retry') }
+          console.error('[useAI] Response:', await resp.text())
           throw new Error(`API error ${resp.status}`)
         }
         const data = await resp.json()

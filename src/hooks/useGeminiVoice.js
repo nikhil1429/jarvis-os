@@ -336,6 +336,7 @@ export default function useGeminiVoice() {
       sourceNodeRef.current = source
       processorRef.current = processor
 
+      console.log('[GeminiVoice] Mic capture started')
       setState(STATES.LISTENING)
     } catch (err) {
       console.error('[GeminiVoice] Mic error:', err)
@@ -370,6 +371,7 @@ export default function useGeminiVoice() {
   const connectInternal = useCallback(() => {
     const settings = readLS('settings') || {}
     const apiKey = settings.geminiApiKey || import.meta.env.VITE_GEMINI_API_KEY
+    console.log('[GeminiVoice] connect called, apiKey:', apiKey ? 'SET' : 'NONE', 'voiceEnabled:', settings.geminiVoice)
     if (!apiKey) {
       setState(STATES.DISCONNECTED)
       return
@@ -393,10 +395,12 @@ export default function useGeminiVoice() {
     const voiceName = settings.geminiVoiceName || 'Charon'
     const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`
 
+    console.log('[GeminiVoice] CONNECTING to', url.substring(0, 60) + '...')
     const ws = new WebSocket(url)
     wsRef.current = ws
 
     ws.onopen = () => {
+      console.log('[GeminiVoice] WebSocket opened, sending setup')
       // Send setup message immediately
       const setup = {
         setup: {
@@ -443,6 +447,7 @@ export default function useGeminiVoice() {
 
       // Setup complete
       if (msg.setupComplete) {
+        console.log('[GeminiVoice] Setup complete, starting mic')
         setState(STATES.CONNECTED)
         reconnectCountRef.current = 0
         startElapsedTimer()
@@ -488,6 +493,7 @@ export default function useGeminiVoice() {
         if (sc.modelTurn?.parts) {
           for (const part of sc.modelTurn.parts) {
             if (part.inlineData?.data) {
+              console.log('[GeminiVoice] Audio chunk received')
               setState(STATES.SPEAKING)
               playAudioChunk(part.inlineData.data)
             }
@@ -509,6 +515,7 @@ export default function useGeminiVoice() {
         const functionCalls = msg.toolCall.functionCalls || []
 
         for (const fc of functionCalls) {
+          console.log('[GeminiVoice] Tool call:', fc.name)
           const args = fc.args || {}
 
           if (fc.name === 'engage_deep_reasoning') {
@@ -546,14 +553,15 @@ export default function useGeminiVoice() {
     }
 
     ws.onerror = (err) => {
-      console.error('[GeminiVoice] WebSocket error:', err)
+      console.error('[GeminiVoice] WebSocket error')
       if (!disconnectingRef.current) {
         setError('Connection error')
         setState(STATES.ERROR)
       }
     }
 
-    ws.onclose = () => {
+    ws.onclose = (e) => {
+      console.log('[GeminiVoice] WebSocket closed:', e.code, e.reason)
       if (disconnectingRef.current) {
         setState(STATES.DISCONNECTED)
         return
@@ -578,6 +586,7 @@ export default function useGeminiVoice() {
 
   // ── Public: connect ────────────────────────────────────────────────────
   const connect = useCallback(() => {
+    console.log('[GeminiVoice] connect() called, current state:', state)
     if (state === STATES.CONNECTING || state === STATES.CONNECTED || state === STATES.LISTENING || state === STATES.SPEAKING || state === STATES.PROCESSING) return
     reconnectCountRef.current = 0
     isReconnectRef.current = false
