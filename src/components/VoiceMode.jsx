@@ -395,6 +395,8 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
       canvas.removeEventListener('pointermove', handleMouse)
       if (audioStreamRef.current) audioStreamRef.current.getTracks().forEach(t => t.stop())
       voice.stopListening(); voice.stopSpeaking()
+      // Disconnect Gemini when VoiceMode closes
+      window.dispatchEvent(new CustomEvent('gemini-disconnect'))
       // E10: save voice echo for next session
       if (voiceSamplesRef.current.length > 0) {
         try {
@@ -436,7 +438,7 @@ export default function VoiceMode({ onClose, initialMode = 'chat', weekNumber })
             }}>{m.name}</button> : null
           })}
         </div>
-        <button onClick={() => { voice.stopSpeaking(); voice.stopListening(); onClose() }} style={{ color: '#5a7a94', padding: 8 }}><X size={22} /></button>
+        <button onClick={() => { voice.stopSpeaking(); voice.stopListening(); window.dispatchEvent(new CustomEvent('gemini-disconnect')); onClose() }} style={{ color: '#5a7a94', padding: 8 }}><X size={22} /></button>
       </div>
 
       {/* Reactor */}

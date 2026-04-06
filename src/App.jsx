@@ -353,12 +353,11 @@ function App() {
     try {
       const weekly = JSON.parse(localStorage.getItem('jos-weekly') || '{}')
       const briefingText = weekly.briefing?.text || weekly.lastBriefing?.text
-      // Queue briefing text first (will be spoken once Gemini connects)
+      // Queue briefing for when user taps mic (spoken once Gemini connects)
       if (briefingText) {
         window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: briefingText } }))
       }
-      // Then auto-connect Gemini (queued speech will flush on setupComplete)
-      setTimeout(() => window.dispatchEvent(new CustomEvent('gemini-auto-connect')), 500)
+      // Do NOT auto-connect Gemini on boot — user taps mic button to connect
     } catch { /* ok */ }
     // Show boot briefing dashboard after 1s
     setTimeout(() => showDashboard('boot-briefing'), 1000)

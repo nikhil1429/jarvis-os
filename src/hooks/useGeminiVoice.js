@@ -420,11 +420,12 @@ export default function useGeminiVoice() {
     return () => window.removeEventListener('gemini-auto-connect', h)
   }, [connectToJarvis])
 
-  // Piece 4: Handoff disconnect listener
+  // Disconnect listeners (handoff, VoiceMode close)
   useEffect(() => {
     const h = () => { reconnectAttemptRef.current = maxReconnects; disconnectFromJarvis() }
     window.addEventListener('jarvis-handoff-disconnect', h)
-    return () => window.removeEventListener('jarvis-handoff-disconnect', h)
+    window.addEventListener('gemini-disconnect', h)
+    return () => { window.removeEventListener('jarvis-handoff-disconnect', h); window.removeEventListener('gemini-disconnect', h) }
   }, [disconnectFromJarvis])
 
   useEffect(() => { return () => { if (wsRef.current) try { wsRef.current.close() } catch {}; cleanup() } }, [])
