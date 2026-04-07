@@ -4,6 +4,32 @@
 
 ---
 
+### Session 64 — Voice Debug Logging + localStorage Safety + Boot Fix (2026-04-07)
+Diagnostic session. Added 14 console.log points to useGeminiVoice.js for tracing connection issues. Tightened localStorage caps to prevent 4.6MB bloat recurrence.
+
+**Task 1: Debug logging (14 log points, ZERO logic changes)**
+- `connectInternal`: logs API key status, geminiVoice setting, WebSocket URL
+- `ws.onopen`: logs setup sent + model name
+- `ws.onmessage`: logs first 200 chars of every message + setupComplete
+- `ws.onerror/onclose`: logs error details + close code/reason
+- `startMic`: logs mic started
+- `connect()`: logs current state when called
+- Audio playback: logs chunk received
+
+**Task 2: localStorage caps**
+- `writeLS()` in useGeminiVoice: checks total jos- size, skips write if >4MB
+- Message history: 50→30 per mode (useAI.js, 4 locations)
+- API logs: 1000→200 (apiLogger.js), 500→200 (useGeminiVoice deep reasoning)
+
+**Task 3: Boot API staggering**
+- Already covered: briefing 2s delay (62E), Gemini connect 3s delay (62D), Claude boot ping removed (62C)
+- Report scheduler uses pure JS (no API call) — confirmed safe
+- useComeback doesn't make API calls — confirmed safe
+
+**Files modified (3):** useGeminiVoice.js, useAI.js, apiLogger.js
+
+---
+
 ### Session 63 — Voice System: Delete Everything, Rebuild Clean (2026-04-06)
 Nuclear rebuild. Deleted 15 voice files, stripped voice from 10 components, built 3 clean files from scratch. ONE voice pipeline: Gemini Live.
 

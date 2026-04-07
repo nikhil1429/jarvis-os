@@ -307,7 +307,7 @@ export default function useAI() {
       // Load conversation history for this mode (last 50 messages)
       const msgKey = `msgs-${mode}`
       const history = get(msgKey) || []
-      const recentHistory = history.slice(-50)
+      const recentHistory = history.slice(-30)
 
       // Build user content (text or text+image)
       const image = options.image || null
@@ -335,7 +335,7 @@ export default function useAI() {
           wordCount: userMessage.split(/\s+/).length,
         }]
         // Cap at 50 messages per mode
-        return updated.slice(-50)
+        return updated.slice(-30)
       })
 
       // Create abort controller for this request
@@ -404,7 +404,7 @@ export default function useAI() {
 
         setStreamingText(finalText)
         const latencyMs = Date.now() - startTime
-        update(msgKey, prev => [...(prev || []), { role: 'assistant', content: finalText, timestamp: new Date().toISOString(), model: routing.model, tier: routing.tier }].slice(-50))
+        update(msgKey, prev => [...(prev || []), { role: 'assistant', content: finalText, timestamp: new Date().toISOString(), model: routing.model, tier: routing.tier }].slice(-30))
         logAPICall({ model: routing.model, mode, inputTokens: data.usage?.input_tokens || 0, outputTokens: data.usage?.output_tokens || 0, latencyMs, autoUpgraded: routing.autoUpgraded, reason: routing.reason })
         setIsStreaming(false)
         return { text: finalText, model: routing.model, tier: routing.tier, autoUpgraded: routing.autoUpgraded, reason: routing.reason }
@@ -490,7 +490,7 @@ export default function useAI() {
           wordCount: fullText.split(/\s+/).length,
           model: routing.model,
           tier: routing.tier,
-        }].slice(-50)
+        }].slice(-30)
       })
 
       // Log the API call

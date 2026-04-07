@@ -41,10 +41,10 @@ export function logAPICall({ model, mode, inputTokens, outputTokens, latencyMs, 
     const logs = raw ? JSON.parse(raw) : []
     logs.push(entry)
 
-    // WHY cap at 1000: localStorage has ~5MB limit, and old logs lose relevance.
-    // We keep the most recent 1000 entries — enough for ~2 weeks of heavy usage.
-    if (logs.length > 1000) {
-      logs.splice(0, logs.length - 1000)
+    // WHY cap at 200: localStorage safety — prevents bloat that caused 4.6MB spike.
+    // 200 entries covers ~1 week of usage. Old logs lose relevance.
+    if (logs.length > 200) {
+      logs.splice(0, logs.length - 200)
     }
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(logs))
