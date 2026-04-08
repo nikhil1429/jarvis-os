@@ -253,7 +253,7 @@ export default function useGeminiVoice() {
         // Inject warning into conversation
         if (wsRef.current?.readyState === WebSocket.OPEN) {
           wsRef.current.send(JSON.stringify({
-            clientContent: { turnComplete: true, turns: [{ role: 'user', parts: [{ text: 'Session approaching limit, Sir. Please wrap up.' }] }] }
+            realtimeInput: { text: 'Session approaching limit, Sir. Please wrap up.' }
           }))
         }
       }
@@ -337,8 +337,7 @@ export default function useGeminiVoice() {
         }
         const uint8 = new Uint8Array(int16.buffer)
         // Convert to base64
-        let binary = ''
-        for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i])
+        const binary = String.fromCharCode.apply(null, uint8)
         const base64 = btoa(binary)
 
         wsRef.current.send(JSON.stringify({
@@ -427,13 +426,12 @@ export default function useGeminiVoice() {
       const setup = {
         setup: {
           model: 'models/gemini-3.1-flash-live-preview',
-          generationConfig: {
-            responseModalities: ['AUDIO', 'TEXT'],
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: { voiceName }
-              }
-            },
+          generationConfig: { thinkingConfig: { thinkingLevel: 'high' } },
+          responseModalities: ['AUDIO', 'TEXT'],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName }
+            }
           },
           realtimeInputConfig: {
             automaticActivityDetection: { disabled: false }
@@ -485,16 +483,14 @@ export default function useGeminiVoice() {
             const briefing = weekly.briefing?.text
             if (briefing) {
               ws.send(JSON.stringify({
-                clientContent: { turnComplete: true, turns: [{ role: 'user', parts: [{
-                  text: `Read this briefing aloud naturally (don't say "here is your briefing", just speak it as if you're delivering it): ${briefing}`
-                }] }] }
+                realtimeInput: { text: `Read this briefing aloud naturally (don't say "here is your briefing", just speak it as if you're delivering it): ${briefing}` }
               }))
               spokenBriefing = true
             }
           } catch { /* ok */ }
           if (!spokenBriefing) {
             ws.send(JSON.stringify({
-              clientContent: { turnComplete: true, turns: [{ role: 'user', parts: [{ text: 'Greet Sir briefly. One sentence. Note the time of day.' }] }] }
+              realtimeInput: { text: 'Greet Sir briefly. One sentence. Note the time of day.' }
             }))
           }
         }
@@ -555,20 +551,19 @@ export default function useGeminiVoice() {
           const args = fc.args || {}
 
           if (fc.name === 'engage_deep_reasoning') {
-            // Async — fire REST call, send response when done
-            executeDeepReasoning(args, settings.geminiApiKey || import.meta.env.VITE_GEMINI_API_KEY).then(result => {
-              if (ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({
-                  toolResponse: {
-                    functionResponses: [{
-                      id: fc.id,
-                      name: fc.name,
-                      response: { result: JSON.stringify(result) }
-                    }]
-                  }
-                }))
-              }
-            })
+            // Await deep reasoning result before sending toolResponse
+            const result = await executeDeepReasoning(args, settings.geminiApiKey || import.meta.env.VITE_GEMINI_API_KEY)
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({
+                toolResponse: {
+                  functionResponses: [{
+                    id: fc.id,
+                    name: fc.name,
+                    response: { result: JSON.stringify(result) }
+                  }]
+                }
+              }))
+            }
           } else {
             // Synchronous tools
             const result = executeTool(fc.name, args)
@@ -605,9 +600,9 @@ export default function useGeminiVoice() {
         return
       }
 
-      // Protocol error (1007) — don't retry, same error every time
-      if (e.code === 1007) {
-        console.error('[GeminiVoice] Protocol error 1007, not retrying:', e.reason)
+      // Protocol error (1007) or server error (1011) — don't retry, same error every time
+      if (e.code === 1007 || e.code === 1011) {
+        console.error(`[GeminiVoice] Error ${e.code}, not retrying:`, e.reason)
         setError(`Protocol error: ${e.reason || 'invalid payload'}`)
         setState(STATES.ERROR)
         return
@@ -656,7 +651,7 @@ export default function useGeminiVoice() {
       const text = e.detail?.text
       if (!text) return
       wsRef.current.send(JSON.stringify({
-        clientContent: { turnComplete: true, turns: [{ role: 'user', parts: [{ text }] }] }
+        realtimeInput: { text }
       }))
     }
 
