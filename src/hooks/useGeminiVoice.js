@@ -422,22 +422,7 @@ export default function useGeminiVoice() {
     ws.onopen = () => {
       if (!mountedRef.current) return
       console.log('[GeminiVoice] WebSocket opened, sending setup...')
-      // TEMPORARY: Minimal setup to isolate 1011 crash
-      const setup = {
-        setup: {
-          model: 'models/gemini-3.1-flash-live-preview',
-          generationConfig: {
-            responseModalities: ['AUDIO'],
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: { voiceName: 'Charon' }
-              }
-            }
-          }
-        }
-      }
-
-      /* FULL SETUP — COMMENTED OUT FOR DEBUGGING
+      // Send setup message immediately
       const setup = {
         setup: {
           model: 'models/gemini-3.1-flash-live-preview',
@@ -447,9 +432,6 @@ export default function useGeminiVoice() {
               voiceConfig: {
                 prebuiltVoiceConfig: { voiceName }
               }
-            },
-            thinkingConfig: {
-              thinkingLevel: 'low'
             }
           },
           realtimeInputConfig: {
@@ -466,7 +448,6 @@ export default function useGeminiVoice() {
       if (sessionHandleRef.current) {
         setup.setup.sessionResumption = { handle: sessionHandleRef.current }
       }
-      */
 
       ws.send(JSON.stringify(setup))
       console.log('[GeminiVoice] Setup sent, model:', setup.setup.model)
@@ -487,15 +468,12 @@ export default function useGeminiVoice() {
 
       // Setup complete
       if (msg.setupComplete) {
-        console.log('[GeminiVoice] ✅ Setup complete! Starting mic...')
+        console.log('[GeminiVoice] ✅ Setup complete!')
         setState(STATES.CONNECTED)
         reconnectCountRef.current = 0
         startElapsedTimer()
 
-        // Start mic
-        await startMic()
-
-        // On first connect: speak boot briefing if available, else greet
+        // Send greeting FIRST, mic starts after server responds
         if (!isReconnectRef.current && ws.readyState === WebSocket.OPEN) {
           let spokenBriefing = false
           try {
@@ -503,7 +481,7 @@ export default function useGeminiVoice() {
             const briefing = weekly.briefing?.text
             if (briefing) {
               ws.send(JSON.stringify({
-                clientContent: { turnComplete: true, turns: [{ role: 'user', parts: [{ text: `Read this briefing aloud naturally (don't say "here is your briefing", just speak it as if you're delivering it): ${briefing}` }] }] }
+                clientContent: { turnComplete: true, turns: [{ role: 'user', parts: [{ text: `Read this briefing aloud naturally: ${briefing}` }] }] }
               }))
               spokenBriefing = true
             }
@@ -515,6 +493,7 @@ export default function useGeminiVoice() {
           }
         }
         isReconnectRef.current = false
+        // Mic will start when first serverContent arrives (see below)
         return
       }
 
@@ -534,6 +513,12 @@ export default function useGeminiVoice() {
       // Server content (audio + text from model)
       if (msg.serverContent) {
         const sc = msg.serverContent
+
+        // Start mic on first server response (sequencing: greeting first, then mic)
+        if (state === 'CONNECTED' && !micStreamRef.current) {
+          console.log('[GeminiVoice] Starting mic after first server response...')
+          startMic()
+        }
 
         // Interrupted — stop playback
         if (sc.interrupted) {
