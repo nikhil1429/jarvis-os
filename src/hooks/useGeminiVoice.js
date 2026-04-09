@@ -422,7 +422,22 @@ export default function useGeminiVoice() {
     ws.onopen = () => {
       if (!mountedRef.current) return
       console.log('[GeminiVoice] WebSocket opened, sending setup...')
-      // Send setup message immediately
+      // TEMPORARY: Minimal setup to isolate 1011 crash
+      const setup = {
+        setup: {
+          model: 'models/gemini-3.1-flash-live-preview',
+          generationConfig: {
+            responseModalities: ['AUDIO'],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: 'Charon' }
+              }
+            }
+          }
+        }
+      }
+
+      /* FULL SETUP — COMMENTED OUT FOR DEBUGGING
       const setup = {
         setup: {
           model: 'models/gemini-3.1-flash-live-preview',
@@ -451,6 +466,7 @@ export default function useGeminiVoice() {
       if (sessionHandleRef.current) {
         setup.setup.sessionResumption = { handle: sessionHandleRef.current }
       }
+      */
 
       ws.send(JSON.stringify(setup))
       console.log('[GeminiVoice] Setup sent, model:', setup.setup.model)
