@@ -253,7 +253,7 @@ export default function useGeminiVoice() {
         // Inject warning into conversation
         if (wsRef.current?.readyState === WebSocket.OPEN) {
           wsRef.current.send(JSON.stringify({
-            realtimeInput: { text: 'Session approaching limit, Sir. Please wrap up.' }
+            clientContent: { turnComplete: true, turns: [{ role: 'user', parts: [{ text: 'Session approaching limit, Sir. Please wrap up.' }] }] }
           }))
         }
       }
@@ -426,13 +426,17 @@ export default function useGeminiVoice() {
       const setup = {
         setup: {
           model: 'models/gemini-3.1-flash-live-preview',
-          responseModalities: ['AUDIO', 'TEXT'],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName }
+          generationConfig: {
+            responseModalities: ['AUDIO', 'TEXT'],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName }
+              }
+            },
+            thinkingConfig: {
+              thinkingLevel: 'low'
             }
           },
-          thinkingConfig: { thinkingLevel: 'low' },
           realtimeInputConfig: {
             automaticActivityDetection: { disabled: false }
           },
@@ -483,14 +487,14 @@ export default function useGeminiVoice() {
             const briefing = weekly.briefing?.text
             if (briefing) {
               ws.send(JSON.stringify({
-                realtimeInput: { text: `Read this briefing aloud naturally (don't say "here is your briefing", just speak it as if you're delivering it): ${briefing}` }
+                clientContent: { turnComplete: true, turns: [{ role: 'user', parts: [{ text: `Read this briefing aloud naturally (don't say "here is your briefing", just speak it as if you're delivering it): ${briefing}` }] }] }
               }))
               spokenBriefing = true
             }
           } catch { /* ok */ }
           if (!spokenBriefing) {
             ws.send(JSON.stringify({
-              realtimeInput: { text: 'Greet Sir briefly. One sentence. Note the time of day.' }
+              clientContent: { turnComplete: true, turns: [{ role: 'user', parts: [{ text: 'Greet Sir briefly. One sentence. Note the time of day.' }] }] }
             }))
           }
         }
@@ -651,7 +655,7 @@ export default function useGeminiVoice() {
       const text = e.detail?.text
       if (!text) return
       wsRef.current.send(JSON.stringify({
-        realtimeInput: { text }
+        clientContent: { turnComplete: true, turns: [{ role: 'user', parts: [{ text }] }] }
       }))
     }
 
