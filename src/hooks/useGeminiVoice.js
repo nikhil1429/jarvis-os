@@ -426,13 +426,13 @@ export default function useGeminiVoice() {
       const setup = {
         setup: {
           model: 'models/gemini-3.1-flash-live-preview',
-          generationConfig: { thinkingConfig: { thinkingLevel: 'high' } },
           responseModalities: ['AUDIO', 'TEXT'],
           speechConfig: {
             voiceConfig: {
               prebuiltVoiceConfig: { voiceName }
             }
           },
+          thinkingConfig: { thinkingLevel: 'low' },
           realtimeInputConfig: {
             automaticActivityDetection: { disabled: false }
           },
