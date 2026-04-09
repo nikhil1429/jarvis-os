@@ -422,33 +422,28 @@ export default function useGeminiVoice() {
     ws.onopen = () => {
       if (!mountedRef.current) return
       console.log('[GeminiVoice] WebSocket opened, sending setup...')
-      // Send setup message immediately
-      const setup = {
-        setup: {
-          model: 'models/gemini-3.1-flash-live-preview',
-          generationConfig: {
-            responseModalities: ['AUDIO', 'TEXT'],
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: { voiceName }
-              }
-            }
-          },
-          realtimeInputConfig: {
-            automaticActivityDetection: { disabled: false }
-          },
-          systemInstruction: {
-            parts: [{ text: buildSystemPrompt() }]
-          },
-          tools: [{ functionDeclarations: toolDeclarations }],
-        }
+      // DEBUG: Change LAYER to isolate 1011 crash
+      // LAYER 1 = minimal (worked), LAYER 2 = +realtimeInput, LAYER 3 = +systemInstruction, LAYER 4 = +tools
+      const DEBUG_LAYER = 2
+
+      const setup = { setup: { model: 'models/gemini-3.1-flash-live-preview', generationConfig: { responseModalities: ['AUDIO', 'TEXT'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } } } } }
+
+      if (DEBUG_LAYER >= 2) {
+        setup.setup.realtimeInputConfig = { automaticActivityDetection: { disabled: false } }
+      }
+      if (DEBUG_LAYER >= 3) {
+        setup.setup.systemInstruction = { parts: [{ text: buildSystemPrompt() }] }
+      }
+      if (DEBUG_LAYER >= 4) {
+        setup.setup.tools = [{ functionDeclarations: toolDeclarations }]
       }
 
-      // Include session resumption handle if reconnecting
-      if (sessionHandleRef.current) {
-        setup.setup.sessionResumption = { handle: sessionHandleRef.current }
-      }
+      // sessionResumption disabled for debugging
+      // if (sessionHandleRef.current) {
+      //   setup.setup.sessionResumption = { handle: sessionHandleRef.current }
+      // }
 
+      console.log('[GeminiVoice] DEBUG_LAYER:', DEBUG_LAYER, 'Setup keys:', Object.keys(setup.setup))
       ws.send(JSON.stringify(setup))
       console.log('[GeminiVoice] Setup sent, model:', setup.setup.model)
     }
