@@ -443,7 +443,6 @@ export default function useGeminiVoice() {
   const isReconnectRef = useRef(false);
   const sessionWarningRef = useRef(false);
   const disconnectingRef = useRef(false);
-  const waitingForFirstResponseRef = useRef(false);
   // WHY: React StrictMode double-mounts components. Without this guard,
   // first mount opens WS, StrictMode unmount closes it, remount finds
   // state=CONNECTING and silently returns. mountedRef lets WS handlers
@@ -465,18 +464,8 @@ export default function useGeminiVoice() {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
           wsRef.current.send(
             JSON.stringify({
-              clientContent: {
-                turnComplete: true,
-                turns: [
-                  {
-                    role: "user",
-                    parts: [
-                      {
-                        text: "Session approaching limit, Sir. Please wrap up.",
-                      },
-                    ],
-                  },
-                ],
+              realtimeInput: {
+                text: "Session approaching limit, Sir. Please wrap up.",
               },
             }),
           );
@@ -732,7 +721,7 @@ export default function useGeminiVoice() {
         reconnectCountRef.current = 0;
         startElapsedTimer();
 
-        // Send greeting FIRST, mic starts after server responds
+        // Send greeting and start mic immediately (both use realtimeInput pipeline)
         if (!isReconnectRef.current && ws.readyState === WebSocket.OPEN) {
           let spokenBriefing = false;
           try {
@@ -743,18 +732,8 @@ export default function useGeminiVoice() {
             if (briefing) {
               ws.send(
                 JSON.stringify({
-                  clientContent: {
-                    turnComplete: true,
-                    turns: [
-                      {
-                        role: "user",
-                        parts: [
-                          {
-                            text: `Read this briefing aloud naturally: ${briefing}`,
-                          },
-                        ],
-                      },
-                    ],
+                  realtimeInput: {
+                    text: `Read this briefing aloud naturally: ${briefing}`,
                   },
                 }),
               );
@@ -766,32 +745,23 @@ export default function useGeminiVoice() {
           if (!spokenBriefing) {
             ws.send(
               JSON.stringify({
-                clientContent: {
-                  turnComplete: true,
-                  turns: [
-                    {
-                      role: "user",
-                      parts: [
-                        {
-                          text: "Greet Sir briefly. One sentence. Note the time of day.",
-                        },
-                      ],
-                    },
-                  ],
+                realtimeInput: {
+                  text: "Greet Sir briefly. One sentence. Note the time of day.",
                 },
               }),
             );
           }
         }
         isReconnectRef.current = false;
-        waitingForFirstResponseRef.current = true;
-        // Mic will start when first serverContent arrives (see below)
+
+        // Start mic immediately
+        await startMic();
         return;
       }
 
       // Session resumption handle
-      if (msg.sessionResumption?.handle) {
-        sessionHandleRef.current = msg.sessionResumption.handle;
+      if (msg.sessionResumptionUpdate?.newHandle) {
+        sessionHandleRef.current = msg.sessionResumptionUpdate.newHandle;
       }
 
       // GoAway — immediate reconnect
@@ -802,17 +772,22 @@ export default function useGeminiVoice() {
         return;
       }
 
-      // Server content (audio + text from model)
+      // Server content (audio + transcript from model)
       if (msg.serverContent) {
         const sc = msg.serverContent;
 
-        // Start mic on first server response (sequencing: greeting first, then mic)
-        if (waitingForFirstResponseRef.current) {
-          waitingForFirstResponseRef.current = false;
-          console.log(
-            "[GeminiVoice] First response received, starting mic...",
+        // Output transcription (text version of audio response)
+        if (sc.outputTranscription?.text) {
+          const transcriptText = sc.outputTranscription.text;
+          setTranscript((prev) => ({
+            ...prev,
+            output: prev.output + transcriptText,
+          }));
+          window.dispatchEvent(
+            new CustomEvent("jarvis-transcript", {
+              detail: { text: transcriptText },
+            }),
           );
-          startMic();
         }
 
         // Interrupted — stop playback
@@ -822,21 +797,12 @@ export default function useGeminiVoice() {
           return;
         }
 
-        // Model turn parts
+        // Model turn parts (audio chunks)
         if (sc.modelTurn?.parts) {
           for (const part of sc.modelTurn.parts) {
             if (part.inlineData?.data) {
-              console.log("[GeminiVoice] 🔊 Playing audio chunk");
               setState(STATES.SPEAKING);
               playAudioChunk(part.inlineData.data);
-            }
-            if (part.text) {
-              setTranscript((prev) => ({ ...prev, output: part.text }));
-              window.dispatchEvent(
-                new CustomEvent("jarvis-transcript", {
-                  detail: { text: part.text },
-                }),
-              );
             }
           }
         }
@@ -986,10 +952,7 @@ export default function useGeminiVoice() {
       if (!text) return;
       wsRef.current.send(
         JSON.stringify({
-          clientContent: {
-            turnComplete: true,
-            turns: [{ role: "user", parts: [{ text }] }],
-          },
+          realtimeInput: { text },
         }),
       );
     };
