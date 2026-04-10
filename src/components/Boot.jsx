@@ -337,6 +337,10 @@ export default function Boot({ onComplete }) {
           weekly.lastBriefing = weekly.briefing
           localStorage.setItem('jos-weekly', JSON.stringify(weekly))
         } catch (e) { console.error('[Boot] Failed to save briefing:', e) }
+        // Speak briefing through Gemini voice
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: finalText } }))
+        }, 500)
         setTimeout(() => { setPhase(6); setShowEnterBtn(true) }, 500)
       }
     }, charDelay)

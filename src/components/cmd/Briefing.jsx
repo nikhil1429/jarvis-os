@@ -16,7 +16,9 @@ export default function Briefing() {
   const briefing = weekly.briefing || weekly.lastBriefing
 
   const handleReplay = async () => {
-    // Replay not yet implemented
+    if (briefing?.text) {
+      window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: briefing.text } }))
+    }
   }
 
   if (!briefing?.text) {

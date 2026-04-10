@@ -378,10 +378,11 @@ export default function useAI() {
         data = await resp.json()
 
         // Handle tool use
-        const toolBlocks = (data.content || []).filter(b => b.type === 'tool_use')
+        const toolBlocks = (data.content || []).filter(b => b.type === 'tool_use' && b.name !== 'web_search')
         let finalText = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('')
 
         if (toolBlocks.length > 0) {
+          console.log('[useAI] Tool response - text blocks:', (data.content || []).filter(b => b.type === 'text').length, 'tool blocks:', toolBlocks.length, 'all types:', (data.content || []).map(b => b.type))
           console.log('TOOLS EXECUTED:', toolBlocks.map(b => b.name))
           const toolResults = toolBlocks.map(b => ({
             type: 'tool_result', tool_use_id: b.id,
@@ -400,6 +401,10 @@ export default function useAI() {
             const followData = await followResp.json()
             finalText = (followData.content || []).filter(b => b.type === 'text').map(b => b.text).join('')
           }
+        }
+
+        if (!finalText.trim()) {
+          console.warn('[useAI] Empty finalText after tool processing — possible server tool issue')
         }
 
         setStreamingText(finalText)

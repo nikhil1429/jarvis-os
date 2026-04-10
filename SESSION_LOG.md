@@ -4,6 +4,66 @@
 
 ---
 
+### Session 74 — Session Log Backfill + Briefing Voice + Overlay + Chat JSON Fix (2026-04-10)
+Backfilled sessions 65-73. Fixed 3 bugs: boot briefing not speaking through Gemini, VoiceOverlay showing nothing without transcript, Chat mode JSON leak from server-side tool blocks.
+
+**Task 1:** Backfilled SESSION_LOG.md with sessions 65-73 (Gemini Live voice debugging marathon).
+
+**Task 2:** Boot.jsx — dispatch `jarvis-speak` after briefing typewriter completes so Gemini reads it aloud. Briefing.jsx — implemented empty `handleReplay` to dispatch `jarvis-speak` with saved briefing text.
+
+**Task 3:** VoiceOverlay.jsx — added state feedback text when transcript is empty (shows "JARVIS is speaking..." / "Listening" etc). Increased breathing circle visibility (inner ring 0.12→0.25, center dot 0.3+0.2→0.5+0.3).
+
+**Task 4:** useAI.js — filter out `web_search` from client tool processing to prevent JSON leak in chat mode. Added debug logging for tool response diagnostics.
+
+**Files modified (5):** SESSION_LOG.md, Boot.jsx, Briefing.jsx, VoiceOverlay.jsx, useAI.js
+
+---
+
+### Sessions 65-73 — Gemini Live Voice: The Setup Wars → VOICE WORKING (2026-04-07 to 2026-04-10)
+
+9-session debugging marathon to get Gemini Live API voice working. Multiple setup payload structures tested, contradictory advice from Gemini's own docs vs actual API behavior. Every session was useGeminiVoice.js only.
+
+**Session 65:** Moved responseModalities/speechConfig OUT of generationConfig to setup root. Changed clientContent → realtimeInput.text for all runtime sends. Made deep reasoning sync. Added 1011 to no-reconnect codes.
+
+**Session 66:** Removed generationConfig wrapper entirely. Moved thinkingConfig to setup root level.
+
+**Session 67:** Reverted per Gemini's advice — put responseModalities/speechConfig BACK inside generationConfig. Reverted realtimeInput.text back to clientContent.
+
+**Session 68:** More debugging. Tested various setup structures.
+
+**Session 69:** Sequencing fix — send greeting BEFORE starting mic (race condition between clientContent and realtimeInput.audio caused 1007). Restored full setup with tools + systemInstruction.
+
+**Session 70:** Layered debug approach — added fields one at a time to isolate 1011 cause. Found: LAYER 1 (minimal generationConfig only) works, LAYER 2 (+realtimeInputConfig) crashes with 1011.
+
+**Session 71-72:** Continued debugging. Removed realtimeInputConfig entirely. Tested various field combinations.
+
+**Session 73:** VOICE FINALLY WORKING. Final working configuration:
+- Model: gemini-3.1-flash-live-preview
+- generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Charon' } } } }
+- systemInstruction + tools included (work fine without realtimeInputConfig)
+- All runtime text sends use realtimeInput.text (NOT clientContent)
+- NO realtimeInputConfig (causes 1011)
+- NO thinkingConfig in Live API (causes crashes)
+- NO outputAudioTranscription / inputAudioTranscription (crashes WebSocket)
+
+**Key learnings:**
+- realtimeInputConfig causes 1011 in gemini-3.1-flash-live-preview — omit entirely, VAD works by default
+- responseModalities: ['AUDIO'] only (not ['AUDIO', 'TEXT']) — adding TEXT caused issues
+- realtimeInput.text is the correct format for runtime text sends in 3.1
+- clientContent is only for initial history seeding, not runtime messages
+- Gemini's own documentation contradicts actual API behavior in multiple places
+- Layered debug (add one field at a time) is the correct debugging methodology for WebSocket setup issues
+
+**Files modified:** useGeminiVoice.js (every session)
+
+**REMAINING (carry to Session 74):**
+1. Boot briefing not speaking through Gemini
+2. VoiceOverlay reactor/waveform barely visible — no transcript shown
+3. Train → Chat: JSON appearing before JARVIS text reply
+4. Old Claude model string in costCalculator.js (intentional — historical cost lookup)
+
+---
+
 ### Session 64 — Voice Debug Logging + localStorage Safety + Boot Fix (2026-04-07)
 Diagnostic session. Added 14 console.log points to useGeminiVoice.js for tracing connection issues. Tightened localStorage caps to prevent 4.6MB bloat recurrence.
 

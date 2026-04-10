@@ -98,12 +98,12 @@ export default function VoiceOverlay({ gemini, onClose }) {
       // Inner ring
       ctx.beginPath()
       ctx.arc(cx, cy, r * 0.7, 0, Math.PI * 2)
-      ctx.strokeStyle = 'rgba(0, 180, 216, 0.12)'
+      ctx.strokeStyle = 'rgba(0, 180, 216, 0.25)'
       ctx.lineWidth = 1
       ctx.stroke()
 
       // Subtle pulse dot at center
-      const dotAlpha = 0.3 + Math.sin(now * 2) * 0.2
+      const dotAlpha = 0.5 + Math.sin(now * 2) * 0.3
       ctx.beginPath()
       ctx.arc(cx, cy, 4, 0, Math.PI * 2)
       ctx.fillStyle = `rgba(0, 180, 216, ${dotAlpha})`
@@ -172,8 +172,8 @@ export default function VoiceOverlay({ gemini, onClose }) {
         {stateLabel}
       </p>
 
-      {/* Output transcript */}
-      {transcript.output && (
+      {/* Output transcript or state feedback */}
+      {transcript.output ? (
         <p
           className="font-mono text-sm text-center max-w-md px-6 leading-relaxed mb-4"
           style={{
@@ -187,6 +187,17 @@ export default function VoiceOverlay({ gemini, onClose }) {
           }}
         >
           {transcript.output}
+        </p>
+      ) : (
+        <p
+          className="font-mono text-xs text-center max-w-sm px-6"
+          style={{ color: stateColor, opacity: 0.6 }}
+        >
+          {state === 'SPEAKING' ? 'JARVIS is speaking...' :
+           state === 'PROCESSING' ? 'Thinking...' :
+           state === 'LISTENING' ? 'Listening — speak to JARVIS' :
+           state === 'CONNECTING' ? 'Establishing connection...' :
+           'Voice active'}
         </p>
       )}
 
