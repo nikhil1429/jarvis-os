@@ -111,6 +111,26 @@ export default function Boot({ onComplete }) {
 
   const VOICE_QS = ['', 'Energy level, Sir?', 'Primary focus today?', 'Any blockers?', 'Morning bet — what will you accomplish today?']
 
+  // Browser TTS only — no Gemini, no jarvis-speak events
+  // WHY: Boot uses browser speechSynthesis. Gemini is for voice overlay only.
+  const speakBrowserTTS = useCallback((text) => {
+    try {
+      const synth = window.speechSynthesis
+      if (!synth) return
+      synth.cancel()
+      const u = new SpeechSynthesisUtterance(text)
+      u.lang = 'en-GB'
+      u.rate = 0.95
+      u.volume = 0.85
+      const voices = synth.getVoices()
+      const brit = voices.find(v => v.lang === 'en-GB' && v.name.includes('Male'))
+        || voices.find(v => v.lang === 'en-GB')
+        || voices[0]
+      if (brit) u.voice = brit
+      synth.speak(u)
+    } catch { /* ok */ }
+  }, [])
+
   // Check if returning user (compressed boot)
   const isReturning = useRef(false)
   useEffect(() => {
@@ -248,6 +268,7 @@ export default function Boot({ onComplete }) {
         // Start voice transition
         setVoiceStep(1)
         setVoiceQuestion(VOICE_QS[1])
+        speakBrowserTTS(VOICE_QS[1])
       }, isReturning.current ? 200 : 400)
     }, delay)
 
@@ -313,6 +334,8 @@ export default function Boot({ onComplete }) {
     const finalText = aiBriefing || fallbackText
 
     // Typewriter effect for briefing
+    // Speak briefing via browser TTS simultaneously with typewriter
+    speakBrowserTTS(finalText)
     let i = 0
     const charDelay = isReturning.current ? 8 : 18
     const interval = setInterval(() => {
@@ -337,10 +360,7 @@ export default function Boot({ onComplete }) {
           weekly.lastBriefing = weekly.briefing
           localStorage.setItem('jos-weekly', JSON.stringify(weekly))
         } catch (e) { console.error('[Boot] Failed to save briefing:', e) }
-        // Speak briefing through Gemini voice
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: finalText } }))
-        }, 500)
+        // Show ENTER button — NO speech here (already started at typewriter begin)
         setTimeout(() => { setPhase(6); setShowEnterBtn(true) }, 500)
       }
     }, charDelay)
@@ -349,6 +369,8 @@ export default function Boot({ onComplete }) {
 
   const handleEnter = useCallback(() => {
     // BRUTE FORCE: Set flag FIRST — blocks any queued/in-flight briefing speech
+    // Stop any browser TTS that's playing
+    try { window.speechSynthesis?.cancel() } catch {}
     // Kill any playing audio
     document.querySelectorAll('audio').forEach(a => { try { a.pause(); a.currentTime = 0 } catch {} })
     if (window._thinkingStop) { window._thinkingStop(); window._thinkingStop = null }
@@ -501,6 +523,7 @@ export default function Boot({ onComplete }) {
                     setEnergy(n)
                     setTimeout(() => {
                       setVoiceStep(2); setVoiceQuestion(VOICE_QS[2])
+                      speakBrowserTTS(VOICE_QS[2])
                     }, 500)
                   }} className={active ? 'orb-ignite' : ''} style={{
                     width: 56, height: 56, borderRadius: '50%', border: `2px solid ${active ? c : 'rgba(13,33,55,0.5)'}`,
@@ -527,6 +550,7 @@ export default function Boot({ onComplete }) {
                     const next = voiceStep + 1
                     setTimeout(() => {
                       setVoiceStep(next); setVoiceQuestion(VOICE_QS[next])
+                      speakBrowserTTS(VOICE_QS[next])
                     }, 300)
                   }}
                   placeholder={voiceStep === 2 ? 'Type or speak your focus...' : voiceStep === 3 ? 'Blockers...' : 'I will...'}
@@ -538,6 +562,7 @@ export default function Boot({ onComplete }) {
                   const next = voiceStep + 1
                   setTimeout(() => {
                     setVoiceStep(next); setVoiceQuestion(VOICE_QS[next])
+                    speakBrowserTTS(VOICE_QS[next])
                   }, 300)
                 }} style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(0,240,255,0.08)', border: '1px solid rgba(0,240,255,0.3)', color: '#00f0ff', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>▸</button>
               </div>

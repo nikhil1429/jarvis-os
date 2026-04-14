@@ -448,6 +448,7 @@ export default function useGeminiVoice() {
   // state=CONNECTING and silently returns. mountedRef lets WS handlers
   // survive the unmount/remount cycle.
   const mountedRef = useRef(true);
+  const overlayOpenRef = useRef(false);
 
   // ── Elapsed Timer ──────────────────────────────────────────────────────
   const startElapsedTimer = useCallback(() => {
@@ -519,6 +520,7 @@ export default function useGeminiVoice() {
   }, []);
 
   const flushPlayback = useCallback(() => {
+    // Stop any currently playing audio source
     try {
       activeSourceRef.current?.stop();
     } catch {
@@ -526,6 +528,21 @@ export default function useGeminiVoice() {
     }
     activeSourceRef.current = null;
     nextPlayTimeRef.current = 0;
+
+    // Nuclear flush: close and recreate AudioContext to kill ALL scheduled audio
+    if (playCtxRef.current && playCtxRef.current.state !== "closed") {
+      try {
+        playCtxRef.current.close();
+      } catch {
+        /* ok */
+      }
+      playCtxRef.current = null;
+    }
+    try {
+      playCtxRef.current = new AudioContext({ sampleRate: 24000 });
+    } catch {
+      /* ok */
+    }
   }, []);
 
   // ── Mic Setup ──────────────────────────────────────────────────────────
@@ -721,28 +738,9 @@ export default function useGeminiVoice() {
         reconnectCountRef.current = 0;
         startElapsedTimer();
 
-        // Send greeting and start mic immediately (both use realtimeInput pipeline)
-        if (!isReconnectRef.current && ws.readyState === WebSocket.OPEN) {
-          let spokenBriefing = false;
-          try {
-            const weekly = JSON.parse(
-              localStorage.getItem("jos-weekly") || "{}",
-            );
-            const briefing = weekly.briefing?.text;
-            if (briefing) {
-              ws.send(
-                JSON.stringify({
-                  realtimeInput: {
-                    text: `Read this briefing aloud naturally: ${briefing}`,
-                  },
-                }),
-              );
-              spokenBriefing = true;
-            }
-          } catch {
-            /* ok */
-          }
-          if (!spokenBriefing) {
+        // Only greet and start mic if voice overlay is open (not background connect)
+        if (overlayOpenRef.current) {
+          if (!isReconnectRef.current && ws.readyState === WebSocket.OPEN) {
             ws.send(
               JSON.stringify({
                 realtimeInput: {
@@ -751,11 +749,9 @@ export default function useGeminiVoice() {
               }),
             );
           }
+          await startMic();
         }
         isReconnectRef.current = false;
-
-        // Start mic immediately
-        await startMic();
         return;
       }
 
@@ -788,6 +784,20 @@ export default function useGeminiVoice() {
               detail: { text: transcriptText },
             }),
           );
+        }
+
+        // Input transcription — detect stop commands for immediate flush
+        if (sc.inputTranscription?.text) {
+          const inputText = sc.inputTranscription.text.toLowerCase();
+          setTranscript((prev) => ({ ...prev, input: inputText }));
+          if (
+            inputText.includes("stop") ||
+            inputText.includes("quiet") ||
+            inputText.includes("enough") ||
+            inputText.includes("shut")
+          ) {
+            flushPlayback();
+          }
         }
 
         // Interrupted — stop playback
@@ -995,6 +1005,49 @@ export default function useGeminiVoice() {
     state === STATES.SPEAKING ||
     state === STATES.PROCESSING;
 
+  // Control overlay open state — gates mic start/stop
+  const setOverlayOpen = useCallback(
+    (open) => {
+      overlayOpenRef.current = open;
+      if (open && wsRef.current?.readyState === WebSocket.OPEN && !micStreamRef.current) {
+        // Overlay just opened and already connected — start mic now
+        startMic();
+        // Send greeting
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+          wsRef.current.send(
+            JSON.stringify({
+              realtimeInput: {
+                text: "Greet Sir briefly. One sentence. Note the time of day.",
+              },
+            }),
+          );
+        }
+      }
+      if (!open && micStreamRef.current) {
+        // Overlay closed — stop mic
+        try {
+          micStreamRef.current.getTracks().forEach((t) => t.stop());
+          micStreamRef.current = null;
+        } catch {
+          /* ok */
+        }
+        try {
+          processorRef.current?.disconnect();
+        } catch {
+          /* ok */
+        }
+        try {
+          sourceNodeRef.current?.disconnect();
+        } catch {
+          /* ok */
+        }
+        processorRef.current = null;
+        sourceNodeRef.current = null;
+      }
+    },
+    [startMic],
+  );
+
   return {
     state,
     connect,
@@ -1003,5 +1056,6 @@ export default function useGeminiVoice() {
     elapsed,
     error,
     transcript,
+    setOverlayOpen,
   };
 }

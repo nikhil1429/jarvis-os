@@ -37,7 +37,7 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
 
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState([])
-  const [pendingImage, setPendingImage] = useState(null)
+  const [pendingImages, setPendingImages] = useState([])
   const [lastTier, setLastTier] = useState(1)
   const [isThinking, setIsThinking] = useState(false)
   const [isListening, setIsListening] = useState(false)
@@ -48,9 +48,41 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
   const sessionStartIndexRef = useRef(0)
   const recognitionRef = useRef(null)
 
+  // VOICE-FIRST: JARVIS always speaks. Text display is secondary.
+  const speakJarvis = useCallback((text) => {
+    try {
+      const settings = JSON.parse(localStorage.getItem('jos-settings') || '{}')
+      if (settings.voiceEnabled === false) return
+      const synth = window.speechSynthesis
+      if (!synth) return
+      synth.cancel()
+      const clean = text
+        .replace(/```[\s\S]*?```/g, '')
+        .replace(/\*\*(.+?)\*\*/g, '$1')
+        .replace(/\*(.+?)\*/g, '$1')
+        .replace(/`(.+?)`/g, '$1')
+        .replace(/#{1,6}\s/g, '')
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+        .replace(/[<>]/g, '')
+        .trim()
+      if (!clean) return
+      const capped = clean.length > 800 ? clean.slice(0, 800) + '... Response continues in text, Sir.' : clean
+      const u = new SpeechSynthesisUtterance(capped)
+      u.lang = 'en-GB'
+      u.rate = 0.95
+      u.volume = 0.85
+      const voices = synth.getVoices()
+      const brit = voices.find(v => v.lang === 'en-GB' && v.name.includes('Male'))
+        || voices.find(v => v.lang === 'en-GB')
+        || voices[0]
+      if (brit) u.voice = brit
+      synth.speak(u)
+    } catch { /* ok */ }
+  }, [])
+
   const handleSendDirect = useCallback(async (text) => {
-    const trimmed = text?.trim()
-    if (!trimmed) return
+    const trimmed = text?.trim() || ''
+    if (!trimmed && pendingImages.length === 0) return
     setInput('')
 
     // Voice commands
@@ -93,7 +125,10 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
     }
 
     // Normal API call
-    setMessages(prev => [...prev, { role: 'user', content: trimmed, timestamp: new Date().toISOString() }])
+    setMessages(prev => [...prev, {
+      role: 'user', content: trimmed || 'Sent images', timestamp: new Date().toISOString(),
+      images: pendingImages.length > 0 ? pendingImages.map(img => img.thumbnail) : undefined
+    }])
     play('send')
     recordActivity('message') // Momentum tracking
     autoDetectDismissal('message-sent', mode.id) // Self-learning: detect advice dismissal
@@ -103,23 +138,16 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
       trackResponse(lastJarvisStyleRef.current, trimmed.length)
     }
 
-    // Fire-and-forget subtext analysis for meaningful messages
-    if (shouldAnalyze(trimmed, mode.id)) {
-      const temporal = getTemporalContext()
-      const feelings = (() => { try { return JSON.parse(localStorage.getItem('jos-feelings') || '[]') } catch { return [] } })()
-      const lastFew = feelings.slice(-3)
-      const moodTrend = lastFew.length >= 2
-        ? (lastFew[lastFew.length - 1]?.confidence || 3) > (lastFew[0]?.confidence || 3) ? 'improving' : 'declining'
-        : 'unknown'
-      analyzeSubtext(trimmed, { timeOfDay: temporal.timeLabel, inputMode: 'typed', moodTrend }, sendMessage).catch(() => {})
-    }
+    // DISABLED: subtext analyzer leaks raw JSON into chat via shared sendMessage
+    // if (shouldAnalyze(trimmed, mode.id)) { ... }
+
     // Passive people map building
     detectPeopleMentions(trimmed)
 
     const stopTick = await startThinking()
     try {
-      const result = await sendMessage(trimmed, mode.id, { weekNumber, image: pendingImage })
-      setPendingImage(null)
+      const result = await sendMessage(trimmed || 'Analyse these images.', mode.id, { weekNumber, images: pendingImages })
+      setPendingImages([])
       stopTick(); stopThinking()
       if (result) {
         // Opus ambient for Opus-tier responses
@@ -134,8 +162,8 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
         }])
         setLastTier(result.tier)
         play('receive')
-        // Voice-first: speak JARVIS response through Gemini
-        window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: displayText } }))
+        // VOICE-FIRST: JARVIS always speaks the response
+        speakJarvis(displayText)
         // Communication tracker: classify JARVIS response style
         lastJarvisStyleRef.current = classifyStyle(displayText)
 
@@ -180,6 +208,7 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
         const crash = detectInSessionCrash(sessionMessages)
         if (crash) {
           setMessages(prev => [...prev, { role: 'assistant', content: crash.text, timestamp: new Date().toISOString(), isSupport: true }])
+          speakJarvis(crash.text)
         }
 
         // Trigger conversation compression if needed (fire-and-forget)
@@ -196,9 +225,11 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
       console.error('[ChatView] Send failed:', err)
       stopTick(); stopThinking()
       // Reset voice state on API error — prevent stuck PROCESSING
-      setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${err.message || 'Request failed'}. Try again, Sir.`, timestamp: new Date().toISOString() }])
+      const errText = `Error. ${err.message || 'Request failed'}. Try again, Sir.`
+      setMessages(prev => [...prev, { role: 'assistant', content: errText, timestamp: new Date().toISOString() }])
+      speakJarvis(errText)
     }
-  }, [sendMessage, mode.id, weekNumber, play, onModeSwitch, stopThinking, startThinking])
+  }, [sendMessage, mode.id, weekNumber, play, onModeSwitch, stopThinking, startThinking, pendingImages])
 
   const handleSendDirectRef = useRef(handleSendDirect)
   handleSendDirectRef.current = handleSendDirect
@@ -237,10 +268,11 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
 
   const handleSend = useCallback(() => {
     const text = input.trim()
-    if (!text || isStreaming) return
-    checkIdentityUpdate(text)
+    if ((!text && pendingImages.length === 0) || isStreaming) return
+    if (text) checkIdentityUpdate(text)
+    setInput('')
     handleSendDirect(text)
-  }, [input, isStreaming, handleSendDirect])
+  }, [input, isStreaming, handleSendDirect, pendingImages])
 
 
   useEffect(() => {
@@ -336,8 +368,19 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
         role: 'assistant', content: displayText, timestamp: new Date().toISOString(),
         isMilestone: true
       }])
-      // Voice-first: speak milestone through Gemini
-      window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: displayText } }))
+      // VOICE-FIRST: speak milestone
+      try {
+        const settings = JSON.parse(localStorage.getItem('jos-settings') || '{}')
+        if (settings.voiceEnabled !== false && window.speechSynthesis) {
+          window.speechSynthesis.cancel()
+          const u = new SpeechSynthesisUtterance(displayText)
+          u.lang = 'en-GB'; u.rate = 0.95; u.volume = 0.85
+          const voices = window.speechSynthesis.getVoices()
+          const brit = voices.find(v => v.lang === 'en-GB') || voices[0]
+          if (brit) u.voice = brit
+          window.speechSynthesis.speak(u)
+        }
+      } catch { /* ok */ }
     }
     const unsub = eventBus.subscribe('milestone:speech', handleMilestone)
     return () => unsub()
@@ -415,11 +458,17 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
       {/* Status area */}
       <div style={{ flexShrink: 0 }} />
 
-      {/* Image preview */}
-      {pendingImage && (
-        <div style={{ flexShrink: 0, padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <img src={pendingImage.thumbnail} alt="" style={{ maxHeight: 50, maxWidth: 100, borderRadius: 4, border: '1px solid #0d2137' }} />
-          <button onClick={() => setPendingImage(null)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: 11 }}>Remove</button>
+      {/* Image previews */}
+      {pendingImages.length > 0 && (
+        <div style={{ flexShrink: 0, padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          {pendingImages.map((img, i) => (
+            <div key={i} style={{ position: 'relative' }}>
+              <img src={img.thumbnail} alt="" style={{ maxHeight: 50, maxWidth: 80, borderRadius: 4, border: '1px solid #0d2137' }} />
+              <button onClick={() => setPendingImages(prev => prev.filter((_, j) => j !== i))}
+                style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16, borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+            </div>
+          ))}
+          <button onClick={() => setPendingImages([])} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: 10, fontFamily: 'Share Tech Mono' }}>Clear all</button>
         </div>
       )}
 
@@ -437,11 +486,22 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
         {/* Image upload */}
         <label className="p-3 rounded-lg border border-border text-text-muted hover:border-cyan/40 hover:text-cyan cursor-pointer transition-all">
           <ImageIcon size={18} />
-          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
-            const file = e.target.files?.[0]; if (!file || !file.type.startsWith('image/')) return
-            const reader = new FileReader()
-            reader.onload = () => setPendingImage({ base64: reader.result.split(',')[1], mediaType: file.type, thumbnail: reader.result })
-            reader.readAsDataURL(file); e.target.value = ''
+          <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={(e) => {
+            const files = Array.from(e.target.files || []).filter(f => f.type.startsWith('image/'))
+            if (files.length === 0) return
+            files.forEach(file => {
+              const reader = new FileReader()
+              reader.onload = () => {
+                setPendingImages(prev => [...prev, {
+                  base64: reader.result.split(',')[1],
+                  mediaType: file.type,
+                  thumbnail: reader.result,
+                  name: file.name
+                }])
+              }
+              reader.readAsDataURL(file)
+            })
+            e.target.value = ''
           }} />
         </label>
 
@@ -454,9 +514,9 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
           <Mic size={18} />
         </button>
 
-        <button onClick={handleSend} disabled={!input.trim() || isStreaming}
+        <button onClick={handleSend} disabled={(!input.trim() && pendingImages.length === 0) || isStreaming}
           className={`p-3 rounded-lg border transition-all duration-200 ${
-            input.trim() && !isStreaming ? 'bg-cyan/10 border-cyan/40 text-cyan hover:bg-cyan/20'
+            (input.trim() || pendingImages.length > 0) && !isStreaming ? 'bg-cyan/10 border-cyan/40 text-cyan hover:bg-cyan/20'
             : 'bg-card border-border text-text-muted cursor-not-allowed'
           }`} aria-label="Send message">
           <Send size={18} />
@@ -479,6 +539,13 @@ function MessageBubble({ message }) {
       <div className="flex justify-end">
         <div className="max-w-[80%] bg-cyan/10 border border-cyan/20 rounded-lg px-4 py-2.5">
           <p className="font-body text-sm text-text" dangerouslySetInnerHTML={{ __html: renderMd(displayContent) }} />
+          {message.images && (
+            <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+              {message.images.map((src, i) => (
+                <img key={i} src={src} alt="" style={{ maxHeight: 60, maxWidth: 100, borderRadius: 4, border: '1px solid rgba(0,180,216,0.2)' }} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     )

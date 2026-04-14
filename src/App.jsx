@@ -232,6 +232,18 @@ function App() {
     return () => document.removeEventListener('keydown', h)
   }, [])
 
+  // Escape key stops all speech
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        try { window.speechSynthesis?.cancel() } catch {}
+        if (window.jarvisStop) window.jarvisStop()
+      }
+    }
+    window.addEventListener('keydown', handleEsc)
+    return () => window.removeEventListener('keydown', handleEsc)
+  }, [])
+
   // Shutdown listener (from Settings button + voice command)
   useEffect(() => {
     const h = () => setShowShutdown(true)
@@ -246,9 +258,16 @@ function App() {
     return () => window.removeEventListener('jarvis-open-voice', handler)
   }, [])
 
-  // Auto-connect Gemini voice on boot complete
-  // WHY: Delay 3s to let Supabase sync finish first, then ensure geminiVoice
-  // setting exists (Supabase may overwrite jos-settings without this key).
+  // Sync overlay open/close state to Gemini mic lifecycle
+  useEffect(() => {
+    if (gemini.setOverlayOpen) {
+      gemini.setOverlayOpen(voiceOverlayOpen)
+    }
+  }, [voiceOverlayOpen])
+
+  // Auto-connect Gemini voice after app fully loaded
+  // WHY: Gemini is for interactive voice overlay only. Boot uses browser TTS.
+  // Connect on 'main' with 3s delay to let Supabase sync finish first.
   useEffect(() => {
     if (appState === 'main') {
       const timer = setTimeout(() => {

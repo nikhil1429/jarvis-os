@@ -309,11 +309,20 @@ export default function useAI() {
       const history = get(msgKey) || []
       const recentHistory = history.slice(-30)
 
-      // Build user content (text or text+image)
-      const image = options.image || null
-      const userContent = image
-        ? [{ type: 'image', source: { type: 'base64', media_type: image.mediaType, data: image.base64 } }, { type: 'text', text: userMessage || 'Analyse this image.' }]
-        : userMessage
+      // Build user content (text, text+image, or text+multiple images)
+      const images = options.images || (options.image ? [options.image] : [])
+      let userContent
+      if (images.length > 0) {
+        userContent = [
+          ...images.map(img => ({
+            type: 'image',
+            source: { type: 'base64', media_type: img.mediaType, data: img.base64 }
+          })),
+          { type: 'text', text: userMessage || 'Analyse these images.' }
+        ]
+      } else {
+        userContent = userMessage
+      }
 
       // Build messages array for the API (with conversation memory compression)
       const { context: compressedContext } = getConversationContext(mode)
@@ -377,9 +386,18 @@ export default function useAI() {
         }
         data = await resp.json()
 
-        // Handle tool use
-        const toolBlocks = (data.content || []).filter(b => b.type === 'tool_use' && b.name !== 'web_search')
-        let finalText = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('')
+        // Extract ONLY text blocks — filter out ALL tool/search/server blocks
+        let finalText = (data.content || [])
+          .filter(b => b.type === 'text')
+          .map(b => b.text)
+          .join('')
+
+        // Handle client-side tool calls (exclude server tools like web_search)
+        const toolBlocks = (data.content || []).filter(b =>
+          b.type === 'tool_use' &&
+          b.name !== 'web_search' &&
+          !b.name?.startsWith('web_search')
+        )
 
         if (toolBlocks.length > 0) {
           console.log('[useAI] Tool response - text blocks:', (data.content || []).filter(b => b.type === 'text').length, 'tool blocks:', toolBlocks.length, 'all types:', (data.content || []).map(b => b.type))
@@ -400,6 +418,15 @@ export default function useAI() {
           if (followResp.ok) {
             const followData = await followResp.json()
             finalText = (followData.content || []).filter(b => b.type === 'text').map(b => b.text).join('')
+            // Strip any accidental JSON that leaked into text
+            if (finalText.startsWith('{') || finalText.startsWith('[')) {
+              try {
+                JSON.parse(finalText)
+                // If it parses as JSON, it's not a real response — likely tool result leak
+                console.warn('[useAI] Response was pure JSON — likely tool result leak')
+                finalText = ''
+              } catch { /* Not JSON, keep it */ }
+            }
           }
         }
 

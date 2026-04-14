@@ -16,9 +16,19 @@ export default function Briefing() {
   const briefing = weekly.briefing || weekly.lastBriefing
 
   const handleReplay = async () => {
-    if (briefing?.text) {
-      window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: briefing.text } }))
-    }
+    if (!briefing?.text) return
+    try {
+      const synth = window.speechSynthesis
+      if (!synth) return
+      synth.cancel()
+      const u = new SpeechSynthesisUtterance(briefing.text)
+      u.lang = 'en-GB'
+      u.rate = 0.95
+      const voices = synth.getVoices()
+      const brit = voices.find(v => v.lang === 'en-GB') || voices[0]
+      if (brit) u.voice = brit
+      synth.speak(u)
+    } catch { /* ok */ }
   }
 
   if (!briefing?.text) {
@@ -49,6 +59,11 @@ export default function Briefing() {
               className="p-1.5 rounded border border-border text-text-muted hover:border-cyan/40 hover:text-cyan transition-all"
               title="Replay briefing">
               <Volume2 size={14} />
+            </button>
+            <button onClick={() => { try { window.speechSynthesis?.cancel() } catch {} }}
+              className="p-1.5 rounded border border-border text-text-muted hover:border-red-500/40 hover:text-red-400 transition-all"
+              title="Stop speaking">
+              <span style={{ fontSize: 12, fontFamily: 'Share Tech Mono' }}>■</span>
             </button>
           </div>
         </div>

@@ -4,6 +4,93 @@
 
 ---
 
+### Session 76C — Voice-First + JSON Fix + Image Clear + TTS Stop (2026-04-14)
+
+**JARVIS IS VOICE-FIRST.** Every JARVIS response now spoken aloud via browser TTS. Text display is secondary. Mute only via jos-settings.voiceEnabled=false. This is the correct architecture — JARVIS is a voice system with text display, not a text app with voice features.
+
+**Fix 1:** Disabled subtextAnalyzer — leaked raw JSON into chat via shared sendMessage.
+**Fix 2:** Image clearing already correct from 76. Verified pendingImages clears after send.
+**Fix 3:** Escape key stops all speech globally (App.jsx). Added ■ stop button on briefing card (Briefing.jsx).
+**Fix 4:** speakJarvis() helper — cleans markdown, caps at 800 chars, uses en-GB voice. Called after EVERY JARVIS response (chat, milestones, errors, RSD support messages). Respects jos-settings.voiceEnabled toggle.
+
+**Files modified (3):** ChatView.jsx, Briefing.jsx, App.jsx
+
+**Build: 0 errors.**
+
+---
+
+### Session 76B — Hotfix: API Version + Mic Guard + Audio Flush (2026-04-14)
+
+**Critical bugs from Session 76:**
+1. anthropic-version "2025-03-05" doesn't exist — ALL API calls 400 error. Reverted to "2023-06-01".
+2. Gemini auto-started mic on background connect — JARVIS spoke unprompted after ENTER. Added overlayOpenRef guard — mic only starts when voice overlay is open.
+3. Audio interruption broken — old chunks kept playing under new response. Fixed flushPlayback to close+recreate AudioContext (nuclear flush).
+4. Added inputTranscription stop-word detection for immediate audio flush.
+5. Wired voiceOverlayOpen state to gemini.setOverlayOpen() for mic lifecycle.
+6. Removed auto-briefing-read on Gemini connect — greeting only when overlay opens.
+
+**Files modified (4):** vite.config.js, api/claude.js, useGeminiVoice.js, App.jsx
+
+**Build: 0 errors.**
+
+---
+
+### Session 76 — Voice Flow Overhaul + Multi-Image Chat (2026-04-14)
+
+**Session 75 broke voice — briefing spoke on page load, voice fired randomly, couldn't stop it.**
+
+**Root cause:** Session 75 connected Gemini during boot + double-fired browser TTS AND jarvis-speak together + buffered events that replayed randomly.
+
+**Fix architecture — two separate voice systems that NEVER overlap:**
+- Browser TTS: boot questions + briefing only (speechSynthesis)
+- Gemini Live: voice overlay only (user-initiated via mic button)
+- jarvis-speak event removed from Boot.jsx and ChatView.jsx entirely
+- Gemini connects on main app load (3s delay), NOT during boot
+
+**Voice fixes:**
+- Boot.jsx: added speakBrowserTTS helper, boot questions speak via browser TTS
+- Boot.jsx: briefing speaks via browser TTS simultaneously with typewriter
+- Boot.jsx: ENTER JARVIS cancels all speech (speechSynthesis.cancel())
+- Boot.jsx: removed ALL jarvis-speak dispatches
+- ChatView.jsx: removed auto jarvis-speak from chat responses — text only
+- Briefing.jsx: replay button uses browser TTS instead of jarvis-speak
+- useGeminiVoice.js: reverted buffer/retry to simple silent drop
+- App.jsx: Gemini connects on main state only, NOT boot
+
+**Image enhancements:**
+- ChatView: multiple image support (pendingImages array)
+- ChatView: image-only sends allowed (no text required)
+- ChatView: image thumbnails shown in sent messages
+- useAI.js: support multiple images in API content array
+
+**Files modified (7):** App.jsx, Boot.jsx, Briefing.jsx, useGeminiVoice.js, ChatView.jsx, useAI.js, SESSION_LOG.md
+
+**Build: 0 errors.**
+
+---
+
+### Session 75 — Voice System Overhaul: Early Gemini + Boot Voice + Overlay UI + JSON Fix (2026-04-14)
+
+**Root cause found:** gemini.connect() was delayed to 3s after 'main' state — WebSocket never open during boot or chat. All jarvis-speak events silently failed.
+
+**Fix 1:** Updated anthropic-version from 2023-06-01 to 2025-03-05 in vite.config.js and api/claude.js. Old version couldn't handle web_search_20250305 server tool properly.
+
+**Fix 2:** App.jsx — connect Gemini during boot phase (500ms delay) instead of waiting for main state.
+
+**Fix 3:** Boot.jsx — added speakText helper (Gemini + browser TTS fallback). Boot questions and briefing now speak during boot screen. Briefing speaks BEFORE ENTER button appears (3s delay).
+
+**Fix 4:** useGeminiVoice.js — jarvis-speak handler now buffers events when WS not connected, retries every 500ms up to 10 times instead of silently dropping.
+
+**Fix 5:** useAI.js — more aggressive content block filtering for JSON leak. Strip accidental JSON from finalText.
+
+**Fix 6:** VoiceOverlay.jsx — enhanced UI with multi-ring reactor (outer/middle/inner rings, orbiting dots, core glow), state-driven visuals (LISTENING=cyan arcs, SPEAKING=waveform bars, PROCESSING=gold dots), corner brackets, NEURAL LINK ACTIVE label, elapsed time, improved state feedback text.
+
+**Files modified (7):** vite.config.js, api/claude.js, App.jsx, Boot.jsx, useGeminiVoice.js, useAI.js, VoiceOverlay.jsx
+
+**Build: 0 errors.**
+
+---
+
 ### Session 74 — Session Log Backfill + Briefing Voice + Overlay + Chat JSON Fix (2026-04-10)
 Backfilled sessions 65-73. Fixed 3 bugs: boot briefing not speaking through Gemini, VoiceOverlay showing nothing without transcript, Chat mode JSON leak from server-side tool blocks.
 
