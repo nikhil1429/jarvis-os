@@ -48,38 +48,6 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
   const sessionStartIndexRef = useRef(0)
   const recognitionRef = useRef(null)
 
-  // VOICE-FIRST: JARVIS always speaks. Text display is secondary.
-  const speakJarvis = useCallback((text) => {
-    try {
-      const settings = JSON.parse(localStorage.getItem('jos-settings') || '{}')
-      if (settings.voiceEnabled === false) return
-      const synth = window.speechSynthesis
-      if (!synth) return
-      synth.cancel()
-      const clean = text
-        .replace(/```[\s\S]*?```/g, '')
-        .replace(/\*\*(.+?)\*\*/g, '$1')
-        .replace(/\*(.+?)\*/g, '$1')
-        .replace(/`(.+?)`/g, '$1')
-        .replace(/#{1,6}\s/g, '')
-        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-        .replace(/[<>]/g, '')
-        .trim()
-      if (!clean) return
-      const capped = clean.length > 800 ? clean.slice(0, 800) + '... Response continues in text, Sir.' : clean
-      const u = new SpeechSynthesisUtterance(capped)
-      u.lang = 'en-GB'
-      u.rate = 0.95
-      u.volume = 0.85
-      const voices = synth.getVoices()
-      const brit = voices.find(v => v.lang === 'en-GB' && v.name.includes('Male'))
-        || voices.find(v => v.lang === 'en-GB')
-        || voices[0]
-      if (brit) u.voice = brit
-      synth.speak(u)
-    } catch { /* ok */ }
-  }, [])
-
   const handleSendDirect = useCallback(async (text) => {
     const trimmed = text?.trim() || ''
     if (!trimmed && pendingImages.length === 0) return
@@ -162,8 +130,8 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
         }])
         setLastTier(result.tier)
         play('receive')
-        // VOICE-FIRST: JARVIS always speaks the response
-        speakJarvis(displayText)
+        // VOICE-FIRST: speak through Gemini Charon
+        window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: displayText } }))
         // Communication tracker: classify JARVIS response style
         lastJarvisStyleRef.current = classifyStyle(displayText)
 
@@ -208,7 +176,7 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
         const crash = detectInSessionCrash(sessionMessages)
         if (crash) {
           setMessages(prev => [...prev, { role: 'assistant', content: crash.text, timestamp: new Date().toISOString(), isSupport: true }])
-          speakJarvis(crash.text)
+          window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: crash.text } }))
         }
 
         // Trigger conversation compression if needed (fire-and-forget)
@@ -227,7 +195,7 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
       // Reset voice state on API error — prevent stuck PROCESSING
       const errText = `Error. ${err.message || 'Request failed'}. Try again, Sir.`
       setMessages(prev => [...prev, { role: 'assistant', content: errText, timestamp: new Date().toISOString() }])
-      speakJarvis(errText)
+      window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: errText } }))
     }
   }, [sendMessage, mode.id, weekNumber, play, onModeSwitch, stopThinking, startThinking, pendingImages])
 
@@ -368,19 +336,8 @@ export default function ChatView({ mode, weekNumber, onBack, onModeSwitch }) {
         role: 'assistant', content: displayText, timestamp: new Date().toISOString(),
         isMilestone: true
       }])
-      // VOICE-FIRST: speak milestone
-      try {
-        const settings = JSON.parse(localStorage.getItem('jos-settings') || '{}')
-        if (settings.voiceEnabled !== false && window.speechSynthesis) {
-          window.speechSynthesis.cancel()
-          const u = new SpeechSynthesisUtterance(displayText)
-          u.lang = 'en-GB'; u.rate = 0.95; u.volume = 0.85
-          const voices = window.speechSynthesis.getVoices()
-          const brit = voices.find(v => v.lang === 'en-GB') || voices[0]
-          if (brit) u.voice = brit
-          window.speechSynthesis.speak(u)
-        }
-      } catch { /* ok */ }
+      // VOICE-FIRST: speak milestone through Gemini Charon
+      window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text: displayText } }))
     }
     const unsub = eventBus.subscribe('milestone:speech', handleMilestone)
     return () => unsub()

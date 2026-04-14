@@ -236,7 +236,7 @@ function App() {
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
-        try { window.speechSynthesis?.cancel() } catch {}
+        window.dispatchEvent(new CustomEvent('jarvis-stop-audio'))
         if (window.jarvisStop) window.jarvisStop()
       }
     }
@@ -265,11 +265,10 @@ function App() {
     }
   }, [voiceOverlayOpen])
 
-  // Auto-connect Gemini voice after app fully loaded
-  // WHY: Gemini is for interactive voice overlay only. Boot uses browser TTS.
-  // Connect on 'main' with 3s delay to let Supabase sync finish first.
+  // Auto-connect Gemini voice EARLY — during boot so voice is ready for questions
+  // WHY: Gemini Charon is the ONLY voice. No browser TTS. Must be connected before boot questions.
   useEffect(() => {
-    if (appState === 'main') {
+    if (appState === 'boot' || appState === 'main') {
       const timer = setTimeout(() => {
         try {
           const s = JSON.parse(localStorage.getItem('jos-settings') || '{}')
@@ -279,7 +278,7 @@ function App() {
           }
         } catch { /* ok */ }
         gemini.connect()
-      }, 3000)
+      }, 500) // 500ms — fast enough for boot, gives React time to mount
       return () => clearTimeout(timer)
     }
   }, [appState])

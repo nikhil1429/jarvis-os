@@ -738,6 +738,22 @@ export default function useGeminiVoice() {
         reconnectCountRef.current = 0;
         startElapsedTimer();
 
+        // Flush any queued jarvis-speak events (from before WS was open)
+        if (window.__jarvisSpeakQueue?.length > 0) {
+          const now = Date.now();
+          const queue = window.__jarvisSpeakQueue.filter(
+            (q) => now - q.time < 10000,
+          );
+          window.__jarvisSpeakQueue = [];
+          queue.forEach((q, i) => {
+            setTimeout(() => {
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ realtimeInput: { text: q.text } }));
+              }
+            }, i * 500);
+          });
+        }
+
         // Only greet and start mic if voice overlay is open (not background connect)
         if (overlayOpenRef.current) {
           if (!isReconnectRef.current && ws.readyState === WebSocket.OPEN) {
@@ -957,14 +973,26 @@ export default function useGeminiVoice() {
   // ── Event Listeners ────────────────────────────────────────────────────
   useEffect(() => {
     const handleSpeak = (e) => {
-      if (wsRef.current?.readyState !== WebSocket.OPEN) return;
       const text = e.detail?.text;
       if (!text) return;
-      wsRef.current.send(
-        JSON.stringify({
-          realtimeInput: { text },
-        }),
-      );
+
+      // Check voice enabled setting
+      try {
+        const s = JSON.parse(localStorage.getItem("jos-settings") || "{}");
+        if (s.voiceEnabled === false) return;
+      } catch {
+        /* ok */
+      }
+
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ realtimeInput: { text } }));
+      } else {
+        // Queue for when WS connects (max 5 items, drop oldest)
+        if (!window.__jarvisSpeakQueue) window.__jarvisSpeakQueue = [];
+        window.__jarvisSpeakQueue.push({ text, time: Date.now() });
+        if (window.__jarvisSpeakQueue.length > 5)
+          window.__jarvisSpeakQueue.shift();
+      }
     };
 
     const handleStop = () => {

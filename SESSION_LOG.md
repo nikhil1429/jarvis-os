@@ -4,6 +4,26 @@
 
 ---
 
+### Session 77 — Kill Browser TTS. Gemini Charon Voice ONLY. (2026-04-14)
+
+**Removed ALL browser speechSynthesis from codebase.** Every JARVIS voice output now routes through Gemini Live WebSocket via jarvis-speak events. No browser TTS fallback — Gemini is always on.
+
+**Changes:**
+1. useGeminiVoice.js: Added speak queue — jarvis-speak events that arrive before WS connects are queued (max 5, max 10s old) and flushed on setupComplete. handleSpeak checks voiceEnabled setting.
+2. App.jsx: Gemini connects during boot (500ms delay) instead of after main (3s delay). Escape key dispatches jarvis-stop-audio instead of speechSynthesis.cancel().
+3. Boot.jsx: Deleted speakBrowserTTS(). All boot questions + briefing use jarvis-speak events → Gemini Charon voice.
+4. ChatView.jsx: Deleted speakJarvis(). All Claude responses + milestones + errors + RSD support use jarvis-speak events.
+5. Briefing.jsx: Replay + stop use jarvis-speak / jarvis-stop-audio events.
+6. Zero speechSynthesis or SpeechSynthesisUtterance calls remain in production code.
+
+**Architecture:** jarvis-speak event → useGeminiVoice.js handleSpeak → Gemini WebSocket → Charon voice. One voice. Everywhere.
+
+**Files modified (6):** useGeminiVoice.js, App.jsx, Boot.jsx, ChatView.jsx, Briefing.jsx, SESSION_LOG.md
+
+**Build: 0 errors.**
+
+---
+
 ### Session 76C — Voice-First + JSON Fix + Image Clear + TTS Stop (2026-04-14)
 
 **JARVIS IS VOICE-FIRST.** Every JARVIS response now spoken aloud via browser TTS. Text display is secondary. Mute only via jos-settings.voiceEnabled=false. This is the correct architecture — JARVIS is a voice system with text display, not a text app with voice features.

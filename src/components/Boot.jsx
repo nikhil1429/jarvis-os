@@ -111,24 +111,10 @@ export default function Boot({ onComplete }) {
 
   const VOICE_QS = ['', 'Energy level, Sir?', 'Primary focus today?', 'Any blockers?', 'Morning bet — what will you accomplish today?']
 
-  // Browser TTS only — no Gemini, no jarvis-speak events
-  // WHY: Boot uses browser speechSynthesis. Gemini is for voice overlay only.
-  const speakBrowserTTS = useCallback((text) => {
-    try {
-      const synth = window.speechSynthesis
-      if (!synth) return
-      synth.cancel()
-      const u = new SpeechSynthesisUtterance(text)
-      u.lang = 'en-GB'
-      u.rate = 0.95
-      u.volume = 0.85
-      const voices = synth.getVoices()
-      const brit = voices.find(v => v.lang === 'en-GB' && v.name.includes('Male'))
-        || voices.find(v => v.lang === 'en-GB')
-        || voices[0]
-      if (brit) u.voice = brit
-      synth.speak(u)
-    } catch { /* ok */ }
+  // Voice-first: all speech through Gemini Charon voice
+  const speakJarvisEvent = useCallback((text) => {
+    if (!text) return
+    window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text } }))
   }, [])
 
   // Check if returning user (compressed boot)
@@ -268,7 +254,7 @@ export default function Boot({ onComplete }) {
         // Start voice transition
         setVoiceStep(1)
         setVoiceQuestion(VOICE_QS[1])
-        speakBrowserTTS(VOICE_QS[1])
+        speakJarvisEvent(VOICE_QS[1])
       }, isReturning.current ? 200 : 400)
     }, delay)
 
@@ -335,7 +321,7 @@ export default function Boot({ onComplete }) {
 
     // Typewriter effect for briefing
     // Speak briefing via browser TTS simultaneously with typewriter
-    speakBrowserTTS(finalText)
+    speakJarvisEvent(finalText)
     let i = 0
     const charDelay = isReturning.current ? 8 : 18
     const interval = setInterval(() => {
@@ -369,8 +355,8 @@ export default function Boot({ onComplete }) {
 
   const handleEnter = useCallback(() => {
     // BRUTE FORCE: Set flag FIRST — blocks any queued/in-flight briefing speech
-    // Stop any browser TTS that's playing
-    try { window.speechSynthesis?.cancel() } catch {}
+    // Stop any Gemini audio that's playing
+    window.dispatchEvent(new CustomEvent('jarvis-stop-audio'))
     // Kill any playing audio
     document.querySelectorAll('audio').forEach(a => { try { a.pause(); a.currentTime = 0 } catch {} })
     if (window._thinkingStop) { window._thinkingStop(); window._thinkingStop = null }
@@ -523,7 +509,7 @@ export default function Boot({ onComplete }) {
                     setEnergy(n)
                     setTimeout(() => {
                       setVoiceStep(2); setVoiceQuestion(VOICE_QS[2])
-                      speakBrowserTTS(VOICE_QS[2])
+                      speakJarvisEvent(VOICE_QS[2])
                     }, 500)
                   }} className={active ? 'orb-ignite' : ''} style={{
                     width: 56, height: 56, borderRadius: '50%', border: `2px solid ${active ? c : 'rgba(13,33,55,0.5)'}`,
@@ -550,7 +536,7 @@ export default function Boot({ onComplete }) {
                     const next = voiceStep + 1
                     setTimeout(() => {
                       setVoiceStep(next); setVoiceQuestion(VOICE_QS[next])
-                      speakBrowserTTS(VOICE_QS[next])
+                      speakJarvisEvent(VOICE_QS[next])
                     }, 300)
                   }}
                   placeholder={voiceStep === 2 ? 'Type or speak your focus...' : voiceStep === 3 ? 'Blockers...' : 'I will...'}
@@ -562,7 +548,7 @@ export default function Boot({ onComplete }) {
                   const next = voiceStep + 1
                   setTimeout(() => {
                     setVoiceStep(next); setVoiceQuestion(VOICE_QS[next])
-                    speakBrowserTTS(VOICE_QS[next])
+                    speakJarvisEvent(VOICE_QS[next])
                   }, 300)
                 }} style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(0,240,255,0.08)', border: '1px solid rgba(0,240,255,0.3)', color: '#00f0ff', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>▸</button>
               </div>
