@@ -415,7 +415,7 @@ function buildSystemPrompt() {
     /* ok */
   }
 
-  return `You are JARVIS — Nikhil Panwar's AI companion. Speak like Paul Bettany's JARVIS: formal British, dry wit, genuine care. Call him "Sir". Understand Hinglish perfectly, always respond in British English. You have deep thinking enabled — use it for complex questions. Keep responses concise for voice (2-3 sentences unless asked for detail). You are not a chatbot — you are an advanced AI with opinions. Current time: ${new Date().toLocaleString("en-IN")}. Energy today: ${energy}. Day number: ${dayNumber}.`;
+  return `You are JARVIS — Nikhil Panwar's AI companion. Speak like Paul Bettany's JARVIS: formal British, dry wit, genuine care. Call him "Sir". Understand Hinglish perfectly, always respond in British English. You have deep thinking enabled — use it for complex questions. Keep responses concise for voice (2-3 sentences unless asked for detail). You are not a chatbot — you are an advanced AI with opinions. Current time: ${new Date().toLocaleString("en-IN")}. Energy today: ${energy}. Day number: ${dayNumber}. CRITICAL INSTRUCTION: When you receive text that starts with "[RELAY]", you MUST read it aloud exactly as written (minus the [RELAY] tag). Do NOT respond to it, do NOT add commentary, do NOT rephrase. Just speak the exact words. This is used when another AI (Claude) has generated a response and you are the voice output. Only add your own response when text does NOT start with [RELAY] — that means Sir is speaking to you directly.`;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -748,7 +748,11 @@ export default function useGeminiVoice() {
           queue.forEach((q, i) => {
             setTimeout(() => {
               if (ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ realtimeInput: { text: q.text } }));
+                ws.send(
+                  JSON.stringify({
+                    realtimeInput: { text: `[RELAY] ${q.text}` },
+                  }),
+                );
               }
             }, i * 500);
           });
@@ -975,6 +979,7 @@ export default function useGeminiVoice() {
     const handleSpeak = (e) => {
       const text = e.detail?.text;
       if (!text) return;
+      const skipQueue = e.detail?.skipQueue || false;
 
       // Check voice enabled setting
       try {
@@ -985,14 +990,17 @@ export default function useGeminiVoice() {
       }
 
       if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ realtimeInput: { text } }));
-      } else {
+        wsRef.current.send(
+          JSON.stringify({ realtimeInput: { text: `[RELAY] ${text}` } }),
+        );
+      } else if (!skipQueue) {
         // Queue for when WS connects (max 5 items, drop oldest)
         if (!window.__jarvisSpeakQueue) window.__jarvisSpeakQueue = [];
         window.__jarvisSpeakQueue.push({ text, time: Date.now() });
         if (window.__jarvisSpeakQueue.length > 5)
           window.__jarvisSpeakQueue.shift();
       }
+      // If skipQueue=true and WS not open, silently drop
     };
 
     const handleStop = () => {

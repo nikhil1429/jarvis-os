@@ -112,9 +112,9 @@ export default function Boot({ onComplete }) {
   const VOICE_QS = ['', 'Energy level, Sir?', 'Primary focus today?', 'Any blockers?', 'Morning bet — what will you accomplish today?']
 
   // Voice-first: all speech through Gemini Charon voice
-  const speakJarvisEvent = useCallback((text) => {
+  const speakJarvisEvent = useCallback((text, skipQueue) => {
     if (!text) return
-    window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text } }))
+    window.dispatchEvent(new CustomEvent('jarvis-speak', { detail: { text, skipQueue: !!skipQueue } }))
   }, [])
 
   // Check if returning user (compressed boot)
@@ -254,7 +254,7 @@ export default function Boot({ onComplete }) {
         // Start voice transition
         setVoiceStep(1)
         setVoiceQuestion(VOICE_QS[1])
-        speakJarvisEvent(VOICE_QS[1])
+        speakJarvisEvent(VOICE_QS[1], true)
       }, isReturning.current ? 200 : 400)
     }, delay)
 
@@ -509,7 +509,7 @@ export default function Boot({ onComplete }) {
                     setEnergy(n)
                     setTimeout(() => {
                       setVoiceStep(2); setVoiceQuestion(VOICE_QS[2])
-                      speakJarvisEvent(VOICE_QS[2])
+                      speakJarvisEvent(VOICE_QS[2], true)
                     }, 500)
                   }} className={active ? 'orb-ignite' : ''} style={{
                     width: 56, height: 56, borderRadius: '50%', border: `2px solid ${active ? c : 'rgba(13,33,55,0.5)'}`,
@@ -536,7 +536,7 @@ export default function Boot({ onComplete }) {
                     const next = voiceStep + 1
                     setTimeout(() => {
                       setVoiceStep(next); setVoiceQuestion(VOICE_QS[next])
-                      speakJarvisEvent(VOICE_QS[next])
+                      speakJarvisEvent(VOICE_QS[next], true)
                     }, 300)
                   }}
                   placeholder={voiceStep === 2 ? 'Type or speak your focus...' : voiceStep === 3 ? 'Blockers...' : 'I will...'}
@@ -548,7 +548,7 @@ export default function Boot({ onComplete }) {
                   const next = voiceStep + 1
                   setTimeout(() => {
                     setVoiceStep(next); setVoiceQuestion(VOICE_QS[next])
-                    speakJarvisEvent(VOICE_QS[next])
+                    speakJarvisEvent(VOICE_QS[next], true)
                   }, 300)
                 }} style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(0,240,255,0.08)', border: '1px solid rgba(0,240,255,0.3)', color: '#00f0ff', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>▸</button>
               </div>

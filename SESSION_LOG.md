@@ -4,6 +4,17 @@
 
 ---
 
+### Session 77B — Gemini Relay Fix: Speak Exactly, Don't Respond (2026-04-14)
+
+**Problem:** Gemini treated jarvis-speak text as user input and generated own responses instead of reading aloud.
+**Fix:** [RELAY] prefix on all jarvis-speak text + system prompt instruction to read [RELAY] text exactly. Boot questions use skipQueue=true — won't queue if WS not connected (user sees them on screen anyway). Briefing and Claude responses queue normally.
+
+**Files modified (3):** useGeminiVoice.js (handleSpeak prefix + queue flush prefix + system prompt), Boot.jsx (skipQueue for questions), SESSION_LOG.md
+
+**Build: 0 errors.**
+
+---
+
 ### Session 77 — Kill Browser TTS. Gemini Charon Voice ONLY. (2026-04-14)
 
 **Removed ALL browser speechSynthesis from codebase.** Every JARVIS voice output now routes through Gemini Live WebSocket via jarvis-speak events. No browser TTS fallback — Gemini is always on.
