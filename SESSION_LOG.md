@@ -3178,3 +3178,34 @@ NOT YET BUILT (future phases):
 - Gold Opus accent theme
 - Breathing/pulsing animations everywhere
 - Mobile responsive (2D reactor, swipe gestures)
+
+---
+### Session 79 Part 1 — Apr 17, 2026 — Supabase God-Tier Schema Design
+
+**Status:** Design complete + Gemini-validated. Deployment pending (Part 2).
+
+**Architecture locked:**
+- 38 life-sector tables + 1 infrastructure table (jarvis_users) = 39 total tables across 12 life sectors (Pattern C / CQRS)
+- Immutable jarvis_events firehose + 37 state tables
+- ULID-as-UUID primary keys (client-side via ulidx)
+- jarvis_entities = universal knowledge graph
+- TypeScript derivation in src/derivation/
+- AI outputs immutable (model_version column)
+- LWW conflict resolution via occurred_at
+- RPC log_jarvis_event for instant writes (~15ms)
+- Database Webhooks → Edge Functions for async AI only
+- RLS on all 38 tables, JWT expiry 10 years
+- HNSW DISABLED on free tier (OOM risk)
+- Weekly pg_dump backup
+
+**Validation:**
+- Gemini Rounds 1-4: ULID-as-UUID, no partitioning, standard RLS fine, RPC+Webhooks pattern
+- Gemini Round 5 (Apr 17): Transaction wrapping mandatory, no CONCURRENTLY, free tier safe
+
+**Artifacts committed:**
+- supabase/migrations/001_jarvis_god_tier_init.sql
+- docs/sessions/SESSION_79_LOG.md
+
+**Next (Part 2):** Staging project deploy → verify → prod deploy.
+
+---
