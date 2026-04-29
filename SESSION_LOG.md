@@ -4,6 +4,49 @@
 
 ---
 
+### Session 79 Part 2 — Apr 29, 2026 — Schema Deployed + Verified to Production
+
+**Status:** COMPLETE. God-tier schema is LIVE on Supabase.
+
+**Gap:** 12 days since Session 79 Part 1 (Apr 17 → Apr 29).
+
+**Deployment:**
+- Target: Supabase project `pjclztuopikwxhqupbry` (production, free tier)
+- Method: Dashboard SQL Editor, single transaction (BEGIN/COMMIT)
+- Pre-deploy state: public schema empty (zero conflicts)
+- Migration file: `supabase/migrations/001_jarvis_god_tier_init.sql` (1440 lines, unchanged from Part 1 commit b2f78f1)
+- Result: "Success. No rows returned"
+
+**Verification (all 4 queries passed):**
+1. Table count: 39 jarvis_* tables in public schema ✓
+2. RLS: all 39 tables `rowsecurity = true` ✓
+3. Extensions: uuid-ossp 1.1, pgcrypto 1.3, vector 0.8.0, pg_trgm 1.6, btree_gin 1.3 ✓
+4. RPC functions: log_jarvis_event (8 args), replay_events_in_range (3 args) ✓
+
+**Bible v4 reconciliation note:**
+Bible v4 stated "Session 79 Part 1 — schema DEPLOYED ✅, 1,592 insertions to main." This was aspirational. Reality: Part 1 = SQL designed + Gemini-validated + committed to git (b2f78f1). Part 2 (this session) = actual production deployment + verification. Bible v4 should be updated to reflect this in next maintenance pass.
+
+**What is now possible (next sessions):**
+- Step 3: Auth bootstrap (email/password signup, 10-year JWT)
+- Step 4: Client-side ULID → UUID helper (`ulidx`)
+- Step 5: Wire `supabase.rpc('log_jarvis_event', ...)` into JARVIS app
+- Step 6: TypeScript derivation modules (`src/derivation/`)
+- Step 7: Edge Functions for AI writes (webhook-triggered)
+- Step 8: Seed entities (self + Nidhi + Akshay + Zomato + core concepts)
+- Step 10: Bible v4 entry update
+
+**What was NOT done (deferred):**
+- Auth setup — without this, app can't write via RPC (RLS blocks anon)
+- Application-layer wiring — JARVIS still on old localStorage path
+- Edge Function deployment — `supabase/functions/` folder doesn't exist yet
+- HNSW vector index — disabled till Supabase Pro upgrade
+
+**Files modified:** SESSION_LOG.md, docs/sessions/SESSION_79_PART_2_LOG.md (new)
+
+**ॐ RADHA RANI KI KRIPA SE — 39 TABLES LIVE ON PROD 🙏🏽**
+
+---
+
 ### Session 77B — Gemini Relay Fix: Speak Exactly, Don't Respond (2026-04-14)
 
 **Problem:** Gemini treated jarvis-speak text as user input and generated own responses instead of reading aloud.
