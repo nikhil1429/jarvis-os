@@ -4,6 +4,26 @@
 
 ---
 
+### Session 80 Block 2 — May 4, 2026 — Auth User Trigger Migration
+
+**Status:** File created + committed + pushed to origin/main. SQL execution in Supabase Dashboard pending manual step.
+
+**File created:** `supabase/migrations/002_auth_user_trigger.sql`
+
+**Purpose:** Bridge `auth.users` → `public.jarvis_users` so every new Supabase Auth signup auto-creates the corresponding profile row. Without this trigger, signups succeed in `auth.users` but the app has no profile to attach data to, breaking RLS policies that reference `jarvis_users.id`.
+
+**Decisions locked:**
+- **SECURITY DEFINER** — function runs with owner privileges so it can write into `public.jarvis_users` even though the signup is happening under `supabase_auth_admin`. Without this the insert would be blocked by RLS.
+- **`SET search_path = public, auth, pg_temp`** — search_path locked at function definition time. Prevents search_path hijacking attacks (a known Postgres SECURITY DEFINER footgun) and ensures `jarvis_users` always resolves to the public schema regardless of caller's session settings.
+- **`ON CONFLICT (id) DO NOTHING`** — idempotent. If the row somehow already exists (manual seed, replay, retry), the trigger swallows the conflict instead of erroring out and breaking signup.
+- **AFTER INSERT** trigger on `auth.users` — fires only after the auth row commits, so we never create a profile for a failed signup.
+- **EXCEPTION WHEN OTHERS** handler — RAISE WARNING + RETURN NEW. Auth signup MUST NOT fail just because profile creation hit an issue. Failure is logged to Postgres logs for later reconciliation; user still gets their auth account.
+- **GRANT EXECUTE TO supabase_auth_admin** — the role that runs the trigger needs explicit execute permission on the function.
+
+**Next manual step:** Open Supabase Dashboard → SQL Editor → paste contents of `supabase/migrations/002_auth_user_trigger.sql` → Run. Then verify: signup a test user via Auth and confirm a matching row appears in `public.jarvis_users`.
+
+---
+
 ### Session 79 Part 2 — Apr 29, 2026 — Schema Deployed + Verified to Production
 
 **Status:** COMPLETE. God-tier schema is LIVE on Supabase.
