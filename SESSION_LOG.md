@@ -4,6 +4,41 @@
 
 ---
 
+### Session 80 Block 4 — May 10, 2026 — Silent Auth Hook
+
+**Status:** COMPLETE. Code committed + pushed. Boot.jsx wiring deferred to separate task.
+
+**Files created:**
+- `src/lib/supabaseClient.js` — singleton Supabase client. Namespaced storage key `jos-supabase-auth` (avoids collision with other Supabase apps on same origin). `autoRefreshToken: true` + `persistSession: true` so the token survives reloads and refreshes silently in the background. `detectSessionInUrl: false` since we don't use OAuth redirects. Fail-fast `throw` on missing `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` — better to crash at boot than to silently degrade to anonymous and have RLS reject every write later.
+- `src/hooks/useAuth.js` — silent auth hook. On mount: `getSession()` first; if no session, `signInWithPassword` using `VITE_JARVIS_EMAIL` + `VITE_JARVIS_PASSWORD` from `.env.local`. Subscribes to `onAuthStateChange` so `TOKEN_REFRESHED` / `SIGNED_OUT` propagate immediately (without it, refreshed tokens would be persisted but in-memory state would go stale). `cancelled` flag in async IIFE prevents `setState` after unmount. Errors are surfaced via the returned `error` field — never thrown, never logged. Returns `{ user, session, loading, error }`.
+
+**Single-user infrastructure decisions locked:**
+- No login UI ever. JARVIS is personal infrastructure, not SaaS.
+- Credentials live in `.env.local` (gitignored). Never logged.
+- Caller (Boot.jsx, future) decides what to do on `error` — e.g. fall back to localStorage-only mode.
+
+**Build:** `npm run build` passed (36.14s, 4062 modules, 0 errors). Two warnings present but both pre-existing and unrelated to Block 4 (mixed static/dynamic import on `supabaseSync.js`; `index` chunk > 600 KB).
+
+**Next:** Block 5 — `ulidGen.js` + `eventLogger.js` wrapping `log_jarvis_event` RPC. After that, Boot.jsx wiring to actually mount `useAuth` and gate first event-log write on `session` being present.
+
+---
+
+### Session 80 Block 3 — Permanent User Created (Dashboard, manual)
+
+**Status:** COMPLETE (done manually via Supabase Dashboard, logged here retroactively).
+
+Permanent user row created in `auth.users` and mirrored into `public.jarvis_users` (auto via Block 2 trigger).
+
+- **UUID:** `d56336e6-d88c-479c-8677-1a8262a06788`
+- **jarvis_users row verified:**
+  - `display_name`: "Nikhil Panwar"
+  - `timezone`: "Asia/Kolkata"
+  - `current_phase`: "finops_build"
+
+This UUID is the single owner all RLS policies will resolve against. Every future row in `jarvis_*` tables carries this id in its `user_id` column.
+
+---
+
 ### Session 80 Block 2 — May 4, 2026 — Auth User Trigger Migration
 
 **Status:** File created + committed + pushed to origin/main. SQL execution in Supabase Dashboard pending manual step.
@@ -21,6 +56,20 @@
 - **GRANT EXECUTE TO supabase_auth_admin** — the role that runs the trigger needs explicit execute permission on the function.
 
 **Next manual step:** Open Supabase Dashboard → SQL Editor → paste contents of `supabase/migrations/002_auth_user_trigger.sql` → Run. Then verify: signup a test user via Auth and confirm a matching row appears in `public.jarvis_users`.
+
+---
+
+### Session 80 Block 1 — Supabase Dashboard Auth Config (manual)
+
+**Status:** COMPLETE (done manually via Supabase Dashboard, logged here retroactively).
+
+Auth settings configured before any code wiring:
+- Email provider enabled (signup/signin via email + password)
+- JWT expiry: 1 hour (default)
+- Refresh token rotation: enabled, never-expire (so a 10-year-trusted device behaviour is possible without re-login)
+- Redirect URLs configured for local dev + Vercel deploy
+
+This is the foundation Block 2 trigger and Block 4 silent-auth hook both depend on. Done manually because it's a one-time dashboard config, not code.
 
 ---
 
