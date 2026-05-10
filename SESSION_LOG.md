@@ -4,6 +4,32 @@
 
 ---
 
+### Session 81 Block 6 Phase 1 — May 11, 2026 — Audit Complete
+
+**Goal:** Inventory all `supabaseSync` consumers, categorize cleanup strategy (no code changes).
+
+**Status:** Audit done. READ-ONLY pass — zero production code modified.
+
+**Output:** `BLOCK6_AUDIT.md` at repo root (orchestrator surface, consumer inventory, dead refs, 404 baseline, risk assessment, recommended strategy).
+
+**Findings summary:**
+- **STRIP:** 3 (App.jsx syncOnBoot wiring, data-integrity.test.js describe block, orphan `logApiCallToCloud`)
+- **REPLACE:** 2 (useStorage.js pushToCloud, CheckInForm.jsx logCheckinToCloud)
+- **DEFER:** 1 (Settings.jsx "Force Full Sync" button)
+- **EXTRA (out of supabaseSync scope but coupled):** 1 — `dataIntegrity.js` independently references the dropped `jarvis_data` table at lines 86 and 292; must be rewritten alongside.
+
+**Surprises:**
+- `dataIntegrity.js` hits dead `jarvis_data` directly (bypasses supabaseSync) — not on the original consumer list.
+- `logApiCallToCloud` is exported but has zero callers — already-orphaned dead export.
+- `logCheckinToCloud` targets `jarvis_checkins` but v4 table is `jarvis_check_ins` (underscore mismatch) — second silently-dead path.
+- `jarvis_api_logs` exists in v4 but column shape differs from old code (requires `user_id`, `provider`, `purpose`).
+
+**Highest blast radius:** `useStorage.js` — 40 consumer files (~90 call sites) write through it. Strip/replace of this file is the only change that fans out across the whole app; everything else is leaf-node.
+
+**Next:** Phase 2 — Nikhil decides strip-vs-rewrite strategy from `BLOCK6_AUDIT.md`.
+
+---
+
 ### Session 80 Block 5 — May 10, 2026 — First Real Event Logged
 
 **Status:** SUCCESS. First real row written to `jarvis_events` via `log_jarvis_event` RPC.
