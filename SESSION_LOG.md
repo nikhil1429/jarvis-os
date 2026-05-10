@@ -4,6 +4,43 @@
 
 ---
 
+### Session 80 Block 5 — May 10, 2026 — First Real Event Logged
+
+**Status:** SUCCESS. First real row written to `jarvis_events` via `log_jarvis_event` RPC.
+
+**Goal:** Write ONE real row to `jarvis_events` via `log_jarvis_event` RPC.
+
+**What got built:**
+- `ulidx@2.4.1` installed (verified `ulid` + `ulidToUUID` exports).
+- `src/utils/ulidGen.js` — 3 exports: `newUlid`, `ulidToUuid`, `newEventId`.
+- `src/utils/eventLogger.js` — Option A mapping: `sourceLayer` lives in payload, `source_device=laptop` only set for `APP_CLIENT`, `domain` required, `occurred_at` auto-filled, `SOURCE_LAYERS` enum frozen, fire-and-forget error capture.
+- `src/utils/__test__/smokeTest.js` — 113 lines, manual RLS reachability test (DevTools tool).
+- `src/components/Boot.jsx` — wired `useAuth` + `useRef`-guarded `useEffect`, dep array `[user?.id]` (not `[user]`), `domain=system`, `sourceLayer=APP_CLIENT`.
+
+**Live validation:**
+- `npm run dev` clean.
+- Silent auth: `POST /auth/v1/token` → 200.
+- Gemini Live WebSocket connected, Charon active.
+- `log_jarvis_event` RPC → 200 OK.
+- `jarvis_events` row inserted: `id 019e1253-eb37-b0c8-5037-906cfda9d7bb`, `event_type BOOT_INITIATED`, `domain system`.
+- `useRef` guard verified: fired exactly once.
+
+**Known issues carried to Session 81:**
+1. `supabaseSync.js` hits dead `jarvis_data` table — 8+ files affected, 404 spam each boot.
+2. Streak UI shows "1-day at risk" due to cloud sync cascade failure.
+3. `npm run build` deferred to pre-deploy session.
+
+**Files changed:**
+- `package.json`, `package-lock.json`
+- `src/utils/ulidGen.js` (new)
+- `src/utils/eventLogger.js` (new)
+- `src/utils/__test__/smokeTest.js` (new)
+- `src/components/Boot.jsx` (modified)
+
+**Next session:** Session 81 — `supabaseSync.js` cleanup (migrate from dead `jarvis_data` KV to v4 39-table schema).
+
+---
+
 ### Session 80 Block 4 — May 10, 2026 — Silent Auth Hook
 
 **Status:** COMPLETE. Code committed + pushed. Boot.jsx wiring deferred to separate task.

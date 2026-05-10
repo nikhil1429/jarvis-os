@@ -7,9 +7,11 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import useStorage from '../hooks/useStorage.js'
+import useAuth from '../hooks/useAuth.js'
 import { getDayNumber, getWeekNumber, getTimeOfDay } from '../utils/dateUtils.js'
 import BootReactor from './BootReactor.jsx'
 import TASKS from '../data/tasks.js'
+import { logEvent, SOURCE_LAYERS } from '../utils/eventLogger.js'
 
 // Dead Three.js code deleted in Session 48E
 
@@ -86,6 +88,7 @@ Write 3-5 sentence briefing in JARVIS voice (formal British, "Sir"). Under 100 w
 // ============================================================
 export default function Boot({ onComplete }) {
   const { get, update } = useStorage()
+  const { user } = useAuth()
   const [phase, setPhase] = useState(1)
   const [reactorVisible, setReactorVisible] = useState(false)
   const [reactorPhase, setReactorPhase] = useState('void') // void|ignition|running|ambient|briefing|exit
@@ -125,6 +128,27 @@ export default function Boot({ onComplete }) {
       isReturning.current = true
     }
   }, [get])
+
+  // Fire BOOT_INITIATED event once when auth resolves.
+  // Guard: useRef survives re-renders so we never double-fire even if user.id
+  // identity flips (e.g. token refresh produces a new session object).
+  const bootEventFiredRef = useRef(false)
+  useEffect(() => {
+    if (user?.id && !bootEventFiredRef.current) {
+      bootEventFiredRef.current = true
+      logEvent({
+        eventType: 'BOOT_INITIATED',
+        domain: 'system',
+        sourceLayer: SOURCE_LAYERS.APP_CLIENT,
+        payload: {
+          userId: user.id,
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent,
+          appVersion: '4.0.0',
+        },
+      })
+    }
+  }, [user?.id])
 
   const handleMouseMove = useCallback((e) => {
     setMousePos({
