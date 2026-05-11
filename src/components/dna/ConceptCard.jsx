@@ -6,6 +6,7 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, Check, AlertTriangle } from 'lucide-react'
 import { getReviewSchedule } from '../../utils/spacedRepetition.js'
+import { logConceptUpdated } from '../../events/sources.js'
 
 // WHY: Color-coded categories so Nikhil can visually scan priority
 const CATEGORY_STYLES = {
@@ -40,15 +41,18 @@ export default function ConceptCard({ concept, savedData, onUpdate }) {
       lastReview: now,
       reviewCount: (savedData?.reviewCount || 0) + 1,
     })
+    logConceptUpdated({ conceptId: concept.id, before: strength, after: strength, action: 'reviewed' })
   }
 
   const handleStrengthChange = (val) => {
+    const before = strength
     setStrength(val)
     onUpdate(concept.id, {
       ...savedData,
       strength: val,
       notes,
     })
+    logConceptUpdated({ conceptId: concept.id, before, after: val, action: 'slider' })
   }
 
   return (
@@ -136,7 +140,10 @@ export default function ConceptCard({ concept, savedData, onUpdate }) {
               <textarea
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
-                onBlur={() => onUpdate(concept.id, { ...savedData, strength, notes })}
+                onBlur={() => {
+                  onUpdate(concept.id, { ...savedData, strength, notes })
+                  logConceptUpdated({ conceptId: concept.id, before: strength, after: strength, action: 'notes' })
+                }}
                 placeholder="Key points, connections, examples..."
                 rows={3}
                 className="w-full bg-void border border-border rounded px-3 py-2 font-body text-sm

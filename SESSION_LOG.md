@@ -4,6 +4,47 @@
 
 ---
 
+## Session 81 Block 7 Phase 4 — Wire CONCEPT_UPDATED
+
+**Date:** May 11, 2026
+**Goal:** Wire `logConceptUpdated({conceptId, before, after, action})` into `ConceptCard.jsx` at all 3 update call sites (slider, mark-reviewed, notes-blur).
+**Status:** SUCCESS ✅
+
+### Surgery
+
+**Modified (1 file):** `src/components/dna/ConceptCard.jsx`
+
+- Added import:
+  ```js
+  import { logConceptUpdated } from '../../events/sources.js'
+  ```
+- Wired 3 call sites — emit fires immediately after the existing `onUpdate` localStorage write:
+  - `handleMarkReviewed` — `action: 'reviewed'`, before/after = current strength (delta 0, but the review event is the signal)
+  - `handleStrengthChange` — `action: 'slider'`, captures `before = strength` (React state at call time, i.e., pre-`setStrength`) and `after = val` (new value). Helper auto-computes delta.
+  - Notes `onBlur` — `action: 'notes'`, before/after = current strength (notes-only change, no strength delta)
+
+### Decisions Locked
+
+- **Emit at the ConceptCard call sites, not centrally in `DnaTab.handleUpdate`.** Action attribution (`'slider' | 'reviewed' | 'notes'`) is known at the source; reconstructing it from a diff in the parent funnel would be brittle. Matches the typed-helper philosophy: "the source of truth for an event is the place that knows it happened."
+- **No throttle on slider drags.** A continuous drag (30 → 35 → 40 → 50) emits one event per integer step. This matches the existing `onUpdate` localStorage cadence — diverging the two layers would create silent drift between local state and the events log. If volume becomes a problem, throttle both layers together later. Per Phase 1 Q1: storage cheap, signal loss unrecoverable.
+- **Before-value source.** Using the local `strength` React state (not `savedData?.strength`) because savedData is a prop and can be stale during rapid drags before DnaTab re-renders. The React-state value is the rendered "before" at click time.
+
+### Verification
+
+- `npx eslint src/components/dna/ConceptCard.jsx` → 0 issues
+- `npm run lint` → 127 problems (flat baseline; zero new from this wiring)
+- Browser test deferred — additive change, no removed behaviour. Nikhil can validate: open DNA tab → drag a slider → expect both `jos-concepts` localStorage updates AND `CONCEPT_UPDATED` rows in `jarvis_events` with `action='slider'` and computed delta. Same for Mark Reviewed (`action='reviewed'`, delta 0) and notes blur (`action='notes'`, delta 0).
+
+### Blast Radius
+
+Single file, 3 small edits (1 import + 3 helper calls). Zero removed behaviour. DnaTab.jsx untouched — `handleUpdate` central funnel remains the localStorage write path; events are sibling fire-and-forget.
+
+### Next
+
+Phase 5 — wire `logCommitmentCreated(commitment)` into CMD tab commitment-creation site. Need to locate the commitment-creation handler first (likely `BattlePlan.jsx` or similar — last seen in Block 4 as placeholder, but may have been built out).
+
+---
+
 ## Session 81 Block 7 Phase 3 — Wire CHECKIN_SUBMITTED
 
 **Date:** May 11, 2026
