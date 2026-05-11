@@ -26,9 +26,14 @@ export const supabase = createClient(url, anonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    storageKey: 'jos-supabase-auth',
     detectSessionInUrl: false,
+    storageKey: 'jos-supabase-auth',
+    flowType: 'pkce',
   },
 });
+
+if (import.meta.env.DEV) {
+  console.log('[JARVIS] Supabase client initialised', { url });
+}
 
 export default supabase;
