@@ -4,6 +4,72 @@
 
 ---
 
+## Session 81 Block 6 — supabaseSync.js Cleanup Complete
+
+**Date:** May 11, 2026
+**Goal:** Kill v3 dead KV layer. Zero `jarvis_data` references in src/. Rewrite `dataIntegrity.repairKey()` for v4 schema.
+**Status:** SUCCESS ✅
+
+### Surgery Scope (Phases 4-6)
+
+**Modified (6 files):**
+- `src/App.jsx` — removed `syncOnBoot` import + `isSupabaseConfigured` import + 8-line boot-sync useEffect block + `syncedRef`
+- `src/components/log/CheckInForm.jsx` — removed dynamic-import + chained `logCheckinToCloud` call (1 line)
+- `src/components/settings/Settings.jsx` — replaced "FORCE FULL SYNC" button's async onClick handler with `() => {}` (button preserved as UI, click is no-op pending Block 7 decision)
+- `src/hooks/useStorage.js` — removed `pushToCloud` import + 2 call sites (lines 31, 49)
+- `src/test/data-integrity.test.js` — removed entire "SUPABASE SYNC INTEGRITY" describe block (46 lines, 5 tests; sections 1 and 3 preserved)
+- `src/utils/dataIntegrity.js` — swapped supabase import for `eventLogger` + `SOURCE_LAYERS` imports; rewrote `repairKey()` to emit `CORRUPTION_DETECTED` event instead of cloud-fetch; deleted CHECK 3 "Supabase Cloud Sync" probe block from `runSystemDiagnostics`
+
+**Deleted (1 file):**
+- `src/utils/supabaseSync.js` (63 lines)
+
+**Net code delta:** ~120 lines removed, ~15 lines added (Phase 6 event emission + comments)
+
+### Verification (Phase 7)
+
+- `npm run build` → clean, no errors, no new warnings
+- `npm run lint` → 127 problems (flat baseline from Phase 5, all pre-existing, unrelated to Block 6)
+- `grep -rn "supabaseSync\|jarvis_data" src/` → **ZERO matches**
+- Browser smoke test on `localhost:5173`:
+  - Silent auth: ✅ 200 OK
+  - Gemini Live Charon: ✅ Connected, speaking boot questions
+  - `log_jarvis_event` RPC: ✅ 200 OK (fresh BOOT_INITIATED row)
+  - DevTools Network: ✅ Zero 404s for `jarvis_data`
+  - DevTools Console: ✅ Zero "Could not find the table" errors
+  - `[Integrity] HEALTHY — 20/20 valid, 0 repaired, 0 failed`
+  - System status: **OPERATIONAL** (was DEGRADED before)
+  - Streak UI: "1-day at risk" warning ✅ GONE
+
+### Architectural Wins
+
+1. Cloud-aided corruption recovery REMOVED — was silent cloud-refetch that never worked anyway. Now: every corruption overwrites with `schema.defaults` AND emits `CORRUPTION_DETECTED` event. Audit trail in `jarvis_events` shows WHAT got corrupted and WHAT repair was attempted. Future Block 7+ work can replay these events to identify keys needing v4 hydration.
+
+2. `runSystemDiagnostics` "Cloud" row removed — data-driven UI auto-adjusts; status logic now correctly reports OPERATIONAL instead of chronic DEGRADED.
+
+3. `CORRUPTION_DETECTED` introduced as new `event_type` value — RPC accepts it (no migration needed), v4 schema doesn't enforce event_type enum.
+
+### Known Issues / Block 7 Inbox
+
+1. **`useGeminiVoice.js:352` → gemini-2.5-pro 400 Bad Request** when Gemini Live tool-calls `engage_deep_reasoning`. PRE-EXISTING bug, NOT caused by Block 6. Surfaced during Phase 7 smoke test. Block 7 (or dedicated micro-block) to investigate — likely Meta-Rule 3 territory (query Gemini for correct request shape).
+
+2. **Settings.jsx "FORCE FULL SYNC" button = silent no-op.** Button preserved as UI, click does nothing. Block 7 decision needed: (a) remove button, (b) wire to `BACKUP_REQUESTED` event via eventLogger, or (c) repurpose for manual ntfy trigger / JSON export.
+
+3. **Settings.jsx unused `useEffect` import (line 5:20).** Pre-existing dead import, out of Block 6 scope. Future Settings polish work.
+
+4. **`repairKey()` return shape narrowed** from `'supabase' | 'defaults' | 'none'` to `'defaults' | 'none'`. No call sites branch on `'supabase'`, so this is a strict superset cleanup with zero caller risk. Note for any future v4 cloud-restore work.
+
+### Files Changed (git status summary)
+
+- Modified: 6 files
+- Deleted: 1 file (supabaseSync.js)
+- Untracked: none from Block 6 work
+
+### Next
+
+Block 7 — Event source wiring via eventLogger (TAB_SWITCHED, CHAT_TURN, CHECKIN_SUBMITTED, QUIZ_COMPLETED, CONCEPT_UPDATED, COMMITMENT_CREATED) + REPLACE category resolution + Known Issues #1 (Gemini deep-reasoning 400).
+
+---
+
 ### Session 81 Block 6 Phase 1 — May 11, 2026 — Audit Complete
 
 **Goal:** Inventory all `supabaseSync` consumers, categorize cleanup strategy (no code changes).

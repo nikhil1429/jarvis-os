@@ -40,8 +40,6 @@ import { runOvernightProcessing } from './utils/overnightProcessor.js'
 import AmbientMode from './components/AmbientMode.jsx'
 import FocusMode from './components/FocusMode.jsx'
 import ShutdownCeremony from './components/ShutdownCeremony.jsx'
-import { syncOnBoot } from './utils/supabaseSync.js'
-import { isSupabaseConfigured } from './utils/supabase.js'
 import useGeminiVoice from './hooks/useGeminiVoice.js'
 import JarvisVoiceButton from './components/JarvisVoiceButton.jsx'
 import VoiceOverlay from './components/VoiceOverlay.jsx'
@@ -282,15 +280,6 @@ function App() {
       return () => clearTimeout(timer)
     }
   }, [appState])
-
-  // Supabase boot sync — ref guard prevents StrictMode double-fire
-  const syncedRef = useRef(false)
-  useEffect(() => {
-    if (isSupabaseConfigured() && !syncedRef.current) {
-      syncedRef.current = true
-      syncOnBoot()
-    }
-  }, [])
 
   const core = get('core') || DEFAULT_KEYS.core
   const dayNumber = getDayNumber(core.startDate)

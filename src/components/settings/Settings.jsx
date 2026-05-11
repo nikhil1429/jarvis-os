@@ -383,11 +383,7 @@ export default function Settings({ isOpen, onClose, gemini }) {
               {(() => { try { return !!import.meta.env.VITE_SUPABASE_URL } catch { return false } })() ? (
                 <div>
                   <p className="font-body text-[10px] mb-2" style={{ color: '#10b981' }}>Supabase connected. Data syncs automatically.</p>
-                  <button onClick={async () => {
-                    const { pushAllToCloud } = await import('../../utils/supabaseSync.js')
-                    const count = await pushAllToCloud()
-                    alert(`Synced ${count} keys to cloud`)
-                  }} className="font-mono text-[10px] text-cyan border border-cyan/30 px-3 py-1 rounded hover:bg-cyan/10 transition-all">
+                  <button onClick={() => {}} className="font-mono text-[10px] text-cyan border border-cyan/30 px-3 py-1 rounded hover:bg-cyan/10 transition-all">
                     FORCE FULL SYNC
                   </button>
                 </div>

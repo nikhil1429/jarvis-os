@@ -173,53 +173,6 @@ describe('Data Integrity: localStorage Stress', () => {
 })
 
 // ============================================================
-// 2. SUPABASE SYNC INTEGRITY — 5 tests
-// ============================================================
-describe('Data Integrity: Supabase Sync Logic', () => {
-  let pushToCloud, syncOnBoot
-
-  beforeEach(async () => {
-    localStorage.clear()
-    try {
-      const mod = await import('../utils/supabaseSync.js')
-      pushToCloud = mod.pushToCloud
-      syncOnBoot = mod.syncOnBoot
-    } catch { pushToCloud = null; syncOnBoot = null }
-  })
-
-  it('pushToCloud skips null values', async () => {
-    if (!pushToCloud) return
-    localStorage.setItem('jos-backup', 'null')
-    const result = await pushToCloud('jos-backup')
-    expect(result).toBe(false)
-  })
-
-  it('pushToCloud skips undefined keys', async () => {
-    if (!pushToCloud) return
-    const result = await pushToCloud('jos-nonexistent')
-    expect(result).toBe(false)
-  })
-
-  it('pushToCloud handles valid data without crash', async () => {
-    if (!pushToCloud) return
-    localStorage.setItem('jos-core', JSON.stringify({ streak: 5 }))
-    await expect(pushToCloud('jos-core')).resolves.not.toThrow()
-  })
-
-  it('syncOnBoot does not crash with empty localStorage', async () => {
-    if (!syncOnBoot) return
-    localStorage.clear()
-    await expect(syncOnBoot()).resolves.not.toThrow()
-  })
-
-  it('pushToCloud handles non-jos keys', async () => {
-    if (!pushToCloud) return
-    localStorage.setItem('random-key', '"value"')
-    await expect(pushToCloud('random-key')).resolves.not.toThrow()
-  })
-})
-
-// ============================================================
 // 3. TOOL CALL DATA INTEGRITY — 7 tests
 // ============================================================
 describe('Data Integrity: Tool Call Patterns', () => {

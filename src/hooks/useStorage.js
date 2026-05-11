@@ -4,7 +4,6 @@
 // The 'jos-' prefix namespaces our data so it never collides with other apps on the same domain.
 
 import { useCallback } from 'react'
-import { pushToCloud } from '../utils/supabaseSync.js'
 import { verifyWrite } from '../utils/dataIntegrity.js'
 
 const PREFIX = 'jos-'
@@ -29,7 +28,6 @@ export default function useStorage() {
       if (!verifyWrite(fullKey, value)) {
         console.error(`[useStorage] WRITE VERIFICATION FAILED for ${key}`)
       }
-      pushToCloud(fullKey) // async cloud sync
     } catch (err) {
       console.error(`[useStorage] Failed to write ${PREFIX}${key}:`, err)
     }
@@ -47,7 +45,6 @@ export default function useStorage() {
       if (!verifyWrite(fullKey, next)) {
         console.error(`[useStorage] WRITE VERIFICATION FAILED for ${key}`)
       }
-      pushToCloud(fullKey) // async cloud sync
       return next
     } catch (err) {
       console.error(`[useStorage] Failed to update ${PREFIX}${key}:`, err)

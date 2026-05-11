@@ -221,7 +221,6 @@ Tone: JARVIS formal British, call him Sir. Keep under 150 words. No markdown.`
 
     eventBus.emit('checkin:submit', entry)
     bridgeCheckinToBiometrics(entry)
-    import('../../utils/supabaseSync.js').then(m => m.logCheckinToCloud(entry)).catch(() => {})
     play('check')
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)

@@ -2,7 +2,7 @@
 // WHY: Tests catch bugs before deploy. This catches corruption DURING usage.
 // On every boot, JARVIS scans all its data, repairs what it can, and alerts on what it can't.
 
-import { supabase } from './supabase.js'
+import { logEvent, SOURCE_LAYERS } from './eventLogger.js'
 
 const PREFIX = 'jos-'
 
@@ -80,17 +80,19 @@ function validateKey(key) {
 }
 
 async function repairKey(key, schema) {
-  if (supabase) {
-    try {
-      const { data, error } = await supabase
-        .from('jarvis_data').select('value').eq('key', key).single()
-      if (!error && data?.value !== null && data?.value !== undefined) {
-        localStorage.setItem(key, JSON.stringify(data.value))
-        console.log(`[Integrity] REPAIRED ${key} from Supabase cloud`)
-        return { repaired: true, source: 'supabase', error: null }
-      }
-    } catch { /* Supabase unavailable */ }
-  }
+  const attemptedRepair = schema?.defaults !== undefined ? 'defaults' : 'none'
+
+  logEvent({
+    eventType: 'CORRUPTION_DETECTED',
+    domain: 'system',
+    sourceLayer: SOURCE_LAYERS.APP_CLIENT,
+    payload: {
+      key,
+      attemptedRepair,
+      severity: 'warning',
+      detectedAt: new Date().toISOString(),
+    },
+  })
 
   if (schema?.defaults !== undefined) {
     localStorage.setItem(key, JSON.stringify(schema.defaults))
@@ -284,25 +286,8 @@ export async function runSystemDiagnostics() {
   // CHECK 2: API — skipped on boot (tested naturally on first user message, saves rate limit)
   report.checks.push({ name: 'API', status: 'ok', detail: 'Tested on first message', icon: '✅' })
 
-  // CHECK 3: Supabase Cloud Sync
-  try {
-    const url = import.meta.env.VITE_SUPABASE_URL
-    const key = import.meta.env.VITE_SUPABASE_ANON_KEY
-    if (url && key) {
-      const resp = await fetch(`${url}/rest/v1/jarvis_data?select=key&limit=1`, {
-        headers: { 'apikey': key, 'Authorization': `Bearer ${key}` },
-      })
-      report.checks.push({
-        name: 'Cloud', icon: resp.ok ? '✅' : '⚠️',
-        status: resp.ok ? 'ok' : 'warning',
-        detail: resp.ok ? 'Supabase connected' : `Supabase ${resp.status}`,
-      })
-    } else {
-      report.checks.push({ name: 'Cloud', status: 'skipped', detail: 'Not configured', icon: '⏭️' })
-    }
-  } catch {
-    report.checks.push({ name: 'Cloud', status: 'failed', detail: 'Supabase unreachable', icon: '❌' })
-  }
+  // Cloud probe removed in Block 6 (Session 81) — was probing dead
+  // jarvis_data table. v4 health check deferred to dedicated module.
 
   // CHECK 5: localStorage Quota
   try {
