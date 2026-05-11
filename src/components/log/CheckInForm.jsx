@@ -11,6 +11,7 @@ import useSound from '../../hooks/useSound.js'
 import useEventBus from '../../hooks/useEventBus.js'
 import { compileSummary } from '../../utils/strategicCompiler.js'
 import { bridgeCheckinToBiometrics } from '../../utils/gadgetSchemas.js'
+import { logCheckinSubmitted } from '../../events/sources.js'
 
 // WHY: Reusable tap selector — renders N buttons in a row, highlights selected
 function TapSelector({ label, value, onChange, max = 5, colors }) {
@@ -221,6 +222,7 @@ Tone: JARVIS formal British, call him Sir. Keep under 150 words. No markdown.`
 
     eventBus.emit('checkin:submit', entry)
     bridgeCheckinToBiometrics(entry)
+    logCheckinSubmitted(entry)
     play('check')
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)

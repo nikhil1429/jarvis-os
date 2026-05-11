@@ -4,6 +4,47 @@
 
 ---
 
+## Session 81 Block 7 Phase 3 — Wire CHECKIN_SUBMITTED
+
+**Date:** May 11, 2026
+**Goal:** Wire `logCheckinSubmitted(entry)` into `CheckInForm.jsx` submit handler. Closes the first of two REPLACE entries carried over from Block 6 audit.
+**Status:** SUCCESS ✅
+
+### Surgery
+
+**Modified (1 file):** `src/components/log/CheckInForm.jsx`
+
+- Added import (after `gadgetSchemas` import to keep events grouped near other cross-cutting utilities):
+  ```js
+  import { logCheckinSubmitted } from '../../events/sources.js'
+  ```
+- Added single fire-and-forget call inside `handleSave()`, sequenced after `eventBus.emit('checkin:submit', entry)` and `bridgeCheckinToBiometrics(entry)`, before `play('check')`:
+  ```js
+  logCheckinSubmitted(entry)
+  ```
+
+### Rationale
+
+- **Same insertion slot** the Block 6-removed `logCheckinToCloud(entry)` dynamic-import line occupied. Direct replacement keeps the diff narrative coherent (cloud-sync site → cloud-event site).
+- **Order matters:** bus emit fires first so in-app subscribers (streak hook, biometrics bridge) react synchronously; cloud event fires last so a slow RPC doesn't block UI feedback (`play('check')`, `setSaved(true)`).
+- **No await:** helper returns the logEvent promise but `handleSave` is sync from React's perspective. Fire-and-forget per eventLogger contract.
+
+### Verification
+
+- `npx eslint src/components/log/CheckInForm.jsx` → 0 issues
+- `npm run lint` → 127 problems (flat baseline; zero new issues from this wiring)
+- Browser test deferred — additive change, no removed behaviour, lint clean. Nikhil can validate by submitting a check-in: should land BOTH the existing `jos-feelings` localStorage write AND a new `CHECKIN_SUBMITTED` row in `jarvis_events`.
+
+### Blast Radius
+
+Single file, 2-line code delta. Zero removed behaviour. All existing check-in flows (event bus, biometrics bridge, debrief generation, sound feedback, save UI) untouched.
+
+### Next
+
+Phase 4 — wire `logConceptUpdated({conceptId, before, after, action})` into `DnaTab.jsx` / `ConceptCard.jsx`. Triggered on strength slider changes and mark-reviewed clicks.
+
+---
+
 ## Session 81 Block 7 Phase 2 — Event Source Typed Helpers
 
 **Date:** May 11, 2026
