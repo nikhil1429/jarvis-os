@@ -4,6 +4,60 @@
 
 ---
 
+## Session 81 Block 7 Phase 2 — Event Source Typed Helpers
+
+**Date:** May 11, 2026
+**Goal:** Build `src/events/sources.js` — 6 typed event factories that forward to `eventLogger.logEvent` with correct event_type, domain, sourceLayer, payload shape. No callers wired yet (Phases 3-8).
+**Status:** SUCCESS ✅
+
+### Strategy Locked (Phase 1)
+
+**Wiring strategy: direct site-level calls via typed helpers.** Each component that writes localStorage will add a sibling typed-helper call (e.g. `logCheckinSubmitted(entry)`). Helpers concentrate contract; call sites stay one-liners at the action. Rejected: central bus-bridge (double centralization on top of eventLogger), per-site raw `logEvent` (drift risk).
+
+**Q1 — TAB_SWITCHED throttling:** Full fidelity, no throttle. ADHD bounce-back patterns are real signal; throttling at the logging boundary loses data permanently. Throttle in Layer 2 analysis if needed.
+
+**Q2 — CHAT_TURN payload:** Reference jarvis_conversations table by `conversationId`. Event carries routing/metadata only; full message body lives in the projection table. Standard event-sourcing pattern; keeps jarvis_events lean and queryable.
+
+### Files Built
+
+- `src/events/sources.js` — 6 exported factories:
+  - `logCheckinSubmitted(entry)` → CHECKIN_SUBMITTED, domain=mind
+  - `logQuizCompleted({mode, score, total, conceptId})` → QUIZ_COMPLETED, domain=mind
+  - `logConceptUpdated({conceptId, before, after, action})` → CONCEPT_UPDATED, domain=mind (auto-computes `delta`)
+  - `logCommitmentCreated(commitment)` → COMMITMENT_CREATED, domain=work
+  - `logTabSwitched({from, to})` → TAB_SWITCHED, domain=system
+  - `logChatTurn({conversationId, turnIndex, role, mode, model, tokenCount})` → CHAT_TURN, domain=mind
+  - All helpers: `sourceLayer=APP_CLIENT`, fire-and-forget, return the logEvent promise, ISO timestamps auto-filled
+
+- `src/test/events-sources.test.js` — 8 vitest tests, `vi.mock('../utils/eventLogger.js')` to isolate the contract. Covers each helper's event_type/domain/sourceLayer + payload shape + the Q2 invariant ("CHAT_TURN must not embed message text").
+
+### Verification
+
+- `npx vitest run src/test/events-sources.test.js` → **8/8 pass** (110ms test time, 22s incl. env setup)
+- `npx eslint src/events/sources.js src/test/events-sources.test.js` → 0 issues
+- `npm run lint` → 127 problems (flat baseline from Block 6 Phase 7, zero new from this phase)
+- No production code changed — only new files added. Zero blast radius.
+
+### Phase Plan (10 phases total)
+
+- ✅ Phase 1 — Strategy decision
+- ✅ Phase 2 — Typed helpers + smoke tests (this phase)
+- Phase 3 — Wire CHECKIN_SUBMITTED in CheckInForm.jsx (closes Block 6 REPLACE category #1)
+- Phase 4 — Wire CONCEPT_UPDATED in DnaTab.jsx / ConceptCard.jsx
+- Phase 5 — Wire COMMITMENT_CREATED in CMD tab commitments
+- Phase 6 — Wire QUIZ_COMPLETED in TrainTab quiz mode
+- Phase 7 — Wire TAB_SWITCHED in BottomNav.jsx (full-fidelity per Q1)
+- Phase 8 — Wire CHAT_TURN in ChatView.jsx + ensure jarvis_conversations row creation
+- Phase 9 — Block 6 Inbox A — Settings.jsx "FORCE FULL SYNC" button (rewire vs. remove)
+- Phase 10 — Block 6 Inbox B — useGeminiVoice.js:352 400 Bad Request (Meta-Rule 3: Gemini Studio query first)
+- Phase 11 — Close (SESSION_LOG + commit + push + ntfy)
+
+### Next
+
+Phase 3 — wire `logCheckinSubmitted(entry)` into `CheckInForm.jsx` submit handler. Low risk, single call site, closes one of the two REPLACE entries from Block 6 audit.
+
+---
+
 ## Session 81 Block 6 — supabaseSync.js Cleanup Complete
 
 **Date:** May 11, 2026
