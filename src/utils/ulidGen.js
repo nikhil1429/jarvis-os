@@ -43,3 +43,21 @@ export function ulidToUuid(ulidStr) {
 export function newEventId() {
   return ulidToUUID(ulid());
 }
+
+/**
+ * Canonical ULID generator for JARVIS event IDs. Returns a ULID encoded as
+ * a UUID hex string (8-4-4-4-12) so it can be inserted directly into Postgres
+ * `uuid` columns (e.g. jarvis_events.id). Same 128 bits as the underlying
+ * Crockford ULID — only the textual encoding changes.
+ *
+ * Reference: Bible v4 §7.2 (ULID-as-UUID pattern).
+ *
+ * @returns {string} 36-char UUID, e.g. "0162fb16-de37-66bb-89db-7fcd092e3535"
+ * @example
+ *   import { generateULID } from '../utils/ulidGen';
+ *   const id = generateULID();
+ *   await supabase.rpc('log_jarvis_event', { p_event_id: id, ... });
+ */
+export function generateULID() {
+  return ulidToUUID(ulid());
+}
