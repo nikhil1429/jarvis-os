@@ -142,9 +142,15 @@ export function logTabSwitched({ from, to }) {
 
 /**
  * Chat turn (TrainTab ChatView). Per Block 7 decision Q2, full message text
- * lives in jarvis_conversations; this event references that row by conversationId
- * and carries only routing/metadata. Caller is responsible for creating or
- * updating the jarvis_conversations row alongside this emit.
+ * will eventually live in jarvis_conversations; this event references that row
+ * by conversationId and carries routing/metadata.
+ *
+ * Session 81 extension: until the jarvis_conversations projection pipeline is
+ * online, callers may pass `text` inline. It lands in payload.text and is
+ * forward-compatible — the future projection will read payload.text and move
+ * it to the projection table. Omit `text` to preserve original Block 7
+ * behaviour (metadata-only event).
+ *
  * @param {object} args
  * @param {string} args.conversationId — UUID of the jarvis_conversations row
  * @param {number} args.turnIndex      — 0-based ordinal within conversation
@@ -152,20 +158,61 @@ export function logTabSwitched({ from, to }) {
  * @param {string} args.mode           — training mode key
  * @param {string} args.model          — model id that handled the turn
  * @param {number} [args.tokenCount]   — optional token count for cost tracking
+ * @param {string} [args.text]         — optional inline message text (deferred projection)
  */
-export function logChatTurn({ conversationId, turnIndex, role, mode, model, tokenCount = null }) {
+export function logChatTurn({ conversationId, turnIndex, role, mode, model, tokenCount = null, text }) {
+  const payload = {
+    conversationId,
+    turnIndex,
+    role,
+    mode,
+    model,
+    tokenCount,
+    turnAt: new Date().toISOString(),
+  };
+  if (typeof text === 'string') payload.text = text;
   return logEvent({
     eventType: 'CHAT_TURN',
     domain: 'mind',
     sourceLayer: APP,
-    payload: {
-      conversationId,
-      turnIndex,
-      role,
-      mode,
-      model,
-      tokenCount,
-      turnAt: new Date().toISOString(),
-    },
+    payload,
+  });
+}
+
+/**
+ * Voice turn (Gemini Live overlay — useGeminiVoice.js). Mirrors logChatTurn's
+ * shape so the deferred jarvis_conversations projection can fold both event
+ * types into the same table. sourceLayer is L1_GEMINI_LIVE (not APP_CLIENT)
+ * because the audio/transcript stream originates from Gemini's WebSocket — even
+ * though emission runs in the browser.
+ *
+ * Domain is 'mind' (Option B, Session 81): chat and voice are one logical
+ * activity, distinguished by event_type, not domain.
+ *
+ * @param {object} args
+ * @param {string} args.conversationId — UUID for this voice session
+ * @param {number} args.turnIndex      — 0-based ordinal within session
+ * @param {'user'|'assistant'} args.role
+ * @param {string} args.model          — e.g. 'models/gemini-3.1-flash-live-preview'
+ * @param {string} [args.text]         — transcript (Gemini supplies both directions per Phase 1 finding)
+ * @param {number} [args.audioDurationMs] — turn duration in ms (null if unknown)
+ * @param {number} [args.tokenCount]
+ */
+export function logVoiceTurn({ conversationId, turnIndex, role, model, text, audioDurationMs = null, tokenCount = null }) {
+  const payload = {
+    conversationId,
+    turnIndex,
+    role,
+    model,
+    tokenCount,
+    audioDurationMs,
+    turnAt: new Date().toISOString(),
+  };
+  if (typeof text === 'string') payload.text = text;
+  return logEvent({
+    eventType: 'VOICE_TURN',
+    domain: 'mind',
+    sourceLayer: SOURCE_LAYERS.L1_GEMINI_LIVE,
+    payload,
   });
 }

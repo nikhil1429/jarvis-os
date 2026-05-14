@@ -4,6 +4,55 @@ Chronological log of build sessions. Newest entries at the top.
 
 ---
 
+## Session 81 — Layer 1 Wire: Voice + Chat Turns → Supabase (2026-05-14)
+
+**Goal:** Every USER turn and every JARVIS turn (voice overlay + 18 training modes) writes a parallel row to `public.jarvis_events` via the existing `logEvent()` utility — alongside, never replacing, the existing `jos-msgs-{mode}` localStorage saves. Bible v4 layering principle preserved.
+
+**Discovery:** Identified 4 callsites across 2 files. ChatView.jsx does not persist messages directly — persistence lives in `useAI.sendMessage` (`update('msgs-${mode}', ...)`), so the 3 chat callsites are in `useAI.js`, not the component. Voice persistence was zero (render-only UI); `useGeminiVoice.js` already captures Gemini's `inputTranscription` + `outputTranscription` but never stored them.
+
+**Domain decision (Option B with `'mind'`):** Chat and voice are one logical activity, distinguished by `event_type` not `domain`. `CHAT_TURN` and `VOICE_TURN` both tagged `domain='mind'`. Single domain simplifies Layer 4 Opus queries ("all conversation events today") without fidelity loss — `event_type` still separates the two modalities. The schema's pre-existing `domain='voice'` trigger filter (migration line 1432) was not activated; trade-off accepted.
+
+**Files created:**
+- `src/utils/conversationId.js` — sessionStorage helper. `getOrCreateConversationId(mode)` + `nextTurnIndex(mode)`. Per-mode UUID minted once per tab/page-load; turnIndex monotonic within that session. sessionStorage scope means reload = fresh conversation.
+
+**Files updated:**
+- `src/events/sources.js` — `logChatTurn` extended with optional `text` param (forward-compatible with future `jarvis_conversations` projection — text lands in payload until then). New `logVoiceTurn` factory, mirrors `logChatTurn` shape; `eventType='VOICE_TURN'`, `domain='mind'`, `sourceLayer=L1_GEMINI_LIVE`. Added `audioDurationMs` field for voice-only turn-duration tracking.
+- `src/hooks/useAI.js` — 3 callsites wired AFTER each existing `update(msgKey, ...)` localStorage write:
+  - CS-1: user message (line ~338) — `role: 'user'`, `text: userMessage`
+  - CS-2: assistant message, tool-use path (line ~439) — `role: 'assistant'`, `text: finalText`, `tokenCount: data.usage?.output_tokens`
+  - CS-3: assistant message, streaming path (line ~516) — `role: 'assistant'`, `text: fullText`, `tokenCount: outputTokens`
+- `src/hooks/useGeminiVoice.js` — voice turn boundary detection:
+  - `voiceConversationIdRef` minted on `setupComplete` via `crypto.randomUUID()` (with Date.now+random fallback)
+  - `pendingUserTurnRef` accumulates `sc.inputTranscription.text` chunks; `userTurnStartTimeRef` captures first-chunk timestamp
+  - `pendingJarvisTurnRef` accumulates `sc.outputTranscription.text` chunks; `jarvisTurnStartTimeRef` captures first-audio-frame timestamp
+  - User turn flushed when `sc.modelTurn.parts` arrives (turn-taking proxy — model replying means user finished)
+  - JARVIS turn flushed on `sc.turnComplete` BEFORE `setState(LISTENING)`
+  - All audio pipeline logic untouched (no changes to `playAudioChunk`, `flushPlayback`, mic capture)
+
+**Event taxonomy:**
+| Event type | Domain | sourceLayer | source_device | Carries text |
+|---|---|---|---|---|
+| `CHAT_TURN` | `mind` | `APP_CLIENT` | `laptop` | yes (new) |
+| `VOICE_TURN` | `mind` | `L1_GEMINI_LIVE` | `null` | yes |
+
+Both share payload shape: `{ conversationId, turnIndex, role, model, text, turnAt, sourceLayer, ... }`. VOICE adds `audioDurationMs`; CHAT adds `mode`.
+
+**User text capture:** Available from all 4 paths — no fallback needed. Voice uses Gemini's server-side `inputTranscription` (confirmed available in current stream). Chat uses the user input string directly. Web Speech API (`ChatView.jsx:271`) is unrelated to voice overlay; it powers only the text-mode mic button and routes through `handleSendDirect → useAI` like a regular typed message.
+
+**Layering preserved:**
+- Zero `localStorage.setItem` lines modified.
+- Every `logChatTurn` / `logVoiceTurn` call wrapped in `try/catch`. Failures emit `console.warn` only — never throw, never block UI, never affect audio pipeline.
+- All payload fields are JSON-serializable primitives.
+- Existing `logChatTurn` tests in `src/test/events-sources.test.js` unaffected (call without `text` → preserves Block 7 metadata-only behaviour).
+
+**Build:** `npm run build` passed. 4074 modules transformed in 26.28s. No new warnings beyond pre-existing chunk-size advisory.
+
+**Manual verification:** Voice overlay produced 4 VOICE_TURN rows (2 user + 2 assistant) sharing one `conversationId`, monotonic `turnIndex 0..3`, all with populated `text`, `audioDurationMs > 0`, `sourceLayer='L1_GEMINI_LIVE'`. Chat tests across 'chat' (tool path) and 'teach' (streaming path) produced 4 CHAT_TURN rows, distinct `conversationId` per mode, `sourceLayer='APP_CLIENT'`, `source_device='laptop'`, `tokenCount` populated on assistant rows. Confirmed via SQL Editor queries against `public.jarvis_events` filtered to last 30 minutes.
+
+**NEXT — Session 82:** Remaining `jos-*` localStorage keys → `jarvis_events` (check-ins via `logCheckInSubmitted` is already wired in S81 Block 7; remaining is mood, concepts, quiz results, applications, decisions, journal, commitments — most have typed factories already in `src/events/sources.js`, wiring still needed).
+
+---
+
 ## Session 80C — Block 5: eventLogger + First jarvis_events Row (2026-05-12)
 
 **Goal:** Verify that every app boot writes one real row to `public.jarvis_events` via the `log_jarvis_event` RPC, carrying the authenticated user's `auth.uid()` and a typed payload — closing the loop from silent auth (Block 4) to the immutable event firehose.

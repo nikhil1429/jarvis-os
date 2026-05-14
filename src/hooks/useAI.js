@@ -16,6 +16,8 @@ import { getConversationContext } from '../utils/conversationMemory.js'
 import { getRelationshipPrompt } from '../utils/relationshipEngine.js'
 import { getSelfAwarenessPrompt } from '../utils/jarvisInnerLife.js'
 import { logAPICall } from '../utils/apiLogger.js'
+import { logChatTurn } from '../events/sources.js'
+import { getOrCreateConversationId, nextTurnIndex } from '../utils/conversationId.js'
 import { getDayNumber, getWeekNumber } from '../utils/dateUtils.js'
 import { compileSummary } from '../utils/strategicCompiler.js'
 import { getJarvisBehavior, getSpecialPromptAdditions } from '../utils/jarvisBehavior.js'
@@ -347,6 +349,18 @@ export default function useAI() {
         return updated.slice(-30)
       })
 
+      // Layer 1 (Session 81): parallel Supabase write — localStorage stays SOT
+      try {
+        logChatTurn({
+          conversationId: getOrCreateConversationId(mode),
+          turnIndex: nextTurnIndex(mode),
+          role: 'user',
+          mode,
+          model: routing.model,
+          text: userMessage,
+        })
+      } catch (err) { console.warn('[useAI] logChatTurn user failed:', err?.message) }
+
       // Create abort controller for this request
       const abortController = new AbortController()
       abortRef.current = abortController
@@ -438,6 +452,20 @@ export default function useAI() {
         const latencyMs = Date.now() - startTime
         update(msgKey, prev => [...(prev || []), { role: 'assistant', content: finalText, timestamp: new Date().toISOString(), model: routing.model, tier: routing.tier }].slice(-30))
         logAPICall({ model: routing.model, mode, inputTokens: data.usage?.input_tokens || 0, outputTokens: data.usage?.output_tokens || 0, latencyMs, autoUpgraded: routing.autoUpgraded, reason: routing.reason })
+
+        // Layer 1 (Session 81): parallel Supabase write for assistant turn (tool-use path)
+        try {
+          logChatTurn({
+            conversationId: getOrCreateConversationId(mode),
+            turnIndex: nextTurnIndex(mode),
+            role: 'assistant',
+            mode,
+            model: routing.model,
+            tokenCount: data.usage?.output_tokens ?? null,
+            text: finalText,
+          })
+        } catch (err) { console.warn('[useAI] logChatTurn assistant (tool) failed:', err?.message) }
+
         setIsStreaming(false)
         return { text: finalText, model: routing.model, tier: routing.tier, autoUpgraded: routing.autoUpgraded, reason: routing.reason }
       }
@@ -524,6 +552,19 @@ export default function useAI() {
           tier: routing.tier,
         }].slice(-30)
       })
+
+      // Layer 1 (Session 81): parallel Supabase write for assistant turn (streaming path)
+      try {
+        logChatTurn({
+          conversationId: getOrCreateConversationId(mode),
+          turnIndex: nextTurnIndex(mode),
+          role: 'assistant',
+          mode,
+          model: routing.model,
+          tokenCount: outputTokens,
+          text: fullText,
+        })
+      } catch (err) { console.warn('[useAI] logChatTurn assistant (stream) failed:', err?.message) }
 
       // Log the API call
       logAPICall({

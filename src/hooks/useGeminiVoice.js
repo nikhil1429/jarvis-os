@@ -4,6 +4,10 @@
 // (browser handles 24kHz→native resampling). Gapless time-scheduled playback prevents audio gaps.
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { logVoiceTurn } from "../events/sources.js";
+
+// Session 81 Layer 1: model id constant for VOICE_TURN payloads (matches setup.model below)
+const VOICE_MODEL = "models/gemini-3.1-flash-live-preview";
 
 // States: DISCONNECTED → CONNECTING → CONNECTED → LISTENING → SPEAKING → PROCESSING → ERROR
 const STATES = {
@@ -450,6 +454,16 @@ export default function useGeminiVoice() {
   const mountedRef = useRef(true);
   const overlayOpenRef = useRef(false);
 
+  // Session 81 Layer 1: voice-turn boundary tracking. Refs (not state) — no UI re-renders.
+  // conversationId is minted on setupComplete; turnIndex is monotonic within session.
+  // pendingUser/Jarvis accumulate transcription chunks until the turn boundary flushes them.
+  const voiceConversationIdRef = useRef(null);
+  const voiceTurnIndexRef = useRef(0);
+  const pendingUserTurnRef = useRef("");
+  const pendingJarvisTurnRef = useRef("");
+  const userTurnStartTimeRef = useRef(null);
+  const jarvisTurnStartTimeRef = useRef(null);
+
   // ── Elapsed Timer ──────────────────────────────────────────────────────
   const startElapsedTimer = useCallback(() => {
     connectTimeRef.current = Date.now();
@@ -738,6 +752,18 @@ export default function useGeminiVoice() {
         reconnectCountRef.current = 0;
         startElapsedTimer();
 
+        // Session 81 Layer 1: mint new conversation id for this voice session
+        try {
+          voiceConversationIdRef.current = crypto.randomUUID();
+        } catch {
+          voiceConversationIdRef.current = String(Date.now()) + "-" + Math.random().toString(36).slice(2);
+        }
+        voiceTurnIndexRef.current = 0;
+        pendingUserTurnRef.current = "";
+        pendingJarvisTurnRef.current = "";
+        userTurnStartTimeRef.current = null;
+        jarvisTurnStartTimeRef.current = null;
+
         // Flush any queued jarvis-speak events (from before WS was open)
         if (window.__jarvisSpeakQueue?.length > 0) {
           const now = Date.now();
@@ -804,12 +830,17 @@ export default function useGeminiVoice() {
               detail: { text: transcriptText },
             }),
           );
+          // Session 81 Layer 1: accumulate JARVIS turn text (flushed on sc.turnComplete)
+          pendingJarvisTurnRef.current += transcriptText;
         }
 
         // Input transcription — detect stop commands for immediate flush
         if (sc.inputTranscription?.text) {
           const inputText = sc.inputTranscription.text.toLowerCase();
           setTranscript((prev) => ({ ...prev, input: inputText }));
+          // Session 81 Layer 1: accumulate user turn text (flushed when JARVIS starts replying)
+          if (!userTurnStartTimeRef.current) userTurnStartTimeRef.current = Date.now();
+          pendingUserTurnRef.current += sc.inputTranscription.text;
           if (
             inputText.includes("stop") ||
             inputText.includes("quiet") ||
@@ -829,6 +860,25 @@ export default function useGeminiVoice() {
 
         // Model turn parts (audio chunks)
         if (sc.modelTurn?.parts) {
+          // Session 81 Layer 1: model is replying → flush pending user turn (turn-taking proxy)
+          if (pendingUserTurnRef.current && userTurnStartTimeRef.current) {
+            try {
+              logVoiceTurn({
+                conversationId: voiceConversationIdRef.current,
+                turnIndex: voiceTurnIndexRef.current++,
+                role: "user",
+                model: VOICE_MODEL,
+                text: pendingUserTurnRef.current,
+                audioDurationMs: Date.now() - userTurnStartTimeRef.current,
+              });
+            } catch (err) {
+              console.warn("[GeminiVoice] logVoiceTurn user failed:", err?.message);
+            }
+            pendingUserTurnRef.current = "";
+            userTurnStartTimeRef.current = null;
+          }
+          if (!jarvisTurnStartTimeRef.current) jarvisTurnStartTimeRef.current = Date.now();
+
           for (const part of sc.modelTurn.parts) {
             if (part.inlineData?.data) {
               setState(STATES.SPEAKING);
@@ -839,6 +889,25 @@ export default function useGeminiVoice() {
 
         // Turn complete — back to listening
         if (sc.turnComplete) {
+          // Session 81 Layer 1: JARVIS turn ended → emit accumulated transcript
+          if (pendingJarvisTurnRef.current) {
+            try {
+              logVoiceTurn({
+                conversationId: voiceConversationIdRef.current,
+                turnIndex: voiceTurnIndexRef.current++,
+                role: "assistant",
+                model: VOICE_MODEL,
+                text: pendingJarvisTurnRef.current,
+                audioDurationMs: jarvisTurnStartTimeRef.current
+                  ? Date.now() - jarvisTurnStartTimeRef.current
+                  : null,
+              });
+            } catch (err) {
+              console.warn("[GeminiVoice] logVoiceTurn assistant failed:", err?.message);
+            }
+            pendingJarvisTurnRef.current = "";
+            jarvisTurnStartTimeRef.current = null;
+          }
           setState(STATES.LISTENING);
         }
       }
