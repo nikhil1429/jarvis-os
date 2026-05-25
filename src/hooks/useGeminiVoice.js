@@ -5,6 +5,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { logVoiceTurn } from "../events/sources.js";
+import { callGeminiPro } from "../utils/geminiProRest.js";
 
 // Session 81 Layer 1: model id constant for VOICE_TURN payloads (matches setup.model below)
 const VOICE_MODEL = "models/gemini-3.1-flash-live-preview";
@@ -349,44 +350,28 @@ function executeTool(name, args) {
   }
 }
 
-// ── Deep Reasoning (async REST call to Gemini 2.5 Pro) ─────────────────────
+// ── Deep Reasoning (delegates to gemini-3.1-pro-preview helper) ────────────
 async function executeDeepReasoning(args, apiKey) {
   const start = Date.now();
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [
-                {
-                  text:
-                    args.query +
-                    (args.context ? "\n\nContext: " + args.context : ""),
-                },
-              ],
-            },
-          ],
-          generationConfig: { thinkingConfig: { thinkingLevel: "high" } },
-        }),
-      },
-    );
-    const data = await res.json();
+    const prompt =
+      args.query + (args.context ? "\n\nContext: " + args.context : "");
+    const { text, usage } = await callGeminiPro({
+      prompt,
+      thinkingLevel: "high",
+      apiKey,
+    });
     const latencyMs = Date.now() - start;
 
-    // Log to jos-api-logs
+    // Log to jos-api-logs (preserved shape; model bumped to 3.1-pro-preview)
     try {
       const logs = readLS("api-logs") || [];
       logs.push({
         timestamp: new Date().toISOString(),
-        model: "gemini-2.5-pro",
+        model: "gemini-3.1-pro-preview",
         mode: "deep-reasoning-voice",
-        inputTokens: data.usageMetadata?.promptTokenCount || 0,
-        outputTokens: data.usageMetadata?.candidatesTokenCount || 0,
+        inputTokens: usage?.promptTokenCount || 0,
+        outputTokens: usage?.candidatesTokenCount || 0,
         latencyMs,
         promptVersion: "v1-voice-deep",
       });
@@ -395,10 +380,9 @@ async function executeDeepReasoning(args, apiKey) {
       /* ok */
     }
 
-    const text =
-      data.candidates?.[0]?.content?.parts?.find((p) => p.text)?.text ||
-      "I was unable to complete the deep analysis, Sir.";
-    return { result: text };
+    return {
+      result: text || "I was unable to complete the deep analysis, Sir.",
+    };
   } catch (err) {
     return { error: err.message };
   }
@@ -756,7 +740,8 @@ export default function useGeminiVoice() {
         try {
           voiceConversationIdRef.current = crypto.randomUUID();
         } catch {
-          voiceConversationIdRef.current = String(Date.now()) + "-" + Math.random().toString(36).slice(2);
+          voiceConversationIdRef.current =
+            String(Date.now()) + "-" + Math.random().toString(36).slice(2);
         }
         voiceTurnIndexRef.current = 0;
         pendingUserTurnRef.current = "";
@@ -839,7 +824,8 @@ export default function useGeminiVoice() {
           const inputText = sc.inputTranscription.text.toLowerCase();
           setTranscript((prev) => ({ ...prev, input: inputText }));
           // Session 81 Layer 1: accumulate user turn text (flushed when JARVIS starts replying)
-          if (!userTurnStartTimeRef.current) userTurnStartTimeRef.current = Date.now();
+          if (!userTurnStartTimeRef.current)
+            userTurnStartTimeRef.current = Date.now();
           pendingUserTurnRef.current += sc.inputTranscription.text;
           if (
             inputText.includes("stop") ||
@@ -872,12 +858,16 @@ export default function useGeminiVoice() {
                 audioDurationMs: Date.now() - userTurnStartTimeRef.current,
               });
             } catch (err) {
-              console.warn("[GeminiVoice] logVoiceTurn user failed:", err?.message);
+              console.warn(
+                "[GeminiVoice] logVoiceTurn user failed:",
+                err?.message,
+              );
             }
             pendingUserTurnRef.current = "";
             userTurnStartTimeRef.current = null;
           }
-          if (!jarvisTurnStartTimeRef.current) jarvisTurnStartTimeRef.current = Date.now();
+          if (!jarvisTurnStartTimeRef.current)
+            jarvisTurnStartTimeRef.current = Date.now();
 
           for (const part of sc.modelTurn.parts) {
             if (part.inlineData?.data) {
@@ -903,7 +893,10 @@ export default function useGeminiVoice() {
                   : null,
               });
             } catch (err) {
-              console.warn("[GeminiVoice] logVoiceTurn assistant failed:", err?.message);
+              console.warn(
+                "[GeminiVoice] logVoiceTurn assistant failed:",
+                err?.message,
+              );
             }
             pendingJarvisTurnRef.current = "";
             jarvisTurnStartTimeRef.current = null;
@@ -1114,7 +1107,11 @@ export default function useGeminiVoice() {
   const setOverlayOpen = useCallback(
     (open) => {
       overlayOpenRef.current = open;
-      if (open && wsRef.current?.readyState === WebSocket.OPEN && !micStreamRef.current) {
+      if (
+        open &&
+        wsRef.current?.readyState === WebSocket.OPEN &&
+        !micStreamRef.current
+      ) {
         // Overlay just opened and already connected — start mic now
         startMic();
         // Send greeting

@@ -3586,3 +3586,52 @@ NOT YET BUILT (future phases):
 **Next (Part 2):** Staging project deploy → verify → prod deploy.
 
 ---
+
+## Session 82A — Helper Utility + B3 Fix + Discovery Resume
+
+**Status:** SEALED ✅
+**Scope:** S82 split — Part A only. Part B (Edge Function + webhook + smoke test) deferred to fresh thread.
+
+### Delivered
+
+**Phase 0 — Pre-execution inspection**
+- useGeminiVoice.js working-tree audit: unstaged changes were whitespace-only reformat in lines 759-1121, disjoint from fix target. Safe to proceed.
+
+**Phase 1 — Helper utility + B3 fix**
+- Created `src/utils/geminiProRest.js` — reusable helper for Gemini Pro REST calls.
+  - Model: `gemini-3.1-pro-preview`
+  - Auth: `x-goog-api-key` header
+  - Config: `thinkingLevel: 'high'`, `maxOutputTokens: 65536`, `responseMimeType: 'application/json'`
+- Refactored `executeDeepReasoning` in `useGeminiVoice.js` to use the helper. Preserved: `jos-api-logs` push, error-swallow wrapper, return shape.
+- Build verification: `npm run build` PASSED.
+
+**Phase 2 — Discovery (D1 / D2 / D5)**
+- D1 `jarvis_events`: 35 rows. event_type breakdown: VOICE_TURN(21), BOOT_INITIATED(6), CONCEPT_UPDATED(5), CHAT_TURN(2), CHECKIN_SUBMITTED(1). Last activity 2026-05-14. Schema note: PK column is `id` (ULID-as-UUID), no `source_layer` column on table — sourceLayer lives inside payload JSONB.
+- D2 `structured_events`: TABLE DOES NOT EXIST. PostgREST HEAD returns 404. Zero DDL across all migrations. **Blocker for S82B.**
+- D5 webhooks on `jarvis_events`: ZERO declarative webhooks. 14 triggers exist on other tables, all BEFORE UPDATE housekeeping. **Blocker for S82B.**
+
+### Auth note
+- Initial 401s from `sb_secret_*` key were due to Supabase edge rejecting browser-like User-Agent on secret keys. Fixed by `-UserAgent "curl/8"`. Key valid, no rotation needed.
+
+### S82B Readiness — NOT READY
+Hard blockers: structured_events table missing, webhook missing.
+
+Outstanding for S82B (fresh thread):
+1. Migration `003_structured_events.sql` (schema + RLS + indexes + triggers)
+2. Webhook wiring decision — pg_trigger AFTER INSERT (with pg_net) vs Supabase Dashboard Database Webhook
+3. Layer 2 Edge Function (Deno + gemini-3.1-pro-preview) — read jarvis_events filtered by event_type IN ('VOICE_TURN','CHAT_TURN'), write structured_events
+4. Idempotency guard — do not re-process same event id
+5. Smoke test plan — insert event → verify structured_events row appears within N seconds
+6. Gemini AI Studio validation queries per Meta-Rule 3 before any Pro Janitor prompt is written
+
+### Files touched
+- `src/utils/geminiProRest.js` (NEW)
+- `src/hooks/useGeminiVoice.js` (refactored executeDeepReasoning)
+- `SESSION_LOG.md` (this entry)
+
+### Meta-rules honored
+- ✅ Context watch — split S82 into A/B to avoid 75%+ overflow
+- ✅ SESSION_LOG + git push + ntfy this turn
+- ✅ Gemini-first protocol — S82B will draft Gemini queries BEFORE Pro Janitor prompt
+
+---
